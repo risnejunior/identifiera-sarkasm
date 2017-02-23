@@ -1,0 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Feb 23 10:02:44 2017
+
+@author: Oscar
+"""
+
+Matrix = [[0 for x in range(5)] for y in range(5)]
