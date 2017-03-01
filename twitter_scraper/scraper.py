@@ -61,7 +61,7 @@ if(debug): print(" [Done]", flush=True)
 #open files
 source_file = open(source_name, 'r') #file containing tweet ids
 dest_file = open('%s_tweets.csv' % source_name.split(".")[0], 'w', encoding='utf8', newline='')
-writer = csv.writer(dest_file, delimiter='\t')
+writer = csv.writer(dest_file, delimiter='\t', quoting=csv.QUOTE_NONE, escapechar='', quotechar='' )
 writer.writerow(["id","screen_name","tweet_text", "hashtag_indices", "user_mentions_indices","url_indices"])
 
 while True:
