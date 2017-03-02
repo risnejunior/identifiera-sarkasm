@@ -47,7 +47,7 @@ else:
 	print("Please provide an input file as an argument")
 	quit()
 
-pattern_replace_text = re.compile(r"\n") #regex for removing newlines in tweets
+pattern_replace_text = re.compile(r"\n|\r") #regex for removing newlines in tweets
 total_downloaded_tweets = 0
 total_read_ids = 0
 
@@ -60,10 +60,10 @@ if(debug): print(" [Done]", flush=True)
 
 #open files
 source_file = open(source_name, 'r') #file containing tweet ids
-dest_file = open('%s_tweets.csv' % source_name.split(".")[0], 'w', encoding='utf8', newline='')
-writer = csv.writer(dest_file, delimiter='\t', quoting=csv.QUOTE_NONE, escapechar='', quotechar='' )
+dest_file = open('%s_tweets.csv' % source_name.split(".")[0], 'w', encoding='utf8', newline='' )
+writer = csv.writer(dest_file, delimiter='\t', quoting=csv.QUOTE_NONE, escapechar='', quotechar='')
 writer.writerow(["id","screen_name","tweet_text", "hashtag_indices", "user_mentions_indices","url_indices"])
-
+#
 while True:
 	#Read from file containing tweet ids
 	if(debug): print( "Reading tweet ids...", end="", flush=True)
@@ -134,7 +134,7 @@ while True:
 		urls = str(indices)
 
 		#build line to be written to csv
-		outtweets.append([tweet.id, tweet.user.screen_name, tweet_text, hashtags, user_mentions, urls])
+		outtweets.append( [tweet.id, tweet.user.screen_name, tweet_text, hashtags, user_mentions, urls])
 
 	if(debug): print(" [Done]", flush="True")
 
@@ -154,6 +154,8 @@ print("\n")
 print("Finished. Out of %i tweet ids consumed, %i tweets downloaded" % (total_read_ids, total_downloaded_tweets))
 
 # debugging cruff
-#
+####################
+# 1) larger than sign json escpae
+# 2) file opened as ANSI, have to append?
 ##pprint(json.dumps(tweet.entities, sort_keys=True, indent=4, separators=(',', ': ')))
 #screenName = tweet.user.screen_name #.encode("UTF-8", errors="strict")
