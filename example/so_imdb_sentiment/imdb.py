@@ -23,15 +23,16 @@ def readFile(fileName, allWords):
     file = codecs.open(fileName, encoding='utf-8')
 
     for line in file:
-        line = line.lower().encode('utf-8')
-        words = line.split()
+        line = str(line).lower().encode('utf-8')
+        words = str( line.split() )
         for word in words:
-            word = word.translate(None, string.punctuation)
+            #print( type(word) )
+            word = word.translate( string.punctuation)
             if word != '':
                 allWords.append(word)
 
     file.close()
-
+#no_punctuation = lowers.translate( t_table)
 
 def readFileToConvertWordsToIntegers(dictionary, fileName, allDocuments, allLabels, label):
 
@@ -39,9 +40,9 @@ def readFileToConvertWordsToIntegers(dictionary, fileName, allDocuments, allLabe
     document = []
     for line in file:
         line = line.lower().encode('utf-8')
-        words = line.split()
+        words = str( line.split() )
         for word in words:
-            word = word.translate(None, string.punctuation)
+            word = word.translate( string.punctuation)
             if word in dictionary:
                 index = dictionary[word]
             else:
@@ -76,11 +77,11 @@ def build_dataset(words):
 
 
 
-fileList = glob.glob("/Users/inanc/Desktop/aclImdb/train/neg/*.txt")
+fileList = glob.glob("data/train/neg/*.txt")
 for file in fileList:
     readFile(file, allWords)
 
-fileList = glob.glob("/Users/inanc/Desktop/aclImdb/test/train/*.txt")
+fileList = glob.glob("data/test/train/*.txt")
 for file in fileList:
     readFile(file, allWords)
 
@@ -90,26 +91,32 @@ dictionary, reverse_dictionary = build_dataset(allWords)
 del allWords  # Hint to reduce memory.
 
 print(len(dictionary))
+print(dictionary)
 
-fileList = glob.glob("/Users/inanc/Desktop/aclImdb/train/neg/*.txt")
+fileList = glob.glob("data/train/neg/*.txt")
 for file in fileList:
+    #print (file)
     readFileToConvertWordsToIntegers(dictionary, file, allDocuments, allLabels, 0)
 
-fileList = glob.glob("/Users/inanc/Desktop/aclImdb/train/pos/*.txt")
+fileList = glob.glob("data/train/pos/*.txt")
 for file in fileList:
     readFileToConvertWordsToIntegers(dictionary, file, allDocuments, allLabels, 1)
 
 print(len(allDocuments))
+print("type all docs: " + str( type(allDocuments) ))
 print(len(allLabels))
 
 c = list(zip(allDocuments, allLabels)) # shuffle them partitioning
 
-random.shuffle(c)
+random.shuffle(c) #for testing
 
 allDocuments, allLabels = zip(*c)
 
 trainX = allDocuments[:22500]
 testX = allDocuments[22500:]
+
+#print(len(trainX))
+#print(len(testX))
 
 trainY = allLabels[:22500]
 testY = allLabels[22500:]
@@ -122,9 +129,11 @@ testY = allLabels[22500:]
 trainX = pad_sequences(trainX, maxlen=100, value=0.)
 testX = pad_sequences(testX, maxlen=100, value=0.)
 # Converting labels to binary vectors
+print("b.c: " + str(testY[0:5]) )
 trainY = to_categorical(trainY, nb_classes=2)
 testY = to_categorical(testY, nb_classes=2)
-
+print("a.d: " + str(testY[0:5]) )
+quit()
 # Network building
 net = tflearn.input_data([None, 100])
 net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=128)
@@ -133,9 +142,13 @@ net = tflearn.fully_connected(net, 2, activation='softmax')
 net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
                          loss='categorical_crossentropy')
 
+predictions = model.predict(trainX)
+print(predictions)
+
 # Training
 model = tflearn.DNN(net, tensorboard_verbose=0)
 model.fit(trainX, trainY, validation_set=(testX, testY), show_metric=True,
           batch_size=32)
 predictions = model.predict(trainX)
-print(predictions)
+
+print(predictions[22400])

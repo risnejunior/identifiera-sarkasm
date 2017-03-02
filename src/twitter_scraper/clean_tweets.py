@@ -18,15 +18,16 @@ import json
 # settings
 ####################
 debug = True
-#
+
 #
 
 #sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
-if len(sys.argv) == 2:
+if len(sys.argv) == 3:
 	source_name = sys.argv[1]
+	target_folder = sys.argv[2]
 else:
-	print ("Please provide a tweet file name argument")
+	print ("Please provide a tweet file name and target folder argument")
 
 # Downlaod nltk data
 ##########################
@@ -44,6 +45,9 @@ delete_this = str.maketrans(dict.fromkeys("1234567890:\?;@!&\#\,.()[]\'"))
 def replace(index1, index2, mainstring, replacementstring):
     return mainstring.replace(mainstring[index1:index2], replacementstring)
 
+def status_message( tweet_nr ):
+	print("Tweets read: %i" %(tweet_nr) , end="\r")
+
 # Index mapping
 ################
 #x0: id	
@@ -53,16 +57,18 @@ def replace(index1, index2, mainstring, replacementstring):
 #x4: user_mentions_indices
 #x5: url_indices
 
-dest_file = open('%s_cleaned.csv' % source_name.split(".")[0], 'a', encoding='utf8', newline='')
+#dest_file = open('%s_cleaned.csv' % source_name.split(".")[0], 'a', encoding='utf8', newline='')
 #writer = csv.writer(dest_file, delimiter='\t', quoting=csv.QUOTE_NONE, escapechar='', quotechar='' )
 tweets = ""
-if(debug): print( "Cleaning tweets..", end="", flush=True)
+if(debug): print( "Cleaning tweets..", flush=True)
+tweet_nr = 1
 with open(source_name, encoding='utf8') as f:
 	next(f) #skip column header
 	for line in f:
 		col=line.split("\t")
 		text = col[2]
 		z = re.findall(pattern_indices, col[3] + col[4] + col[5])
+		out_file = open("%s/%s.txt" %(target_folder, col[0]), 'w', encoding="utf8")
 		for i in z:
 			indices_tuple = i.split(",") 
 			a = int ( indices_tuple[0] )
@@ -75,8 +81,11 @@ with open(source_name, encoding='utf8') as f:
 		#print( text)
 		tweets += (text)
 		reduced = re.sub(pattern_whitespace,' ', text)
-		dest_file.write( reduced + "\n")
-
+		#dest_file.write( reduced + "\n")
+		out_file.write( reduced )
+		out_file.close()
+		status_message( tweet_nr )
+		tweet_nr += 1
 #lowers = tweets.lower()
 #remove the punctuation using the character deletion step of translate
 
