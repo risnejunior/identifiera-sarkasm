@@ -152,10 +152,3 @@ source_file.close()
 dest_file.close()
 print("\n")
 print("Finished. Out of %i tweet ids consumed, %i tweets downloaded" % (total_read_ids, total_downloaded_tweets))
-
-# debugging cruff
-####################
-# 1) larger than sign json escpae
-# 2) file opened as ANSI, have to append?
-##pprint(json.dumps(tweet.entities, sort_keys=True, indent=4, separators=(',', ': ')))
-#screenName = tweet.user.screen_name #.encode("UTF-8", errors="strict")

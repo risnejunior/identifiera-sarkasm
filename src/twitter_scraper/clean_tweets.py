@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
 ##############
-# Removes mentions, hashtags, links and other media from tweets and creates a
-# new file containing only the text.
+# Removes mentions, hashtags, links and other media from tweets and creates
+# a new file per tweet in target sub directore under 'cleanded' containing only the text.
 #
+# Usage example: python clean_tweets.py balanced_normal_tweets.csv normal
+#
+
 from pprint import pprint
 import sys
 import codecs
@@ -14,6 +17,7 @@ from collections import Counter
 from nltk.corpus import stopwords
 import csv
 import json
+import os
 
 # settings
 ####################
@@ -25,7 +29,10 @@ debug = True
 
 if len(sys.argv) == 3:
 	source_name = sys.argv[1]
-	target_folder = sys.argv[2]
+	target_folder = os.path.join('cleaned', sys.argv[2])
+	if not os.path.exists(target_folder):
+		os.makedirs(target_folder)
+
 else:
 	print ("Please provide a tweet file name and target folder argument")
 
@@ -42,11 +49,40 @@ pattern_indices = re.compile(r"(?:\[)([\d\s,]+?)(?:\])") #regex for finding indi
 pattern_whitespace = re.compile(r"(\s{3}|\s{2})+") #regex for reducing whitespace
 delete_this = str.maketrans(dict.fromkeys("1234567890:\?;@!&\#\,.()[]\'"))
 
-def replace(index1, index2, mainstring, replacementstring):
-    return mainstring.replace(mainstring[index1:index2], replacementstring)
+def replace(original_text, indices_list ):
+	if len(indices_list) == 0:		
+		return original_text
+
+	prev_last = 0
+	list = []
+	indices_list =sorted(indices_list,key=lambda l:l[1][0], reverse=False)
+	for i in indices_list:
+		if not i:
+			continue
+		label,toup = i
+		first, last = toup
+		list.append( text[prev_last:first] )
+		list.append( label )
+		prev_last = last
+
+	if prev_last != len(text):
+		list.append( text[prev_last:] )
+	return "".join(list)
+
+def get_indices(list_string, label):
+	indices_list = re.findall(pattern_indices, list_string)
+	if len(indices_list) == 0:		
+		return []
+	converted = []
+	for i in indices_list:
+		a, b = map(int, i.split(","))
+		converted.append([a, b])
+	name_list = [label for _ in list_string]
+	return list( zip(name_list, converted) )
+
 
 def status_message( tweet_nr ):
-	print("Tweets read: %i" %(tweet_nr) , end="\r")
+	print("Tweets written: %i" %(tweet_nr) , end="\r")
 
 # Index mapping
 ################
@@ -68,17 +104,21 @@ with open(source_name, encoding='utf8') as f:
 		col=line.split("\t")
 		text = col[2]
 		z = re.findall(pattern_indices, col[3] + col[4] + col[5])
-		out_file = open("%s/%s.txt" %(target_folder, col[0]), 'w', encoding="utf8")
-		for i in z:
-			indices_tuple = i.split(",") 
-			a = int ( indices_tuple[0] )
-			b = int ( indices_tuple[1] )
-			text = text[:a] + ' ' * len( text[a:b] ) + text[b:]
+		out_file_name = os.path.join(target_folder, col[0] + ".txt")
+		out_file = open(out_file_name, 'w', encoding="utf8")
+		
+		#for i in z:
+		#	indices_tuple = i.split(",") 
+		#	a = int ( indices_tuple[0] )
+		#	b = int ( indices_tuple[1] )
+		#	text = text[:a] + ' ' * ( len( text[a:b] ) + 0 ) + text[b:]
+		
+		indices_list = []
+		indices_list += get_indices(col[3], "<hashtag>") 
+		indices_list += get_indices(col[4], "<mention>") 
+		indices_list += get_indices(col[5], "<link>") 
+		text = replace(text, indices_list )
 
-		#text = text.strip().translate(delete_this)
-		#text = text.replace("  ", " ")
-		#text = text.encode("utf8")
-		#print( text)
 		tweets += (text)
 		reduced = re.sub(pattern_whitespace,' ', text)
 		#dest_file.write( reduced + "\n")
@@ -86,30 +126,3 @@ with open(source_name, encoding='utf8') as f:
 		out_file.close()
 		status_message( tweet_nr )
 		tweet_nr += 1
-#lowers = tweets.lower()
-#remove the punctuation using the character deletion step of translate
-
-#pprint(json.dumps(t_table, sort_keys=True, indent=4, separators=(',', ': ')))
-quit()
-# tokenization etc
-###########################
-
-t_table = dict( (ord(char), None) for char in string.tweets )
-no_punctuation = lowers.translate( t_table)
-
-tokens = nltk.word_tokenize(no_punctuation)
-filtered = [w for w in tokens if not w in stopwords.words('english')]
-
-count = Counter(tokens)
-print ( count.most_common(10) )
-count = Counter(filtered)
-print ( count.most_common(10) )
-#print(filtered )
-for word in filtered:
-	dest_file.write( word + "\n")
-	dest_file.flush() 	#flush every 1000 tweets
-
-
-# TODO ##############
-# Regenerate tweet files to get rid of unecessary escape chars
-#
