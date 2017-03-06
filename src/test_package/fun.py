@@ -1,0 +1,2 @@
+def funny():
+	print("Haha")
