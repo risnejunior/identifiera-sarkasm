@@ -1,4 +1,6 @@
 todo.txt
 test.py
+imdb.py
 models/
 checkpoints/
+__pycache__/

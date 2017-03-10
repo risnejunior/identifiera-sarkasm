@@ -12,6 +12,7 @@ import nltk
 from nltk.corpus import stopwords
 from collections import Counter, OrderedDict
 import json
+import common_funs as cf
 
 # settings ############################################################################
 print_debug = True
@@ -45,7 +46,9 @@ if print_debug:
 else: 
 	j_indent = None
 
-#nltk.download("stopwords")
+nltk.download("stopwords")
+nltk.download("punkt")
+
 t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
 file_list_normal = os.listdir(path_name_normal)[:sample_count]
 file_list_sarcastic = os.listdir( path_name_sarcastic )[:sample_count]
@@ -62,17 +65,18 @@ print( str( len(file_list_all) ) + " files selected")
 def build_vocabulary( words, max_size ):
 	d = dict( collections.Counter(words) ) #.most_common(15) )
 	vocabulary = OrderedDict( sorted(d.items(), key=lambda t: t[1],  reverse=True) )
-	i = 1
+	i = 2
 	for key, value in vocabulary.items():
 		if i < max_size:
 			vocabulary[key] = i
 			i += 1
 		else:
 			pass
-			vocabulary[key] = 0
+			vocabulary[key] = 1
 
 	rev_vocabulary = {v: k for k, v in vocabulary.items()}
-	rev_vocabulary[0] = '_unknown_'
+	rev_vocabulary[0] = '_padding_'
+	rev_vocabulary[1] = '_unknown_'
 	return vocabulary, rev_vocabulary
 
 # imput: text
@@ -97,12 +101,17 @@ def tokenize_text( file_path ):
 	return processed_text
 
 def tokenize_helper(path_name, file_list, samples, all_words, normal_texts, sarcastic):
+	file_count = len(file_list)
+	print("Tokenizing %i %s tweets" %(file_count, "sarcastic" if sarcastic else "normal" ) )
+	i = 1
 	for file_name in file_list:
+		cf.progress_bar( progress = i, data_len = file_count )
 		file_path = os.path.join(path_name, file_name)
 		text_tokens = tokenize_text( file_path )
 		all_words.extend(text_tokens)
 		file_name, _ = file_name.split('.')
 		samples[file_name] = {'sarcastic': sarcastic, 'text': text_tokens, 'int_vector':[]}
+		i += 1
 
 
 # input: tokenized samples dict

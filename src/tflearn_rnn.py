@@ -17,22 +17,24 @@ import sklearn as sk
 # settings ############################################################################
 
 vocabulary_size = 10000 #should match actual dictionary
-partition_training = 0.7
+partition_training = 0.1 #0.7
 partition_validation = 0.15
 partition_test = 0.15
-max_sequence = 230 #word length of sample, larger samples will be padded
+max_sequence = 30 #word length of sample, larger samples will be padded
+twitter = True
 
-#poria
-rel_data_path = os.path.join(".","..", "datasets","poria")
-samples_path = os.path.join(rel_data_path, "processed.json") 
-vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
-rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
-
-#imdb
-rel_data_path = os.path.join(".","..", "datasets","imdb")
-samples_path = file_name = os.path.join(rel_data_path, 'processed_imdb.json')
-vocabulary_path = file_name = os.path.join(rel_data_path, 'vocabulary_imdb.json')
-rev_vocabulary_path = file_name = os.path.join(rel_data_path, 'rev_vocabulary_imdb.json')
+if twitter:
+	#poria
+	rel_data_path = os.path.join(".","..", "datasets","poria")
+	samples_path = os.path.join(rel_data_path, "processed.json") 
+	vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
+	rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
+else:
+	#imdb
+	rel_data_path = os.path.join(".","..", "datasets","imdb")
+	samples_path = file_name = os.path.join(rel_data_path, 'processed_imdb.json')
+	vocabulary_path = file_name = os.path.join(rel_data_path, 'vocabulary_imdb.json')
+	rev_vocabulary_path = file_name = os.path.join(rel_data_path, 'rev_vocabulary_imdb.json')
 
 ###################################################################################
 
@@ -132,13 +134,13 @@ net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
 this_run_id = '1'
 model = tflearn.DNN(net, tensorboard_verbose=3, checkpoint_path='checkpoints/')
 model.fit(t_train_s[1], t_train_s[2], validation_set=(t_validation_s[1], t_validation_s[2]), show_metric=True,
-          batch_size=32, n_epoch=1, run_id=this_run_id, shuffle=True)
+          batch_size=32, n_epoch=1, run_id=this_run_id, shuffle=False)
 
 model.save("models/rnn.tfl")
 
 print("training set>")
 predictions = model.predict(t_train_s[1])
-facit = list( zip( predictions, t_train_s[2] ) )
+facit = list( zip( t_train_s[0], predictions, t_train_s[2] ) )
 for p in facit[:15]:
 	print( p )
 
@@ -149,7 +151,7 @@ for p in facit[:15]:
 	print( p )
 
 print ("f1_score:" ) 
-print( confusion_matrix(t_train_s[2], predictions) ) 
+#print( confusion_matrix(t_train_s[2], predictions) ) 
 
 
 
