@@ -12,10 +12,11 @@ import nltk
 from nltk.corpus import stopwords
 from collections import Counter, OrderedDict
 import json
-import common_funs as cf
+import common_funs
+import importlib
 
 # settings ############################################################################
-print_debug = True
+print_debug = False
 remove_punctuation = True
 remove_stopwords = False
 max_size_vocabulary = 10000 #words that don't fit get indexed as 0
@@ -33,27 +34,25 @@ if twitter:
 else:
 	#imdb
 	rel_data_path = os.path.join(".","..", "datasets","imdb")
-	path_name_normal = os.path.join(rel_data_path, "neg") #39'967
-	path_name_sarcastic = os.path.join(rel_data_path, "pos") #36'366 # sum: 76'333
+	path_name_normal = os.path.join(rel_data_path, "neg") #12'500
+	path_name_sarcastic = os.path.join(rel_data_path, "pos") #12'500
 	proc_file_name = file_name = os.path.join(rel_data_path, 'processed_imdb.json')
 	voc_file_name = file_name = os.path.join(rel_data_path, 'vocabulary_imdb.json')
 	rev_voc_file_name = file_name = os.path.join(rel_data_path, 'rev_vocabulary_imdb.json')
 
 ############################################################################################
 
-if print_debug: 
-	j_indent = 4
-else: 
-	j_indent = None
+# json files will be written all in one row without indentation unless
+#  debug_print is True
+j_indent = 4 if print_debug else None
 
-nltk.download("stopwords")
-nltk.download("punkt")
+# If you don't have the packages installed..
+if not print_debug: nltk.download("stopwords"); print()
 
 t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
 file_list_normal = os.listdir(path_name_normal)[:sample_count]
 file_list_sarcastic = os.listdir( path_name_sarcastic )[:sample_count]
 file_list_all = file_list_normal + file_list_sarcastic
-print( str( len(file_list_all) ) + " files selected")
 #### functions ###############################################################################
 
 
@@ -63,21 +62,23 @@ print( str( len(file_list_all) ) + " files selected")
 # output: modified vocabulary dict
 # output: modified vocabulary dict reversed
 def build_vocabulary( words, max_size ):
+	vocab_instances = 0 # vocabulary word instances in corpus
 	d = dict( collections.Counter(words) ) #.most_common(15) )
 	vocabulary = OrderedDict( sorted(d.items(), key=lambda t: t[1],  reverse=True) )
-	i = 2
+	i = 2 #leave room for padding & unknown
 	for key, value in vocabulary.items():
 		if i < max_size:
+			vocab_instances += value
 			vocabulary[key] = i
 			i += 1
 		else:
 			pass
 			vocabulary[key] = 1
 
+	vocabulary['.'] = 0
+	vocabulary['_'] = 1
 	rev_vocabulary = {v: k for k, v in vocabulary.items()}
-	rev_vocabulary[0] = '_padding_'
-	rev_vocabulary[1] = '_unknown_'
-	return vocabulary, rev_vocabulary
+	return vocab_instances, vocabulary, rev_vocabulary
 
 # imput: text
 # inpuit: dictionary hash list
@@ -102,17 +103,17 @@ def tokenize_text( file_path ):
 
 def tokenize_helper(path_name, file_list, samples, all_words, normal_texts, sarcastic):
 	file_count = len(file_list)
-	print("Tokenizing %i %s tweets" %(file_count, "sarcastic" if sarcastic else "normal" ) )
-	i = 1
+	print("Tokenizing %i %s samples(tweets)" %(file_count, "positive(sarcastic)" if sarcastic else "negative(normal)" ) )
+	pb = common_funs.Progress_bar( file_count-1 )
 	for file_name in file_list:
-		cf.progress_bar( progress = i, data_len = file_count )
 		file_path = os.path.join(path_name, file_name)
 		text_tokens = tokenize_text( file_path )
 		all_words.extend(text_tokens)
 		file_name, _ = file_name.split('.')
 		samples[file_name] = {'sarcastic': sarcastic, 'text': text_tokens, 'int_vector':[]}
-		i += 1
+		pb.tick()
 
+	print()
 
 # input: tokenized samples dict
 # input: vocabulary dict
@@ -141,6 +142,7 @@ def reverse_lookup( index_vector, rev_vocabulary ):
 samples = {}
 all_words = []
 sequence_length = []
+print( str( len(file_list_all) ) + " files selected")
 if( print_debug ): print ("Tokenizing text..")
 tokenize_helper( path_name_normal, file_list_normal, samples, all_words, samples, False )
 tokenize_helper( path_name_sarcastic, file_list_sarcastic, samples, all_words, samples, True )
@@ -148,15 +150,20 @@ if( print_debug ): print ("Doing math..")
 seq_max = max( sequence_length )
 seq_mean = round( np.mean( sequence_length ), 2 )
 seq_std = round( np.std( sequence_length ), 2 )
-print("Longest sqeuence: " + str( seq_max) + " ", end ="") 
+print("Longest sqeuence (words): " + str( seq_max) + " ", end ="") 
 print("mean: " + str( seq_mean) + " ", end ="") 
 print("std: " + str( seq_std) + " ", end ="") 
 print("3-sigma: " + str(math.ceil( seq_mean + 3 * seq_std) ) )
 
 # build vocabulary
 if( print_debug ): print ("Building vocabulary..")
-vocabulary, rev_vocabulary = build_vocabulary(all_words, max_size_vocabulary)
-print("vocabulary size: " + str( len(vocabulary) ) + ", max included: " + str(max_size_vocabulary) )
+vocab_instances, vocabulary, rev_vocabulary = \
+	build_vocabulary(all_words, max_size_vocabulary)
+
+print("Words in corpus: {:0}, Unique words in corpus: {:1}" \
+	.format( len(all_words), len(vocabulary) ) )
+print("Vocabulary size: {:0}, Vocabulary coverage of corpus {:1.0%}" \
+	.format(max_size_vocabulary, vocab_instances / len(all_words) ) ) 
 
 # make index vectors
 if( print_debug ): print ("Making index vectors..")
@@ -164,7 +171,7 @@ make_index_vectors( samples, vocabulary )
 if (print_debug) : print( str( len(samples) ) + " samples indexed")
 
 #save to json
-if( print_debug ): print ("Saving to disk..")
+print ("Saving to disk..")
 json_samples = json.dumps(samples, ensure_ascii=False, sort_keys=False, indent=j_indent, separators=( ',',': '))
 with open(proc_file_name, 'w', encoding='utf8') as out_file:
 	out_file.write(json_samples)

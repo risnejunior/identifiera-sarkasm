@@ -4,8 +4,10 @@ Created on Mon Mar  6 00:18:02 2017
 
 @author: JustAbanan
 """
+import tflearn
+import numpy as np
+import tensorflow as tf
 
-from test_package import fun
-
-fun.funny()
-
+this_model_id = '1'
+model_file_path = os.path.join("models", this_model_id, + ".tfl")
+model.load(model_file_path)

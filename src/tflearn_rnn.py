@@ -13,6 +13,8 @@ import os
 import json
 from copy import deepcopy
 import sklearn as sk
+import pickle
+import common_funs
 
 # settings ############################################################################
 
@@ -22,6 +24,7 @@ partition_validation = 0.15
 partition_test = 0.15
 max_sequence = 30 #word length of sample, larger samples will be padded
 twitter = True
+ascii_console = False #set to true if your console doesn't handle unicode
 
 if twitter:
 	#poria
@@ -38,19 +41,12 @@ else:
 
 ###################################################################################
 
-#l = [1,2,3,4,5,6]
-#k = ['a','b','c','d','e','f']
-#m = [1,1,1,0,0,0]
-#m = to_categorical(m, nb_classes=2)
-#lkm = list( zip(l, k, m) )
-#random.Random(1).shuffle(lkm)
-#print(lkm)
-#quit()
-
 def reverse_lookup( index_vector, rev_vocabulary ):
 	text = []
 	for i in index_vector:
-		text.append( rev_vocabulary[str(i)].encode('unicode-escape') )
+		word = rev_vocabulary[str(i)]
+		if ascii_console: word = word.encode('unicode-escape')
+		text.append( word )
 	return text
 
 
@@ -65,12 +61,15 @@ with open( rev_vocabulary_path, 'r', encoding='utf8' ) as rev_vocab_file:
 int_vectors = []
 ids = []
 labels = []
+sarcastic_label = np.array([0., 1.], dtype="float64")
+normal_label = np.array([1., 0.], dtype="float64")
+
 
 for key, val in samples_json.items():
 	if val['sarcastic'] == True:
-		labels.append( 1 )
+		labels.append( sarcastic_label )
 	else:
-		labels.append( 0 )
+		labels.append( normal_label )
 	int_vectors.append( val['int_vector'] )
 	ids.append( key )
 
@@ -99,63 +98,77 @@ t_train_s = list(map(list, zip(*train_samples)))
 t_validation_s = list(map(list, zip(*validation_samples)))
 t_test_s = list(map(list, zip(*test_samples)))
 
+# friendlier names
+train_ids = t_train_s[0]
+validate_ids = t_validation_s[0]
+test_ids = t_test_s[0]
 # pad s to tweet max length
 #Xs
-t_train_s[1] = pad_sequences(t_train_s[1], maxlen=max_sequence, value=0.)
-t_validation_s[1] = pad_sequences(t_validation_s[1], maxlen=max_sequence, value=0.)
-t_test_s[1] = pad_sequences(t_test_s[1], maxlen=max_sequence, value=0.)
+train_X = pad_sequences( np.array( t_train_s[1] ), maxlen=max_sequence, value=0.)
+validate_X = pad_sequences( np.array( t_validation_s[1] ), maxlen=max_sequence, value=0.)
+test_X = pad_sequences( np.array( t_test_s[1] ), maxlen=max_sequence, value=0.)
 # Converting labels to binary vectors
 #Ys
-t_train_s[2] = to_categorical(t_train_s[2], nb_classes=2)
-t_validation_s[2] = to_categorical(t_validation_s[2], nb_classes=2)
-t_test_s[2] = to_categorical(t_test_s[2], nb_classes=2)
+#train_Y = to_categorical(t_train_s[2], nb_classes=2)
+#validate_Y = to_categorical(t_validation_s[2], nb_classes=2)
+#test_Y = to_categorical(t_test_s[2], nb_classes=2)
+train_Y = t_train_s[2]
+validate_Y = t_validation_s[2]
+test_Y = t_test_s[2]
 
-###############################
-for s in range(10):
-	print( t_train_s[0][s], end=" , " )
-	print( t_train_s[1][s], end=" , " )
-	print( t_train_s[2][s] )
-	print( reverse_lookup(t_train_s[1][s], rev_vocabulary ) )
+# pickle data to file
+with open('train_X.pickle', 'wb') as handle:
+    pickle.dump(train_X, handle, protocol=pickle.HIGHEST_PROTOCOL)
+with open('train_Y.pickle', 'wb') as handle:
+    pickle.dump(train_Y, handle, protocol=pickle.HIGHEST_PROTOCOL)
+with open('test_X.pickle', 'wb') as handle:
+    pickle.dump(test_X, handle, protocol=pickle.HIGHEST_PROTOCOL)
+with open('test_Y.pickle', 'wb') as handle:
+    pickle.dump(test_Y, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+for s in range(25):
+	#header
+	print("Sample id (Tweet id): %s, " %(train_ids[s]), end="")
+	print("Positive (Sarcastic)" if train_Y[s] is sarcastic_label \
+		else "Negative (normal)")
+	# dictionary index vector
+	print( train_X[s], end="\n" )
+	# reverse lookup
+	print( " ".join( reverse_lookup(train_X[s], rev_vocabulary ) ) )
 	print()
 
-acc = tflearn.metrics.Accuracy
 
 # Network building
-net = tflearn.input_data([None, max_sequence]) #changed from 100
-net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=100)
-net = tflearn.lstm(net, 100, dropout=0.8)
+net = tflearn.input_data([None, max_sequence], dtype=tf.int32) 
+net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=30)
+net = tflearn.lstm(net, 30, dropout=0.8)
 net = tflearn.fully_connected(net, 2, activation='softmax')
 net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
                          loss='categorical_crossentropy')
 
 #%%
 
+#os.system("pause")
 # Training
 this_run_id = '1'
-model = tflearn.DNN(net, tensorboard_verbose=3, checkpoint_path='checkpoints/')
-model.fit(t_train_s[1], t_train_s[2], validation_set=(t_validation_s[1], t_validation_s[2]), show_metric=True,
+this_model_id = '1'
+model = tflearn.DNN(net, tensorboard_verbose=3)
+model.fit(X_inputs=train_X, Y_targets=train_Y, validation_set=(validate_X, validate_Y), show_metric=True,
           batch_size=32, n_epoch=1, run_id=this_run_id, shuffle=False)
 
-model.save("models/rnn.tfl")
+model_file_path = os.path.join("models",this_model_id + ".tfl")
+model.save(model_file_path)
 
-print("training set>")
-predictions = model.predict(t_train_s[1])
-facit = list( zip( t_train_s[0], predictions, t_train_s[2] ) )
-for p in facit[:15]:
-	print( p )
+# print confusion matrix for the different sets
+print("\n   TRAINING SET \n")
+predictions = model.predict(train_X)
+common_funs.binary_confusion_matrix( train_ids, predictions, train_Y)
 
-print("test set>")
-predictions = model.predict(t_test_s[1])
-facit = list( zip( predictions, t_train_s[2] ) )
-for p in facit[:15]:
-	print( p )
+print("\n   VALISDATION SET \n")
+predictions = model.predict(validate_X)
+common_funs.binary_confusion_matrix( validate_ids, predictions, validate_Y)
 
-print ("f1_score:" ) 
-#print( confusion_matrix(t_train_s[2], predictions) ) 
-
-
-
-
-#1. unpack json
-#2. ghetto accuracy calc
-#3. sklearn f1
+print("\n   TEST SET \n")
+predictions = model.predict(test_X)
+common_funs.binary_confusion_matrix( test_ids, predictions, test_Y)
