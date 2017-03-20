@@ -16,15 +16,25 @@ import sklearn as sk
 import pickle
 import common_funs
 
+"""
+If you get "UnicodeEncodeError: 'charmap' codec can't encode character" on windows,
+ write this in console before running the code: chcp 65001 & cmd
+"""
 # settings ############################################################################
 
-vocabulary_size = 10000 #should match actual dictionary
-partition_training = 0.1 #0.7
+vocabulary_size = 20000 #should match actual dictionary
+partition_training = 0.7 #0.7
 partition_validation = 0.15
 partition_test = 0.15
+set_balance = 0.5 # proportion of sarcastic samples.
 max_sequence = 30 #word length of sample, larger samples will be padded
 twitter = True
 ascii_console = False #set to true if your console doesn't handle unicode
+
+# debug commands, will mess up the training:
+random_labels = False # Used for debugging. If true will assign ranom labels (Ys) to samples.
+add_snitch = False # adds a word to all positive and another to all negative samples
+random_embeddings = False
 
 if twitter:
 	#poria
@@ -32,6 +42,7 @@ if twitter:
 	samples_path = os.path.join(rel_data_path, "processed.json") 
 	vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
 	rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
+	embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
 else:
 	#imdb
 	rel_data_path = os.path.join(".","..", "datasets","imdb")
@@ -50,6 +61,7 @@ def reverse_lookup( index_vector, rev_vocabulary ):
 	return text
 
 
+print("loading data...")
 # get data
 with open( samples_path, 'r', encoding='utf8' ) as samples_file:
 	samples_json = json.load( samples_file )
@@ -58,19 +70,50 @@ with open( samples_path, 'r', encoding='utf8' ) as samples_file:
 with open( rev_vocabulary_path, 'r', encoding='utf8' ) as rev_vocab_file:
 	rev_vocabulary = json.load( rev_vocab_file )
 
+#get embeddings
+with open( embeddings_path, 'r', encoding='utf8' ) as embeddings_file:
+	embeddings = json.load( embeddings_file )
+
 int_vectors = []
 ids = []
 labels = []
-sarcastic_label = np.array([0., 1.], dtype="float64")
-normal_label = np.array([1., 0.], dtype="float64")
+sample_count = len(samples_json)
+sarcastic_label = np.array([0., 1.], dtype="float32")
+normal_label = np.array([1., 0.], dtype="float32")
 
-
+# assign category labels
+print("Assigning category labels...")
+positive_count = negative_count = 0
+positive_max = math.ceil(set_balance * sample_count)
+negative_max = sample_count - positive_max
 for key, val in samples_json.items():
-	if val['sarcastic'] == True:
+	pos = val['sarcastic']
+	if pos:
+		if positive_count > positive_max: 
+			continue 
+		else: 
+			positive_count += 1
+	else:
+		if negative_count > negative_max: 
+			continue 
+		else:
+		 	negative_count += 1
+
+	if random_labels:
+		if random.randint(1,2) == 1:
+			labels.append( sarcastic_label )
+		else:
+			labels.append( normal_label )
+	elif val['sarcastic'] == True:
 		labels.append( sarcastic_label )
+		if add_snitch: val['int_vector'].extend( [vocabulary_size-1] )
 	else:
 		labels.append( normal_label )
-	int_vectors.append( val['int_vector'] )
+
+	
+	int_vectors.append( np.array( val['int_vector'], dtype="int32" ) )
+	#print(val['int_vector'])
+	#quit()
 	ids.append( key )
 
 
@@ -138,27 +181,44 @@ for s in range(25):
 	print( " ".join( reverse_lookup(train_X[s], rev_vocabulary ) ) )
 	print()
 
+#os.system("pause")
 
 # Network building
 net = tflearn.input_data([None, max_sequence], dtype=tf.int32) 
-net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=30)
-net = tflearn.lstm(net, 30, dropout=0.8)
+net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=25, restore=True)
+net = tflearn.lstm(net, 25 , dropout=0.8)
 net = tflearn.fully_connected(net, 2, activation='softmax')
 net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
                          loss='categorical_crossentropy')
 
-#%%
-
-#os.system("pause")
-# Training
-this_run_id = '1'
-this_model_id = '1'
+# create model
+this_run_id = '8'
+this_model_id = '8'
 model = tflearn.DNN(net, tensorboard_verbose=3)
-model.fit(X_inputs=train_X, Y_targets=train_Y, validation_set=(validate_X, validate_Y), show_metric=True,
-          batch_size=32, n_epoch=1, run_id=this_run_id, shuffle=False)
 
+#set embeddings
+if random_embeddings:
+	emb = np.random.randn(vocabulary_size, 25).astype(np.float32)
+else:
+	emb = np.array(embeddings[:vocabulary_size], dtype=np.float32)
+
+
+new_emb_t = tf.convert_to_tensor(emb)
+embeddings_tensor = tflearn.variables.get_layer_variables_by_name('Embedding')[0]
+model.set_weights( embeddings_tensor, new_emb_t)
+print("embedding layer weights:")
+w = model.get_weights(embeddings_tensor)
+print( w.shape )
+
+
+# Training
+model.fit(X_inputs=train_X, Y_targets=train_Y, validation_set=(validate_X, validate_Y), show_metric=True,
+          batch_size=60, n_epoch=1, run_id=this_run_id, shuffle=False, snapshot_epoch=True)
+
+# save model
 model_file_path = os.path.join("models",this_model_id + ".tfl")
 model.save(model_file_path)
+
 
 # print confusion matrix for the different sets
 print("\n   TRAINING SET \n")
