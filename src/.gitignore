@@ -4,5 +4,5 @@ imdb.py
 checkpoints/
 __pycache__/
 *.pickle
-models/*.indexmeta
+models/
 checkpoints/
