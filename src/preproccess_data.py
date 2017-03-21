@@ -16,45 +16,50 @@ import common_funs
 import importlib
 
 # settings ############################################################################
-print_debug = True
+print_debug = False
 remove_punctuation = True
 remove_stopwords = False
 max_size_vocabulary = 20000 #words that don't fit get indexed as 0
-sample_count = 50000#36366 #how many of both class3es of samples to use, to ensure they are 50/50
+sample_count = 50000 #36366 #how many of both class3es of samples to use, to ensure they are 50/50
 twitter = True #twitter or imdb
 use_embeddings = True
 placeholder_char = '_' # placeholder char for words not in dic
 padding_char = '.'
+embedding_size = 25 #allowed: 25, 50, 100, 200
 
 if twitter:
 	#tweets
 	rel_data_path = os.path.join(".","..", "datasets","poria")
 	path_name_normal = os.path.join(rel_data_path, "en-balanced","cleaned","normal") #39'967
 	path_name_sarcastic = os.path.join(rel_data_path, "en-balanced","cleaned","sarcastic") #36'366 
-	proc_file_name  = os.path.join(rel_data_path, 'processed.json')
-	voc_file_name  = os.path.join(rel_data_path, 'vocabulary.json')
-	rev_voc_file_name = os.path.join(rel_data_path, 'rev_vocabulary.json')
-	embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
-	emb_voc_path= os.path.join(
-		".", "..","datasets","glove_twitter_embeddings", "glove.twitter.27B.25d.txt")
-
 else:
 	#imdb
 	rel_data_path = os.path.join(".","..", "datasets","imdb")
 	path_name_normal = os.path.join(rel_data_path, "neg") #12'500
 	path_name_sarcastic = os.path.join(rel_data_path, "pos") #12'500
-	proc_file_name = file_name = os.path.join(rel_data_path, 'processed_imdb.json')
-	voc_file_name = file_name = os.path.join(rel_data_path, 'vocabulary_imdb.json')
-	rev_voc_file_name = file_name = os.path.join(rel_data_path, 'rev_vocabulary_imdb.json')
 
+proc_file_name  = os.path.join(rel_data_path, 'processed.json')
+voc_file_name  = os.path.join(rel_data_path, 'vocabulary.json')
+rev_voc_file_name = os.path.join(rel_data_path, 'rev_vocabulary.json')
+embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
+emb_voc_path= os.path.join(
+		".", "..","datasets","glove_twitter_embeddings", 
+		"glove.twitter.27B." + str(embedding_size) + "d.txt")
 ############################################################################################
+allowed_emb_sizes = [25,50,100,200]
+if embedding_size not in allowed_emb_sizes:
+	print("Wrong embedding size provided, quiting.")
+	print("Allowed sizes: {0:s}, provided: {1:d}".format(
+		','.join(map(lambda x: str(x), allowed_emb_sizes)), embedding_size))
+	quit()
 
 # json files will be written all in one row without indentation unless
 #  debug_print is True
 j_indent = 4 if print_debug else None
 
 # If you don't have the packages installed..
-if not print_debug: nltk.download("stopwords"); print()
+if not print_debug: nltk.download("stopwords"); nltk.download("punkt")
+print()
 
 t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
 file_list_normal = os.listdir(path_name_normal)[:sample_count]

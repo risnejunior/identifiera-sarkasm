@@ -190,3 +190,4 @@ def binary_confusion_matrix( ids, predictions, Ys):
 	print("precision: {:^}{:<.2f}".format("",precision))
 	print("recall: {:^3}{:<.2f}".format("",recall))
 	print("f1_score: {:^1}{:<.2f}".format("",f1_score))
+	print()

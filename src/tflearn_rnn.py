@@ -23,6 +23,9 @@ If you get "UnicodeEncodeError: 'charmap' codec can't encode character" on windo
 # settings ############################################################################
 
 vocabulary_size = 20000 #should match actual dictionary
+embedding_size = 25
+epochs = 1
+batch_size = 60
 partition_training = 0.7 #0.7
 partition_validation = 0.15
 partition_test = 0.15
@@ -39,17 +42,14 @@ random_embeddings = False
 if twitter:
 	#poria
 	rel_data_path = os.path.join(".","..", "datasets","poria")
-	samples_path = os.path.join(rel_data_path, "processed.json") 
-	vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
-	rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
-	embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
 else:
 	#imdb
 	rel_data_path = os.path.join(".","..", "datasets","imdb")
-	samples_path = file_name = os.path.join(rel_data_path, 'processed_imdb.json')
-	vocabulary_path = file_name = os.path.join(rel_data_path, 'vocabulary_imdb.json')
-	rev_vocabulary_path = file_name = os.path.join(rel_data_path, 'rev_vocabulary_imdb.json')
 
+samples_path = os.path.join(rel_data_path, "processed.json") 
+vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
+rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
+embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
 ###################################################################################
 
 def reverse_lookup( index_vector, rev_vocabulary ):
@@ -185,8 +185,8 @@ for s in range(25):
 
 # Network building
 net = tflearn.input_data([None, max_sequence], dtype=tf.int32) 
-net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=25, restore=True)
-net = tflearn.lstm(net, 25 , dropout=0.8)
+net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=embedding_size, restore=True)
+net = tflearn.lstm(net, embedding_size , dropout=0.8)
 net = tflearn.fully_connected(net, 2, activation='softmax')
 net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
                          loss='categorical_crossentropy')
@@ -198,7 +198,7 @@ model = tflearn.DNN(net, tensorboard_verbose=3)
 
 #set embeddings
 if random_embeddings:
-	emb = np.random.randn(vocabulary_size, 25).astype(np.float32)
+	emb = np.random.randn(vocabulary_size, embedding_size).astype(np.float32)
 else:
 	emb = np.array(embeddings[:vocabulary_size], dtype=np.float32)
 
@@ -211,12 +211,17 @@ w = model.get_weights(embeddings_tensor)
 print( w.shape )
 
 
-# Training
+# Training #run_id=this_run_id
 model.fit(X_inputs=train_X, Y_targets=train_Y, validation_set=(validate_X, validate_Y), show_metric=True,
-          batch_size=60, n_epoch=1, run_id=this_run_id, shuffle=False, snapshot_epoch=True)
+          batch_size=batch_size, n_epoch=epochs, shuffle=False, snapshot_epoch=True)
+
 
 # save model
-model_file_path = os.path.join("models",this_model_id + ".tfl")
+models_path = os.path.join("models")
+if not (os.path.isdir(models_path)):
+	os.makedirs(models_path)
+
+model_file_path = os.path.join(models_path,this_model_id + ".tfl")
 model.save(model_file_path)
 
 
