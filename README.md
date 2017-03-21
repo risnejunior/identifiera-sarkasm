@@ -4,18 +4,18 @@ Kandidatarbete 2017
 ## Folder structure for datasets
 ```
 .
-├── datasets
-│   ├── glove_twitter_embeddings
-│   ├── imdb
-│   │   ├── neg
-│   │   └── pos
-│   └── poria
-│       ├── en-balanced
-│       │   ├── neg
-│       │   └── pos
-│       └── en-ratio
-│           ├── neg
-│           └── pos
+└── datasets
+   ├── glove_twitter_embeddings
+   ├── imdb
+   │   ├── neg
+   │   └── pos
+   └── poria
+       ├── en-balanced
+       │   ├── neg
+       │   └── pos
+       └── en-ratio
+           ├── neg
+           └── pos
 ```
 
 ## Get the data
