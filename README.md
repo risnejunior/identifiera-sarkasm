@@ -1,6 +1,28 @@
 # Identifiera sarkasm i text
 Kandidatarbete 2017
 
+## Folder structure
+```
+.
+├── datasets
+│   ├── glove_twitter_embeddings
+│   ├── imdb
+│   │   ├── neg
+│   │   └── pos
+│   └── poria
+│       ├── balanced_cleaned
+│       │   ├── normal
+│       │   └── sarcastic
+│       ├── en-balanced
+│       │   ├── cleaned
+│       │   │   ├── normal
+│       │   │   └── sarcastic
+│       │   ├── neg
+│       │   └── pos
+│       └── en-ratio
+└── src
+```
+
 ## Get the data
 
 Right now the following data is used:
