@@ -46,8 +46,8 @@ else:
 	#imdb
 	rel_data_path = os.path.join(".","..", "datasets","imdb")
 
-samples_path = os.path.join(rel_data_path, "processed.json") 
-vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
+samples_path = os.path.join(rel_data_path, "processed.json")
+vocabulary_path = os.path.join(rel_data_path, "vocabulary.json")
 rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
 embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
 ###################################################################################
@@ -89,13 +89,13 @@ negative_max = sample_count - positive_max
 for key, val in samples_json.items():
 	pos = val['sarcastic']
 	if pos:
-		if positive_count > positive_max: 
-			continue 
-		else: 
+		if positive_count > positive_max:
+			continue
+		else:
 			positive_count += 1
 	else:
-		if negative_count > negative_max: 
-			continue 
+		if negative_count > negative_max:
+			continue
 		else:
 		 	negative_count += 1
 
@@ -110,7 +110,7 @@ for key, val in samples_json.items():
 	else:
 		labels.append( normal_label )
 
-	
+
 	int_vectors.append( np.array( val['int_vector'], dtype="int32" ) )
 	#print(val['int_vector'])
 	#quit()
@@ -120,10 +120,10 @@ for key, val in samples_json.items():
 
 
 #zip the list shuffle them and unzip
-#the seed should be kept the same so we 
+#the seed should be kept the same so we
 # always get the same shuffle
-labeld_samples =  list( zip(ids, int_vectors, labels) ) 
-random.Random(1).shuffle( labeld_samples ) 
+labeld_samples =  list( zip(ids, int_vectors, labels) )
+random.Random(1).shuffle( labeld_samples )
 #ids, int_vectors, labels = zip(*labeld_samples)
 
 #calculate  training and validation set size
@@ -184,9 +184,9 @@ for s in range(25):
 #os.system("pause")
 
 # Network building
-net = tflearn.input_data([None, max_sequence], dtype=tf.int32) 
+net = tflearn.input_data([None, max_sequence], dtype=tf.int32)
 net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=embedding_size, restore=True)
-net = tflearn.lstm(net, embedding_size , dropout=0.8)
+net = tflearn.gru(net, embedding_size , dropout=0.8)
 net = tflearn.fully_connected(net, 2, activation='softmax')
 net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
                          loss='categorical_crossentropy')
