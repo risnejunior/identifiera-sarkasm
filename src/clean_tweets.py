@@ -18,6 +18,7 @@ from nltk.corpus import stopwords
 import csv
 import json
 import os
+import settings
 
 # settings
 ####################
@@ -39,6 +40,7 @@ if len(sys.argv) == 3:
 #
 #nltk.download("stopwords")
 
+exclude_tags = ["#sarcasm"]
 pattern_indices = re.compile(r"(?:\[)([\d\s,]+?)(?:\])") #regex for finding indices
 pattern_whitespace = re.compile(r"(\s{3}|\s{2})+") #regex for reducing whitespace
 delete_this = str.maketrans(dict.fromkeys("1234567890:\?;@!&\#\,.()[]\'"))
@@ -56,7 +58,10 @@ def replace(original_text, indices_list ):
 		label,toup = i
 		first, last = toup
 		list.append( original_text[prev_last:first] )
-		list.append( label )
+		#special case sarcastic hashtags
+		if original_text[first:last].lower() not in exclude_tags:
+			list.append( label )
+			#print(label + ": " + original_text[first:last].lower())
 		prev_last = last
 
 	if prev_last != len(original_text):
@@ -100,7 +105,7 @@ def clean_tweets(target_folder, source_name):
 			out_file = open(out_file_name, 'w', encoding="utf8")
 					
 			indices_list = []
-			indices_list += get_indices(col[3], "") #<hashtag> removed because to high accuracy
+			indices_list += get_indices(col[3], "<hashtag>") #<hashtag> removed because to high accuracy
 			indices_list += get_indices(col[4], "<mention>") 
 			indices_list += get_indices(col[5], "<link>") 
 			text = replace(text, indices_list )
@@ -120,6 +125,7 @@ if not (os.path.isdir(target_folder)):
 source_name = os.path.join(rel_data_path, "balanced_normal_tweets.csv")
 print( "Cleaning normal tweets..")
 clean_tweets(target_folder, source_name)
+print()
 
 #sarcastic
 target_folder = os.path.join(rel_data_path, "pos") 

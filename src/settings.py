@@ -1,25 +1,31 @@
 import os
+import math
 
 ################# settings ###############################################
 ##########################################################################
-dataset_name = "imdb" #poria-balanced, imdb
-print_debug = False
-remove_punctuation = True #unused atm
+
+dataset_name = "poria-balanced" # poria-balanced, imdb
+remove_punctuation = False
 remove_stopwords = False
-sample_count = 50000 #36366 #how many of both class3es of samples to use, to ensure they are 50/50
+use_casual_tokenizer = True 	# doens't remove special chars
+sample_count = 50000 # set to the smallest (36366) of the both classes to get an even nr of samples
+
 use_embeddings = True
-placeholder_char = '_' # placeholder char for words not in dic
+placeholder_char = '_' # placeholder char for words not in vocabulary
 padding_char = '.'
-embedding_size = 25 #allowed: 25, 50, 100, 200
-vocabulary_size = 20000 #should match actual dictionary
+embedding_size = 50 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
+vocabulary_size = 20000 
+ascii_console = False #set to true if your console doesn't handle unicode
+print_debug = False
+
 epochs = 1
-batch_size = 60
-partition_training = 0.7 #0.7
+batch_size = 30
+partition_training = 0.7
 partition_validation = 0.15
 partition_test = 0.15
 set_balance = 0.5 # proportion of sarcastic samples.
-max_sequence = 30 #words to include from sample, smaller samples will be padded
-ascii_console = False #set to true if your console doesn't handle unicode
+max_sequence = 30 # words to include from sample, smaller samples will be padded
+snapshot_steps = math.floor(sample_count / (5 * batch_size)) # n = checkpoints per epoch
 
 # debug commands, will mess up the training: ##########################
 random_labels = False # Used for debugging. If true will assign ranom labels (Ys) to samples.

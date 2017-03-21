@@ -178,7 +178,11 @@ net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
 # create model
 this_run_id = '8'
 this_model_id = '8'
-model = tflearn.DNN(net, tensorboard_verbose=3)
+checkpoint_path = os.path.join("checkpoints")
+if not (os.path.isdir(checkpoint_path)):
+	os.makedirs(checkpoint_path)
+checkpoint_path = os.path.join("checkpoints",this_run_id + "ckpt")
+model = tflearn.DNN(net, tensorboard_verbose=3, checkpoint_path=checkpoint_path)
 
 #set embeddings
 if random_embeddings:
@@ -196,8 +200,12 @@ print( w.shape )
 
 
 # Training #run_id=this_run_id
-model.fit(X_inputs=train_X, Y_targets=train_Y, validation_set=(validate_X, validate_Y), show_metric=True,
-          batch_size=batch_size, n_epoch=epochs, shuffle=False, snapshot_epoch=True)
+model.fit(X_inputs=train_X, Y_targets=train_Y, 
+		  validation_set=(validate_X, validate_Y), 
+		  show_metric=True,
+          batch_size=batch_size, n_epoch=epochs, 
+          shuffle=False, 
+          snapshot_step=settings.snapshot_steps)
 
 
 # save model

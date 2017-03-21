@@ -7,15 +7,22 @@ import math
 import random
 import os
 import pickle
+import json
+
 import numpy as np
+
 import nltk
 from nltk.corpus import stopwords
 from collections import Counter, OrderedDict
-import json
+from nltk.tokenize import TweetTokenizer
+
 import common_funs
 import importlib
 import settings
 
+
+# the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
+tknzr = TweetTokenizer(reduce_len=True)
 
 # json files will be written all in one row without indentation unless
 #  debug_print is True
@@ -53,16 +60,25 @@ def build_vocabulary( words, max_size ):
 	return vocab_instances, vocabulary, rev_vocabulary
 
 def tokenize_text( file_path ):
-	global sequence_length
-	words = []
+	global sequence_lengths	
 	processed_text = []
 	with open(file_path, 'r', encoding='utf8') as f:
 		for line in f:
-			cleaned = line.lower().translate( t_table ) 				# remove punctuation 		
-			tokens = nltk.word_tokenize( cleaned, language='english') 	#tokenize text
+			
+			if settings.remove_punctuation:
+				cleaned = line.lower().translate( t_table ) 	
+			else:
+				cleaned = line
+
+			if settings.use_casual_tokenizer:
+				tokens = tknzr.tokenize( cleaned ) 
+			else:
+				tokens = nltk.word_tokenize( cleaned, language='english') 	
+						
 			if settings.remove_stopwords:
-				tokens = [w for w in tokens if not w in stopwords.words('english')] #remove stopwords		
-			sequence_length.append( len( tokens ) )
+				tokens = [w for w in tokens if not w in stopwords.words('english')] 	
+
+			sequence_lengths.append( len( tokens ) )
 			processed_text.extend( tokens )		
 	return processed_text
 
@@ -127,14 +143,17 @@ def reshape_embedding(vocabulary, embeddings_voc):
 # tokenize  text
 samples = {}
 all_words = []
-sequence_length = []
+sequence_lengths = []
 print( str( len(file_list_all) ) + " files selected")
-tokenize_helper( 
-	settings.path_name_neg
-, file_list_normal, samples, all_words, samples, False )
-tokenize_helper( 
-	settings.path_name_pos
-, file_list_sarcastic, samples, all_words, samples, True )
+print()
+
+tokenize_helper(settings.path_name_neg,
+			    file_list_normal, samples, 
+			    all_words, samples, False )
+tokenize_helper(settings.path_name_pos,
+				file_list_sarcastic, 
+				samples, all_words, 
+				samples, True )
 
 # build vocabulary
 print("Building vocabulary..")
@@ -143,6 +162,7 @@ vocab_instances, vocabulary, rev_vocabulary = \
 
 #load embeddings vocabulary
 if settings.use_embeddings:
+	print()
 	wa = common_funs.working_animation("Loading embeddings vocabulary")
 	embeddings_voc = {}
 	with open(settings.emb_voc_path, encoding="utf8") as emb_file:
@@ -153,6 +173,7 @@ if settings.use_embeddings:
 		wa.done()
 
 	# order embeddings according to dictionary
+	print()
 	print("Reshaping embeddings...")
 	embeddings = reshape_embedding(vocabulary, embeddings_voc)
 
@@ -160,15 +181,18 @@ if settings.use_embeddings:
 		embeddings, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
 	with open(settings.embeddings_path, 'w', encoding='utf8') as out_file:
 		out_file.write(json_embedding)	
+	
+
 
 # print word stats
 print('\n')
-seq_max = max( sequence_length )
-seq_mean = round( np.mean( sequence_length ), 2 )
-seq_std = round( np.std( sequence_length ), 2 )
-print("Longest sqeuence (words): " + str( seq_max) + " ", end ="") 
-print("mean: " + str( seq_mean) + " ", end ="") 
-print("std: " + str( seq_std) + " ", end ="") 
+print("Calculating statistics...")
+seq_max = max( sequence_lengths )
+seq_mean = round( np.mean( sequence_lengths ), 2 )
+seq_std = round( np.std( sequence_lengths ), 2 )
+print("Longest sqeuence (words): " + str( seq_max) , end =", ") 
+print("mean: " + str( seq_mean), end =", ") 
+print("std: " + str( seq_std), end =", ") 
 print("3-sigma: " + str(math.ceil( seq_mean + 3 * seq_std) ) )
 print("Words in corpus: {:0}, Unique words in corpus: {:1}" \
 	.format( len(all_words), len(vocabulary) ) )
