@@ -1,6 +1,6 @@
 import math
 import time
-
+import settings
 
 class Progress_bar:
 	"""Prints a pretty progress bar on every call to progress, or tick.
@@ -191,3 +191,11 @@ def binary_confusion_matrix( ids, predictions, Ys):
 	print("recall: {:^3}{:<.2f}".format("",recall))
 	print("f1_score: {:^1}{:<.2f}".format("",f1_score))
 	print()
+
+def reverse_lookup( index_vector, rev_vocabulary ):
+	text = []
+	for i in index_vector:
+		word = rev_vocabulary[str(i)]
+		if settings.ascii_console: word = word.encode('unicode-escape')
+		text.append( word )
+	return text

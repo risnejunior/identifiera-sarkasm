@@ -14,56 +14,20 @@ from collections import Counter, OrderedDict
 import json
 import common_funs
 import importlib
+import settings
 
-# settings ############################################################################
-print_debug = False
-remove_punctuation = True
-remove_stopwords = False
-max_size_vocabulary = 20000 #words that don't fit get indexed as 0
-sample_count = 50000 #36366 #how many of both class3es of samples to use, to ensure they are 50/50
-twitter = True #twitter or imdb
-use_embeddings = True
-placeholder_char = '_' # placeholder char for words not in dic
-padding_char = '.'
-embedding_size = 25 #allowed: 25, 50, 100, 200
-
-if twitter:
-	#tweets
-	rel_data_path = os.path.join(".","..", "datasets","poria")
-	path_name_normal = os.path.join(rel_data_path, "en-balanced","cleaned","normal") #39'967
-	path_name_sarcastic = os.path.join(rel_data_path, "en-balanced","cleaned","sarcastic") #36'366 
-else:
-	#imdb
-	rel_data_path = os.path.join(".","..", "datasets","imdb")
-	path_name_normal = os.path.join(rel_data_path, "neg") #12'500
-	path_name_sarcastic = os.path.join(rel_data_path, "pos") #12'500
-
-proc_file_name  = os.path.join(rel_data_path, 'processed.json')
-voc_file_name  = os.path.join(rel_data_path, 'vocabulary.json')
-rev_voc_file_name = os.path.join(rel_data_path, 'rev_vocabulary.json')
-embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
-emb_voc_path= os.path.join(
-		".", "..","datasets","glove_twitter_embeddings", 
-		"glove.twitter.27B." + str(embedding_size) + "d.txt")
-############################################################################################
-allowed_emb_sizes = [25,50,100,200]
-if embedding_size not in allowed_emb_sizes:
-	print("Wrong embedding size provided, quiting.")
-	print("Allowed sizes: {0:s}, provided: {1:d}".format(
-		','.join(map(lambda x: str(x), allowed_emb_sizes)), embedding_size))
-	quit()
 
 # json files will be written all in one row without indentation unless
 #  debug_print is True
-j_indent = 4 if print_debug else None
+j_indent = 4 if settings.print_debug else None
 
 # If you don't have the packages installed..
-if not print_debug: nltk.download("stopwords"); nltk.download("punkt")
+if not settings.print_debug: nltk.download("stopwords"); nltk.download("punkt")
 print()
 
 t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
-file_list_normal = os.listdir(path_name_normal)[:sample_count]
-file_list_sarcastic = os.listdir( path_name_sarcastic )[:sample_count]
+file_list_normal = os.listdir(settings.path_name_neg)[:settings.sample_count]
+file_list_sarcastic = os.listdir(settings.path_name_pos)[:settings.sample_count]
 file_list_all = file_list_normal + file_list_sarcastic
 #### functions ###############################################################################
 
@@ -83,8 +47,8 @@ def build_vocabulary( words, max_size ):
 		else:			
 			vocabulary[key] = 1		
 		
-	vocabulary[padding_char] = 0
-	vocabulary[placeholder_char] = 1
+	vocabulary[settings.padding_char] = 0
+	vocabulary[settings.placeholder_char] = 1
 	rev_vocabulary = {v: k for k, v in vocabulary.items()}
 	return vocab_instances, vocabulary, rev_vocabulary
 
@@ -96,7 +60,7 @@ def tokenize_text( file_path ):
 		for line in f:
 			cleaned = line.lower().translate( t_table ) 				# remove punctuation 		
 			tokens = nltk.word_tokenize( cleaned, language='english') 	#tokenize text
-			if remove_stopwords:
+			if settings.remove_stopwords:
 				tokens = [w for w in tokens if not w in stopwords.words('english')] #remove stopwords		
 			sequence_length.append( len( tokens ) )
 			processed_text.extend( tokens )		
@@ -139,15 +103,15 @@ def reverse_lookup( index_vector, rev_vocabulary ):
 	return text
 
 def reshape_embedding(vocabulary, embeddings_voc):
-	global placeholder_char
+	settings.placeholder_char
 	pb = common_funs.Progress_bar( len(vocabulary)-1 )
 	#hack, fix this
-	embeddings = [embeddings_voc[padding_char], embeddings_voc[placeholder_char]]
+	embeddings = [embeddings_voc[settings.padding_char], embeddings_voc[settings.placeholder_char]]
 	for word, i in vocabulary.items():
 		if word in embeddings_voc:
 			string_vector = embeddings_voc[word]
 		else:
-			string_vector = embeddings_voc[placeholder_char]
+			string_vector = embeddings_voc[settings.placeholder_char]
 		float_vec = list(map(lambda x: float(x), string_vector)	)	
 		embeddings.append(float_vec)
 		#print(word, end=" ")
@@ -165,19 +129,23 @@ samples = {}
 all_words = []
 sequence_length = []
 print( str( len(file_list_all) ) + " files selected")
-tokenize_helper( path_name_normal, file_list_normal, samples, all_words, samples, False )
-tokenize_helper( path_name_sarcastic, file_list_sarcastic, samples, all_words, samples, True )
+tokenize_helper( 
+	settings.path_name_neg
+, file_list_normal, samples, all_words, samples, False )
+tokenize_helper( 
+	settings.path_name_pos
+, file_list_sarcastic, samples, all_words, samples, True )
 
 # build vocabulary
 print("Building vocabulary..")
 vocab_instances, vocabulary, rev_vocabulary = \
-	build_vocabulary(all_words, max_size_vocabulary)
+	build_vocabulary(all_words, settings.vocabulary_size)
 
 #load embeddings vocabulary
-if use_embeddings:
+if settings.use_embeddings:
 	wa = common_funs.working_animation("Loading embeddings vocabulary")
 	embeddings_voc = {}
-	with open(emb_voc_path, encoding="utf8") as emb_file:
+	with open(settings.emb_voc_path, encoding="utf8") as emb_file:
 		for i, line in enumerate(emb_file):
 			wa.tick("Embeddings loaded: " + str(i))
 			(word, *vector) = line.split()
@@ -190,7 +158,7 @@ if use_embeddings:
 
 	json_embedding= json.dumps(
 		embeddings, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
-	with open(embeddings_path, 'w', encoding='utf8') as out_file:
+	with open(settings.embeddings_path, 'w', encoding='utf8') as out_file:
 		out_file.write(json_embedding)	
 
 # print word stats
@@ -205,7 +173,7 @@ print("3-sigma: " + str(math.ceil( seq_mean + 3 * seq_std) ) )
 print("Words in corpus: {:0}, Unique words in corpus: {:1}" \
 	.format( len(all_words), len(vocabulary) ) )
 print("Vocabulary size: {:0}, Vocabulary coverage of corpus {:1.0%}" \
-	.format(max_size_vocabulary, vocab_instances / len(all_words) ) ) 
+	.format(settings.vocabulary_size, vocab_instances / len(all_words) ) ) 
 print('\n')
 
 # make index vectors
@@ -216,13 +184,14 @@ print( str( len(samples) ) + " samples indexed")
 #save to json
 print ("Saving to disk..")
 json_samples = json.dumps(samples, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
-with open(proc_file_name, 'w', encoding='utf8') as out_file:
+with open(settings.samples_path
+, 'w', encoding='utf8') as out_file:
 	out_file.write(json_samples)
 
 json_vocabulary= json.dumps(vocabulary, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
-with open(voc_file_name, 'w', encoding='utf8') as out_file:
+with open(settings.vocabulary_path, 'w', encoding='utf8') as out_file:
 	out_file.write(json_vocabulary)
 
 json_rev_vocabulary= json.dumps(rev_vocabulary, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
-with open(rev_voc_file_name, 'w', encoding='utf8') as out_file:
+with open(settings.rev_vocabulary_path, 'w', encoding='utf8') as out_file:
 	out_file.write(json_rev_vocabulary)
