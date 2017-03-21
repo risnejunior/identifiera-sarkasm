@@ -1,7 +1,7 @@
 # Identifiera sarkasm i text
 Kandidatarbete 2017
 
-## Folder structure
+## Folder structure for datasets
 ```
 .
 ├── datasets
@@ -10,17 +10,12 @@ Kandidatarbete 2017
 │   │   ├── neg
 │   │   └── pos
 │   └── poria
-│       ├── balanced_cleaned
-│       │   ├── normal
-│       │   └── sarcastic
 │       ├── en-balanced
-│       │   ├── cleaned
-│       │   │   ├── normal
-│       │   │   └── sarcastic
 │       │   ├── neg
 │       │   └── pos
 │       └── en-ratio
-└── src
+│           ├── neg
+│           └── pos
 ```
 
 ## Get the data
