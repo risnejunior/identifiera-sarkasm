@@ -2,7 +2,7 @@ import os
 
 ################# settings ###############################################
 ##########################################################################
-dataset_name = "imdb" #poria-balanced, imdb
+dataset_name = "poria-balanced" #poria-balanced, imdb
 print_debug = False
 remove_punctuation = True #unused atm
 remove_stopwords = False
@@ -39,13 +39,13 @@ datsets_paths = {
 
 rel_data_path = datsets_paths[dataset_name]
 path_name_neg = os.path.join(rel_data_path, "neg")
-path_name_pos = os.path.join(rel_data_path, "pos") 
-samples_path = os.path.join(rel_data_path, "processed.json") 
-vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
+path_name_pos = os.path.join(rel_data_path, "pos")
+samples_path = os.path.join(rel_data_path, "processed.json")
+vocabulary_path = os.path.join(rel_data_path, "vocabulary.json")
 rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
 embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
 emb_voc_path = os.path.join(
-		".", "..","datasets","glove_twitter_embeddings", 
+		".", "..","datasets","glove_twitter_embeddings",
 		"glove.twitter.27B." + str(embedding_size) + "d.txt")
 
 ################# validate settings ############################
