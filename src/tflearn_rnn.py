@@ -15,6 +15,7 @@ from copy import deepcopy
 import sklearn as sk
 import pickle
 import common_funs
+import settings
 
 """
 If you get "UnicodeEncodeError: 'charmap' codec can't encode character" on windows,
@@ -22,44 +23,27 @@ If you get "UnicodeEncodeError: 'charmap' codec can't encode character" on windo
 """
 # settings ############################################################################
 
-vocabulary_size = 20000 #should match actual dictionary
-embedding_size = 25
-epochs = 1
-batch_size = 60
-partition_training = 0.7 #0.7
-partition_validation = 0.15
-partition_test = 0.15
-set_balance = 0.5 # proportion of sarcastic samples.
-max_sequence = 30 #word length of sample, larger samples will be padded
-twitter = True
-ascii_console = False #set to true if your console doesn't handle unicode
+vocabulary_size = settings.vocabulary_size #should match actual dictionary
+embedding_size = settings.embedding_size
+epochs = settings.epochs
+batch_size = settings.batch_size
+partition_training = settings.partition_training
+partition_validation = settings.partition_validation
+partition_test = settings.partition_test
+set_balance = settings.set_balance
+max_sequence = settings.max_sequence
+ascii_console = settings.ascii_console
 
 # debug commands, will mess up the training:
-random_labels = False # Used for debugging. If true will assign ranom labels (Ys) to samples.
-add_snitch = False # adds a word to all positive and another to all negative samples
-random_embeddings = False
+random_labels = settings.random_labels
+add_snitch = settings.add_snitch
+random_embeddings = not settings.use_embeddings
 
-if twitter:
-	#poria
-	rel_data_path = os.path.join(".","..", "datasets","poria")
-else:
-	#imdb
-	rel_data_path = os.path.join(".","..", "datasets","imdb")
-
-samples_path = os.path.join(rel_data_path, "processed.json")
-vocabulary_path = os.path.join(rel_data_path, "vocabulary.json")
-rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
-embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
+samples_path = settings.samples_path
+vocabulary_path = settings.vocabulary_path
+rev_vocabulary_path = settings.rev_vocabulary_path
+embeddings_path = settings.embeddings_path
 ###################################################################################
-
-def reverse_lookup( index_vector, rev_vocabulary ):
-	text = []
-	for i in index_vector:
-		word = rev_vocabulary[str(i)]
-		if ascii_console: word = word.encode('unicode-escape')
-		text.append( word )
-	return text
-
 
 print("loading data...")
 # get data
@@ -178,7 +162,7 @@ for s in range(25):
 	# dictionary index vector
 	print( train_X[s], end="\n" )
 	# reverse lookup
-	print( " ".join( reverse_lookup(train_X[s], rev_vocabulary ) ) )
+	print( " ".join( common_funs.reverse_lookup(train_X[s], rev_vocabulary ) ) )
 	print()
 
 #os.system("pause")
@@ -194,7 +178,11 @@ net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
 # create model
 this_run_id = '8'
 this_model_id = '8'
-model = tflearn.DNN(net, tensorboard_verbose=3)
+checkpoint_path = os.path.join("checkpoints")
+if not (os.path.isdir(checkpoint_path)):
+	os.makedirs(checkpoint_path)
+checkpoint_path = os.path.join("checkpoints",this_run_id + "ckpt")
+model = tflearn.DNN(net, tensorboard_verbose=3, checkpoint_path=checkpoint_path)
 
 #set embeddings
 if random_embeddings:
@@ -212,8 +200,12 @@ print( w.shape )
 
 
 # Training #run_id=this_run_id
-model.fit(X_inputs=train_X, Y_targets=train_Y, validation_set=(validate_X, validate_Y), show_metric=True,
-          batch_size=batch_size, n_epoch=epochs, shuffle=False, snapshot_epoch=True)
+model.fit(X_inputs=train_X, Y_targets=train_Y,
+		  validation_set=(validate_X, validate_Y),
+		  show_metric=True,
+          batch_size=batch_size, n_epoch=epochs,
+          shuffle=False,
+          snapshot_step=settings.snapshot_steps)
 
 
 # save model

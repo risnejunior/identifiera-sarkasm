@@ -1,6 +1,23 @@
 # Identifiera sarkasm i text
 Kandidatarbete 2017
 
+## Folder structure for datasets
+```
+.
+└── datasets
+   ├── glove_twitter_embeddings
+   ├── imdb
+   │   ├── neg
+   │   └── pos
+   └── poria
+       ├── en-balanced
+       │   ├── neg
+       │   └── pos
+       └── en-ratio
+           ├── neg
+           └── pos
+```
+
 ## Get the data
 
 Right now the following data is used:
@@ -48,7 +65,7 @@ The following python files are in the source directory:
 3. Run **tflearn_rnn.py**
 
 ## Settings
-Right now the settings are spread out and duplicated over preprocess_data and tflearn_rnn if you want to change the size of the embeddings or the size of the dictionary etc you will need to rerun preprocess data. Otherwise you only need to run preprocess_data once
+Settings are located in the settings.py file and shared by the other scripts
 
 ## Unicode issues (probably only windows users)
 * If you have problems writing utf-8 to console, i.e some error about unicode mapping, type this in console, ‘chcp 65001 & cmd’, just after starting the console (windows only)
@@ -64,3 +81,18 @@ Tensorboard will start a web server and print out the address where you can find
 - [ ] Skriva lite kod
 - [ ] Identifiera sarkasm i text
 - [ ] 🍺
+- [ ] göra om preprocess så att den sparar data i .npy format, gör så att 
+        tflearn_rnn inte måste göra om någon data
+- [ ] ändra så att <hashtag> kommer med i vokabuläret (endast icke sarkastiska) 
+- [ ] felsöka embeddings så att de stämmer överens med vokabuläret 
+- [ ] ändra padding och placholder för embeddings. placeholder ska vara 
+        random och padding kanske 0?
+- [ ] bygga en 'trining director' automatiskt tränar med olika hyperparametrar
+        och sen sparar resultatet.
+- [ ] Göra så att tensorboard skriver ut två grafer i samma ruta under samma
+        träningspass, går sedan att använa till att diganosiera overfitting:
+          http://ischlag.github.io/2016/06/04/how-to-use-tensorboard/
+- [ ] visualisera embeddings i tensorboard enligt: 
+        https://www.tensorflow.org/get_started/embedding_viz
+- [ ] Skriva om preprocessing för embeddings så det inte tar så mkt minne,
+        omöjligt just nu at köra 200-embeddings med 16GB ram
