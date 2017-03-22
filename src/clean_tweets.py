@@ -23,7 +23,6 @@ import settings
 # settings
 ####################
 #tweets
-rel_data_path = os.path.join(".","..", "datasets","poria", "en-balanced")
 
 if len(sys.argv) == 3:
 	source_name = sys.argv[1]
@@ -119,18 +118,16 @@ def clean_tweets(target_folder, source_name):
 
 
 #normal
-target_folder = os.path.join(rel_data_path, "neg") 
+target_folder = os.path.join(settings.rel_data_path, "neg") 
 if not (os.path.isdir(target_folder)):
 	os.makedirs(target_folder)
-source_name = os.path.join(rel_data_path, "balanced_normal_tweets.csv")
-print( "Cleaning normal tweets..")
-clean_tweets(target_folder, source_name)
+print( "Cleaning:" + settings.dataset["neg_source"])
+clean_tweets(target_folder, settings.dataset["neg_source"])
 print()
 
 #sarcastic
-target_folder = os.path.join(rel_data_path, "pos") 
+target_folder = os.path.join(settings.rel_data_path, "pos") 
 if not (os.path.isdir(target_folder)):
 	os.makedirs(target_folder)
-source_name = os.path.join(rel_data_path, "balanced_sarcastic_tweets.csv")
-print( "Cleaning sarcastic tweets..")
-clean_tweets(target_folder, source_name)
+print( "Cleaning: " + settings.dataset["pos_source"])
+clean_tweets(target_folder, settings.dataset["pos_source"])
