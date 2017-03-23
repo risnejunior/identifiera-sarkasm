@@ -153,6 +153,16 @@ with open('test_X.pickle', 'wb') as handle:
 with open('test_Y.pickle', 'wb') as handle:
     pickle.dump(test_Y, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+# use random data (random tweets)
+if settings.random_data:
+	tmp_X = []
+	for _ in range( len(train_X) ):
+		row = np.random.randint(
+			1, (settings.vocabulary_size - 1), 
+			size=max_sequence, 
+			dtype=np.int32)
+		tmp_X.append(row)
+	train_X = np.array(tmp_X, dtype=np.int32)
 
 for s in range(25):
 	#header
@@ -187,6 +197,8 @@ model = tflearn.DNN(net, tensorboard_verbose=3, checkpoint_path=checkpoint_path)
 #set embeddings
 if random_embeddings:
 	emb = np.random.randn(vocabulary_size, embedding_size).astype(np.float32)
+	#train_X = a = np.random.uniform(
+	#	-2, 2, (, settings.embedding_size)).astype(np.float32)
 else:
 	emb = np.array(embeddings[:vocabulary_size], dtype=np.float32)
 
@@ -197,7 +209,7 @@ model.set_weights( embeddings_tensor, new_emb_t)
 print("embedding layer weights:")
 w = model.get_weights(embeddings_tensor)
 print( w.shape )
-
+	
 
 # Training #run_id=this_run_id
 model.fit(X_inputs=train_X, Y_targets=train_Y,

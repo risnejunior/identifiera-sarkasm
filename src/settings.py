@@ -4,7 +4,7 @@ import math
 ################# settings ###############################################
 ##########################################################################
 
-dataset_name = "poria-balanced" # poria-balanced, imdb
+dataset_name = "poria-balanced" #"poria-ratio" # "poria-balanced", "imdb"
 remove_punctuation = False
 remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
@@ -13,8 +13,13 @@ sample_count = 50000 # set to the smallest (36366) of the both classes to get an
 use_embeddings = True
 placeholder_char = '_' # placeholder char for words not in vocabulary
 padding_char = '.'
+<<<<<<< HEAD
 embedding_size = 50 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
 vocabulary_size = 20000
+=======
+embedding_size = 25 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
+vocabulary_size = 20000 
+>>>>>>> master
 ascii_console = False #set to true if your console doesn't handle unicode
 print_debug = False
 
@@ -31,19 +36,35 @@ snapshot_steps = math.floor(sample_count / (5 * batch_size)) # n = checkpoints p
 random_labels = False # Used for debugging. If true will assign ranom labels (Ys) to samples.
 add_snitch = False # adds a word to all positive and another to all negative samples
 random_embeddings = False
-
+random_data = False # sets random training data
 ##########################################################################
 ##########################################################################
 
 allowed_emb_sizes = [25,50,100,200]
 
 # what data set to use
-datsets_paths = {
-	"poria-balanced": os.path.join(".","..", "datasets","poria", "en-balanced"),
-	"imdb" : os.path.join(".","..", "datasets","imdb")
+datsets = {
+	"poria-balanced": {
+		"rel_path": os.path.join(".","..", "datasets","poria", "en-balanced"),
+		"neg_source": "balanced_normal_tweets.csv",
+		"pos_source": "balanced_sarcastic_tweets.csv"
+	},
+	"poria-ratio": {
+		"rel_path": os.path.join(".","..", "datasets","poria", "en-ratio"),
+		"neg_source": "normal_tweets.csv",
+		"pos_source": "sarcastic_tweets.csv"
+	},
+	"imdb" : {
+		"rel_path": os.path.join(".","..", "datasets","imdb"),
+		"neg_source": "",
+		"pos_source": ""
+	}
 }
 
-rel_data_path = datsets_paths[dataset_name]
+dataset = datsets[dataset_name]
+rel_data_path = dataset["rel_path"]
+dataset["neg_source"] = os.path.join(rel_data_path, dataset["neg_source"])
+dataset["pos_source"] = os.path.join(rel_data_path, dataset["pos_source"])
 path_name_neg = os.path.join(rel_data_path, "neg")
 path_name_pos = os.path.join(rel_data_path, "pos")
 samples_path = os.path.join(rel_data_path, "processed.json")

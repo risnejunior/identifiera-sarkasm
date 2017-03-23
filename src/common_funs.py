@@ -186,10 +186,10 @@ def binary_confusion_matrix( ids, predictions, Ys):
 
 	#print additional metrics
 	print()
-	print("accuracy: {:^1}{:<.2f}".format("",accuracy))
-	print("precision: {:^}{:<.2f}".format("",precision))
-	print("recall: {:^3}{:<.2f}".format("",recall))
-	print("f1_score: {:^1}{:<.2f}".format("",f1_score))
+	print("accuracy: {:^1}{:<.3f}".format("",accuracy))
+	print("precision: {:^}{:<.3f}".format("",precision))
+	print("recall: {:^3}{:<.3f}".format("",recall))
+	print("f1_score: {:^1}{:<.3f}".format("",f1_score))
 	print()
 
 def reverse_lookup( index_vector, rev_vocabulary ):

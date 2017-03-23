@@ -22,7 +22,7 @@ import settings
 
 
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
-tknzr = TweetTokenizer(reduce_len=True)
+tknzr = TweetTokenizer(reduce_len=True, preserve_case=True)
 
 # json files will be written all in one row without indentation unless
 #  debug_print is True
