@@ -131,9 +131,15 @@ validate_ids = t_validation_s[0]
 test_ids = t_test_s[0]
 # pad s to tweet max length
 #Xs
-train_X = pad_sequences( np.array( t_train_s[1] ), maxlen=max_sequence, value=0.)
-validate_X = pad_sequences( np.array( t_validation_s[1] ), maxlen=max_sequence, value=0.)
-test_X = pad_sequences( np.array( t_test_s[1] ), maxlen=max_sequence, value=0.)
+train_X = pad_sequences( np.array( t_train_s[1] ), 
+	padding=settings.padding_pos, 
+	maxlen=max_sequence, value=0.)
+validate_X = pad_sequences( np.array( t_validation_s[1] ), 
+	padding=settings.padding_pos, 
+	maxlen=max_sequence, value=0.)
+test_X = pad_sequences( np.array( t_test_s[1] ), 
+	padding=settings.padding_pos,
+	 maxlen=max_sequence, value=0.)
 # Converting labels to binary vectors
 #Ys
 #train_Y = to_categorical(t_train_s[2], nb_classes=2)
@@ -186,8 +192,8 @@ net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
                          loss='categorical_crossentropy')
 
 # create model
-this_run_id = '8'
-this_model_id = '8'
+this_run_id = common_funs.generate_name()
+this_model_id = common_funs.generate_name()
 checkpoint_path = os.path.join("checkpoints")
 if not (os.path.isdir(checkpoint_path)):
 	os.makedirs(checkpoint_path)
@@ -211,13 +217,14 @@ w = model.get_weights(embeddings_tensor)
 print( w.shape )
 	
 
-# Training #run_id=this_run_id
+# Training
 model.fit(X_inputs=train_X, Y_targets=train_Y, 
 		  validation_set=(validate_X, validate_Y), 
 		  show_metric=True,
           batch_size=batch_size, n_epoch=epochs, 
           shuffle=False, 
-          snapshot_step=settings.snapshot_steps)
+          snapshot_step=settings.snapshot_steps,
+          run_id=this_run_id)
 
 
 # save model

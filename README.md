@@ -83,7 +83,7 @@ Tensorboard will start a web server and print out the address where you can find
 - [ ] 🍺
 - [ ] göra om preprocess så att den sparar data i .npy format, gör så att 
         tflearn_rnn inte måste göra om någon data
-- [ ] ändra så att <hashtag> kommer med i vokabuläret (endast icke sarkastiska) 
+- [x] ändra så att <hashtag> kommer med i vokabuläret (endast icke sarkastiska) 
 - [ ] felsöka embeddings så att de stämmer överens med vokabuläret 
 - [ ] ändra padding och placholder för embeddings. placeholder ska vara 
         random och padding kanske 0?
@@ -96,3 +96,8 @@ Tensorboard will start a web server and print out the address where you can find
         https://www.tensorflow.org/get_started/embedding_viz
 - [ ] Skriva om preprocessing för embeddings så det inte tar så mkt minne,
         omöjligt just nu at köra 200-embeddings med 16GB ram
+- [ ] online predictor där man kan skriva sin egna mening och få en gissning 
+        direkt. Vore bäst att lösa ladding av en tränad modell först.
+- [ ] testa dynamic = true
+- [ ] debug: scramble word order
+- [ ] add sarcasm detector dataset

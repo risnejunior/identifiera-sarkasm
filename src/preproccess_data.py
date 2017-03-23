@@ -2,7 +2,7 @@
 
 import string
 import re
-import collections
+from collections import Counter, OrderedDict
 import math
 import random
 import os
@@ -13,7 +13,6 @@ import numpy as np
 
 import nltk
 from nltk.corpus import stopwords
-from collections import Counter, OrderedDict
 from nltk.tokenize import TweetTokenizer
 
 import common_funs
@@ -22,7 +21,7 @@ import settings
 
 
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
-tknzr = TweetTokenizer(reduce_len=True, preserve_case=True)
+tknzr = TweetTokenizer(reduce_len=True, preserve_case=False)
 
 # json files will be written all in one row without indentation unless
 #  debug_print is True
@@ -41,7 +40,7 @@ file_list_all = file_list_normal + file_list_sarcastic
 
 def build_vocabulary( words, max_size ):	
 	vocab_instances = 0 									# vocabulary word instances in corpus
-	d = dict( collections.Counter(words) )
+	d = dict( Counter(words) )
 	pb = common_funs.Progress_bar(len(d) - 1) 
 	vocabulary = OrderedDict( sorted(d.items(), key=lambda t: t[1],  reverse=True) )
 	i = 2 													#leave room for padding & unknown

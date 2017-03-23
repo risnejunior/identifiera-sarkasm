@@ -18,6 +18,7 @@ vocabulary_size = 20000
 ascii_console = False #set to true if your console doesn't handle unicode
 print_debug = False
 
+padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
 epochs = 1
 batch_size = 30
 partition_training = 0.7
@@ -25,7 +26,7 @@ partition_validation = 0.15
 partition_test = 0.15
 set_balance = 0.5 # proportion of sarcastic samples.
 max_sequence = 30 # words to include from sample, smaller samples will be padded
-snapshot_steps = math.floor(sample_count / (5 * batch_size)) # n = checkpoints per epoch
+snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 # debug commands, will mess up the training: ##########################
 random_labels = False # Used for debugging. If true will assign ranom labels (Ys) to samples.

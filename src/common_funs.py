@@ -1,6 +1,7 @@
 import math
 import time
 import settings
+import random
 
 class Progress_bar:
 	"""Prints a pretty progress bar on every call to progress, or tick.
@@ -57,7 +58,7 @@ class Progress_bar:
 		7: '\\'
 		}
 
-	def __init__(self, iter_to, iter_from = 0, bar_max_len = 56, update_freq = 25, bar_type = 'ascii' ):
+	def __init__(self, iter_to, iter_from = 0, bar_max_len = 56, update_freq = 25, bar_type = 'gradual' ):
 
 		self.iter_to = iter_to
 		self.i = self.iter_from = iter_from
@@ -199,3 +200,31 @@ def reverse_lookup( index_vector, rev_vocabulary ):
 		if settings.ascii_console: word = word.encode('unicode-escape')
 		text.append( word )
 	return text
+
+def generate_name():
+	t = time.localtime()
+	a = random.choice(['blue', 'yellow', 'green', 'red', 'orange','pink','grey', 
+		               'white', 'black', 'turkouse', 'fushia', 'beige','purple',
+		               'rustic', 'idyllic', 'kind', 'turbo', 'feverish', 
+		               'master', 'correct', 'insane', 'relevant','chocolate',
+		               'silk', 'big', 'short', 'cool', 'mighty', 'weak'])
+	b = random.choice(['battery', 'horse', 'stapler', 'giraff', 'tiger', 
+		               'cow', 'mouse', 'eagle', 'elephant', 'whale', 'shark',
+		               'house', 'car', 'boat', 'bird', 'plane', 'sea',
+		               'leopard', 'clown', 'matador', 'bull', 'ant','starfish'])
+	
+	timestr = time.strftime("%H%M", t)
+	datestr = time.strftime("%m%d%H%M%S", t).encode('utf8')
+	b32 = base36encode(int(datestr))
+	name = "{}_{}_{}".format(b32,a,b)
+	return name.upper()
+ 
+
+def base36encode(integer):
+    chars, encoded = '0123456789abcdefghijklmnopqrstuvwxyz', ''
+
+    while integer > 0:
+        integer, remainder = divmod(integer, 36)
+        encoded = chars[remainder] + encoded
+
+    return encoded
