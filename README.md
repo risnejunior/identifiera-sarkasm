@@ -96,3 +96,4 @@ Tensorboard will start a web server and print out the address where you can find
         https://www.tensorflow.org/get_started/embedding_viz
 - [ ] Skriva om preprocessing för embeddings så det inte tar så mkt minne,
         omöjligt just nu at köra 200-embeddings med 16GB ram
+- [ ] Scrambla ord-ordningen i tweetsen och se huruvida ordningen spelar roll för en tränad modell
