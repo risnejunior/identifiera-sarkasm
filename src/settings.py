@@ -13,13 +13,8 @@ sample_count = 50000 # set to the smallest (36366) of the both classes to get an
 use_embeddings = True
 placeholder_char = '_' # placeholder char for words not in vocabulary
 padding_char = '.'
-<<<<<<< HEAD
 embedding_size = 50 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
 vocabulary_size = 20000
-=======
-embedding_size = 25 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
-vocabulary_size = 20000 
->>>>>>> master
 ascii_console = False #set to true if your console doesn't handle unicode
 print_debug = False
 
