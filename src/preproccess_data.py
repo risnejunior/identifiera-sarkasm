@@ -8,6 +8,7 @@ import random
 import os
 import pickle
 import json
+from sys import getsizeof
 
 import numpy as np
 
@@ -31,7 +32,11 @@ j_indent = 4 if settings.print_debug else None
 if not settings.print_debug: nltk.download("stopwords"); nltk.download("punkt")
 print()
 
-t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
+logger = common_funs.Logger()
+
+#t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
+t_table = dict( ( ord(char), None) for char in ['.','_'] ) #translation tabler  for puctuation
+
 file_list_normal = os.listdir(settings.path_name_neg)[:settings.sample_count]
 file_list_sarcastic = os.listdir(settings.path_name_pos)[:settings.sample_count]
 file_list_all = file_list_normal + file_list_sarcastic
@@ -118,24 +123,41 @@ def reverse_lookup( index_vector, rev_vocabulary ):
 	return text
 
 def reshape_embedding(vocabulary, embeddings_voc):
-	settings.placeholder_char
 	pb = common_funs.Progress_bar( len(vocabulary)-1 )
-	#hack, fix this
-	embeddings = [embeddings_voc[settings.padding_char], embeddings_voc[settings.placeholder_char]]
+	rt = random.triangular
+	minval = 0.0
+	maxval = 0.0
+	not_found = 0
+	embeddings = []
 	for word, i in vocabulary.items():
 		if word in embeddings_voc:
 			string_vector = embeddings_voc[word]
 		else:
-			string_vector = embeddings_voc[settings.placeholder_char]
-		float_vec = list(map(lambda x: float(x), string_vector)	)	
+			# this should be calculated the same as below (min, max)
+			string_vector = [rt(-6.0, 6.0) for _ in range(settings.embedding_size)]
+			not_found += 1
+			logger.log(word, "missing_embeddings", 100)
+
+		float_vec = list(map(lambda x: float(x), string_vector)	)
+		minval = min(float_vec) if min(float_vec) < minval else minval
+		maxval = max(float_vec) if max(float_vec) > maxval else maxval
+
 		embeddings.append(float_vec)
-		#print(word, end=" ")
-		#print(i, end="\n")
-		#print(float_vec, flush="true")
-		#print()
-		#os.system('pause')
+		
+		logger.log(float_vec, logname="embeddings", step=1000)
 		pb.tick()
-	return embeddings[:len(vocabulary)-2] #hack, remove!!!!!!!!!!
+
+	
+	embeddings[0] = [0.0 for _ in range(settings.embedding_size)]
+	embeddings[1] = [rt(minval, maxval) for _ in range(settings.embedding_size)]
+
+	logger.log(minval, logname="min")
+	logger.log(maxval, logname="max")
+	logger.log(not_found, logname="not_found")
+	logger.log(embeddings[0], logname="padding")
+	logger.log(embeddings[1], logname="placeholder")
+
+	return embeddings
 
 ###########################################################################################
 
@@ -171,9 +193,10 @@ if settings.use_embeddings:
 			embeddings_voc[word] = vector
 		wa.done()
 
-	# order embeddings according to dictionary
+	# fit embeddings to vocabulary
 	print()
 	print("Reshaping embeddings...")
+	logger.log(getsizeof(embeddings_voc), logname="embedding_bytes")
 	embeddings = reshape_embedding(vocabulary, embeddings_voc)
 
 	json_embedding= json.dumps(
@@ -218,3 +241,5 @@ with open(settings.vocabulary_path, 'w', encoding='utf8') as out_file:
 json_rev_vocabulary= json.dumps(rev_vocabulary, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
 with open(settings.rev_vocabulary_path, 'w', encoding='utf8') as out_file:
 	out_file.write(json_rev_vocabulary)
+
+logger.save(file_name="preprocess.log")

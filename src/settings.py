@@ -5,7 +5,7 @@ import math
 ##########################################################################
 
 dataset_name = "poria-balanced" #"poria-ratio" # "poria-balanced", "imdb"
-remove_punctuation = False
+remove_punctuation = True
 remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
 sample_count = 50000 # set to the smallest (36366) of the both classes to get an even nr of samples
@@ -17,10 +17,12 @@ embedding_size = 25 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
 vocabulary_size = 20000 
 ascii_console = False #set to true if your console doesn't handle unicode
 print_debug = False
+use_logger = True
 
 padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
-epochs = 1
-batch_size = 30
+dropout = 0.5
+epochs = 2
+batch_size = 60
 partition_training = 0.7
 partition_validation = 0.15
 partition_test = 0.15
@@ -31,7 +33,6 @@ snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints p
 # debug commands, will mess up the training: ##########################
 random_labels = False # Used for debugging. If true will assign ranom labels (Ys) to samples.
 add_snitch = False # adds a word to all positive and another to all negative samples
-random_embeddings = False
 random_data = False # sets random training data
 ##########################################################################
 ##########################################################################

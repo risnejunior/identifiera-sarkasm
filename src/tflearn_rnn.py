@@ -150,14 +150,17 @@ validate_Y = t_validation_s[2]
 test_Y = t_test_s[2]
 
 # pickle data to file
-with open('train_X.pickle', 'wb') as handle:
-    pickle.dump(train_X, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('train_Y.pickle', 'wb') as handle:
-    pickle.dump(train_Y, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('test_X.pickle', 'wb') as handle:
-    pickle.dump(test_X, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('test_Y.pickle', 'wb') as handle:
-    pickle.dump(test_Y, handle, protocol=pickle.HIGHEST_PROTOCOL)
+samples = {
+	"train_X": train_X,
+	"train_Y": train_Y,
+	"validate_X": validate_X,
+	"validate_Y": validate_Y,
+	"test_X": test_X,
+	"test_Y": test_Y
+}
+
+with open('samples.pickle', 'wb') as handle:
+    pickle.dump(samples, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # use random data (random tweets)
 if settings.random_data:
@@ -178,22 +181,36 @@ for s in range(25):
 	# dictionary index vector
 	print( train_X[s], end="\n" )
 	# reverse lookup
-	print( " ".join( common_funs.reverse_lookup(train_X[s], rev_vocabulary ) ) )
+	print( " ".join( common_funs.reverse_lookup(train_X[s], 
+												rev_vocabulary, 
+												settings.ascii_console ) ) )
 	print()
 
 #os.system("pause")
 
 # Network building
 net = tflearn.input_data([None, max_sequence], dtype=tf.int32) 
-net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=embedding_size, restore=True)
-net = tflearn.lstm(net, embedding_size , dropout=0.8)
-net = tflearn.fully_connected(net, 2, activation='softmax')
+net = tflearn.embedding(net, input_dim=vocabulary_size, 
+						     output_dim=embedding_size, 
+						     restore=False)
+#net = tflearn.time_distributed(net, conv_2d, [100, 3])
+net = tflearn.lstm(net, embedding_size , dropout=settings.dropout)
+net = tflearn.fully_connected(net, embedding_size, activation="ReLU", name="theshizzel")
+net = tflearn.fully_connected(net, 2, activation='softmax', name="output")
 net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
                          loss='categorical_crossentropy')
 
+# add regulizer
+theshizzel_tns = tflearn.variables.get_layer_variables_by_name('theshizzel')[0]
+tflearn.helpers.regularizer.add_weights_regularizer(theshizzel_tns, 
+													loss='L2', 
+													weight_decay=0.01)
+tflearn.activations.sigmoid (theshizzel_tns)
+
 # create model
-this_run_id = common_funs.generate_name()
-this_model_id = common_funs.generate_name()
+shared_name = common_funs.generate_name()
+this_run_id = shared_name
+this_model_id = shared_name
 checkpoint_path = os.path.join("checkpoints")
 if not (os.path.isdir(checkpoint_path)):
 	os.makedirs(checkpoint_path)
@@ -207,7 +224,6 @@ if random_embeddings:
 	#	-2, 2, (, settings.embedding_size)).astype(np.float32)
 else:
 	emb = np.array(embeddings[:vocabulary_size], dtype=np.float32)
-
 
 new_emb_t = tf.convert_to_tensor(emb)
 embeddings_tensor = tflearn.variables.get_layer_variables_by_name('Embedding')[0]
@@ -237,11 +253,15 @@ model.save(model_file_path)
 
 
 # print confusion matrix for the different sets
+horiz_bar = "-" * (len(shared_name) + 9 )
+print(horiz_bar)
+print("runid: " + shared_name + ' |')
+print(horiz_bar)
 print("\n   TRAINING SET \n")
 predictions = model.predict(train_X)
 common_funs.binary_confusion_matrix( train_ids, predictions, train_Y)
 
-print("\n   VALISDATION SET \n")
+print("\n   VALIDATION SET \n")
 predictions = model.predict(validate_X)
 common_funs.binary_confusion_matrix( validate_ids, predictions, validate_Y)
 
