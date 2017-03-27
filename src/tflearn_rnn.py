@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import tflearn
-from tflearn.data_utils import to_categorical, pad_sequences
+# import tflearn
+# from tflearn.data_utils import to_categorical, pad_sequences
+from keras.preprocessing import sequence
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
+from keras.layers import Embedding
+from keras.layers import LSTM
 import string
 import numpy as np
 import re
@@ -73,13 +78,13 @@ negative_max = sample_count - positive_max
 for key, val in samples_json.items():
 	pos = val['sarcastic']
 	if pos:
-		if positive_count > positive_max: 
-			continue 
-		else: 
+		if positive_count > positive_max:
+			continue
+		else:
 			positive_count += 1
 	else:
-		if negative_count > negative_max: 
-			continue 
+		if negative_count > negative_max:
+			continue
 		else:
 		 	negative_count += 1
 
@@ -94,7 +99,7 @@ for key, val in samples_json.items():
 	else:
 		labels.append( normal_label )
 
-	
+
 	int_vectors.append( np.array( val['int_vector'], dtype="int32" ) )
 	#print(val['int_vector'])
 	#quit()
@@ -104,10 +109,10 @@ for key, val in samples_json.items():
 
 
 #zip the list shuffle them and unzip
-#the seed should be kept the same so we 
+#the seed should be kept the same so we
 # always get the same shuffle
-labeld_samples =  list( zip(ids, int_vectors, labels) ) 
-random.Random(1).shuffle( labeld_samples ) 
+labeld_samples =  list( zip(ids, int_vectors, labels) )
+random.Random(1).shuffle( labeld_samples )
 #ids, int_vectors, labels = zip(*labeld_samples)
 
 #calculate  training and validation set size
@@ -131,20 +136,11 @@ validate_ids = t_validation_s[0]
 test_ids = t_test_s[0]
 # pad s to tweet max length
 #Xs
-train_X = pad_sequences( np.array( t_train_s[1] ), 
-	padding=settings.padding_pos, 
-	maxlen=max_sequence, value=0.)
-validate_X = pad_sequences( np.array( t_validation_s[1] ), 
-	padding=settings.padding_pos, 
-	maxlen=max_sequence, value=0.)
-test_X = pad_sequences( np.array( t_test_s[1] ), 
-	padding=settings.padding_pos,
-	 maxlen=max_sequence, value=0.)
+train_X = sequence.pad_sequences(t_train_s[1], maxlen=max_sequence)
+validate_X = sequence.pad_sequences(t_validation_s[1], maxlen=max_sequence)
+test_X = sequence.pad_sequences(t_test_s[1], maxlen=max_sequence)
 # Converting labels to binary vectors
 #Ys
-#train_Y = to_categorical(t_train_s[2], nb_classes=2)
-#validate_Y = to_categorical(t_validation_s[2], nb_classes=2)
-#test_Y = to_categorical(t_test_s[2], nb_classes=2)
 train_Y = t_train_s[2]
 validate_Y = t_validation_s[2]
 test_Y = t_test_s[2]
@@ -164,8 +160,8 @@ if settings.random_data:
 	tmp_X = []
 	for _ in range( len(train_X) ):
 		row = np.random.randint(
-			1, (settings.vocabulary_size - 1), 
-			size=max_sequence, 
+			1, (settings.vocabulary_size - 1),
+			size=max_sequence,
 			dtype=np.int32)
 		tmp_X.append(row)
 	train_X = np.array(tmp_X, dtype=np.int32)
@@ -178,18 +174,19 @@ for s in range(25):
 	# dictionary index vector
 	print( train_X[s], end="\n" )
 	# reverse lookup
-	print( " ".join( common_funs.reverse_lookup(train_X[s], rev_vocabulary ) ) )
+	print( " ".join( common_funs.reverse_lookup(train_X[s],
+												rev_vocabulary,
+												settings.ascii_console ) ) )
 	print()
 
 #os.system("pause")
 
 # Network building
-net = tflearn.input_data([None, max_sequence], dtype=tf.int32) 
-net = tflearn.embedding(net, input_dim=vocabulary_size, output_dim=embedding_size, restore=True)
-net = tflearn.lstm(net, embedding_size , dropout=0.8)
-net = tflearn.fully_connected(net, 2, activation='softmax')
-net = tflearn.regression(net, optimizer='adam', learning_rate=0.001,
-                         loss='categorical_crossentropy')
+model = Sequential()
+model.add(Embedding(max_features, output_dim=256))
+model.add(LSTM(128))
+model.add(Dropout(0.5))
+model.add(Dense(1, activation='sigmoid'))
 
 # create model
 this_run_id = common_funs.generate_name()
@@ -198,34 +195,19 @@ checkpoint_path = os.path.join("checkpoints")
 if not (os.path.isdir(checkpoint_path)):
 	os.makedirs(checkpoint_path)
 checkpoint_path = os.path.join("checkpoints",this_run_id + "ckpt")
-model = tflearn.DNN(net, tensorboard_verbose=3, checkpoint_path=checkpoint_path)
-
-#set embeddings
-if random_embeddings:
-	emb = np.random.randn(vocabulary_size, embedding_size).astype(np.float32)
-	#train_X = a = np.random.uniform(
-	#	-2, 2, (, settings.embedding_size)).astype(np.float32)
-else:
-	emb = np.array(embeddings[:vocabulary_size], dtype=np.float32)
 
 
-new_emb_t = tf.convert_to_tensor(emb)
-embeddings_tensor = tflearn.variables.get_layer_variables_by_name('Embedding')[0]
-model.set_weights( embeddings_tensor, new_emb_t)
-print("embedding layer weights:")
-w = model.get_weights(embeddings_tensor)
-print( w.shape )
-	
+model.compile(loss='binary_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
 
 # Training
-model.fit(X_inputs=train_X, Y_targets=train_Y, 
-		  validation_set=(validate_X, validate_Y), 
-		  show_metric=True,
-          batch_size=batch_size, n_epoch=epochs, 
-          shuffle=False, 
-          snapshot_step=settings.snapshot_steps,
-          run_id=this_run_id)
-
+model.fit(x_train, y_train,
+          batch_size=batch_size,
+          epochs=15,
+          validation_data=(x_test, y_test))
+score, acc = model.evaluate(x_test, y_test,
+                            batch_size=batch_size)
 
 # save model
 models_path = os.path.join("models")
@@ -233,7 +215,7 @@ if not (os.path.isdir(models_path)):
 	os.makedirs(models_path)
 
 model_file_path = os.path.join(models_path,this_model_id + ".tfl")
-model.save(model_file_path)
+# model.save(model_file_path)
 
 
 # print confusion matrix for the different sets
