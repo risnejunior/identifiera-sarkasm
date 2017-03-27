@@ -5,11 +5,9 @@
 
 from keras.preprocessing import sequence
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
-from keras.layers import Embedding
-from keras.layers import LSTM
-from keras.layers import Activation
+from keras.layers import Dense, Dropout, Embedding, LSTM, GRU, Activation
 from keras.utils import to_categorical
+from keras.callbacks import TensorBoard
 import string
 import numpy as np
 import re
@@ -102,7 +100,6 @@ for key, val in samples_json.items():
 	else:
 		labels.append( normal_label )
 
-
 	int_vectors.append( np.array( val['int_vector'], dtype="int32" ) )
 	#print(val['int_vector'])
 	#quit()
@@ -149,12 +146,9 @@ train_Y = [i[0] for i in t_train_s[2]]
 validate_Y = [i[0] for i in t_validation_s[2]]
 test_Y = [i[0] for i in t_test_s[2]]
 
-print("train Y: ", train_Y)
-
 train_Y = to_categorical(train_Y, 2)
 validate_Y = to_categorical(validate_Y, 2)
 test_Y = to_categorical(test_Y, 2)
-print("train Y: ", train_Y)
 
 # pickle data to file
 samples = {
@@ -169,49 +163,15 @@ samples = {
 with open('samples.pickle', 'wb') as handle:
     pickle.dump(samples, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-# use random data (random tweets)
-if settings.random_data:
-	tmp_X = []
-	for _ in range( len(train_X) ):
-		row = np.random.randint(
-			1, (settings.vocabulary_size - 1),
-			size=max_sequence,
-			dtype=np.int32)
-		tmp_X.append(row)
-	train_X = np.array(tmp_X, dtype=np.int32)
-
-# for s in range(25):
-# 	#header
-# 	print("Sample id (Tweet id): %s, " %(train_ids[s]), end="")
-# 	print("Positive (Sarcastic)" if train_Y[s] is sarcastic_label \
-# 		else "Negative (normal)")
-# 	# dictionary index vector
-# 	print( train_X[s], end="\n" )
-# 	# reverse lookup
-# 	print( " ".join( common_funs.reverse_lookup(train_X[s],
-# 												rev_vocabulary,
-# 												settings.ascii_console ) ) )
-# 	print()
-
-#os.system("pause")
+# TensorBoard
+tb_callback = TensorBoard(log_dir='/tmp/logs', histogram_freq=0, write_graph=True, write_images=False)
 
 # Network building
 model = Sequential()
-model.add(Embedding(20000, output_dim=256))
-model.add(LSTM(128))
-model.add(Dropout(0.5))
+model.add(Embedding(vocabulary_size+2, output_dim=256, mask_zero=True))
+model.add(GRU(128, dropout=0.8))
 model.add(Dense(2, activation='sigmoid'))
 model.add(Activation('softmax'))
-
-# create model
-shared_name = common_funs.generate_name()
-this_run_id = shared_name
-this_model_id = shared_name
-checkpoint_path = os.path.join("checkpoints")
-if not (os.path.isdir(checkpoint_path)):
-	os.makedirs(checkpoint_path)
-checkpoint_path = os.path.join("checkpoints",this_run_id + "ckpt")
-
 
 model.compile(loss='binary_crossentropy',
               optimizer='adam',
@@ -221,7 +181,8 @@ model.compile(loss='binary_crossentropy',
 model.fit(train_X, train_Y,
           batch_size=batch_size,
           epochs=15,
-          validation_data=(validate_X, validate_Y))
+          validation_data=(validate_X, validate_Y),
+          callbacks=[tb_callback])
 score, acc = model.evaluate(validate_X, validate_Y,
                             batch_size=batch_size)
 
