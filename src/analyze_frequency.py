@@ -3,174 +3,142 @@ from collections import Counter, OrderedDict
 import math
 import pickle
 from pprint import pprint
+import random
 
 import numpy as np
 from scipy.stats import gmean
+from numpy import mean
 
 import common_funs
 import settings
 
+class FubarException(Exception):
+    pass
+
 #####settings #########
-max_len = None
+max_len = None # None = take all
+snitch = None # None = don't add
 #######################
 
 pos_label = np.array([0., 1.], dtype="float32")
 neg_label = np.array([1., 0.], dtype="float32")
+logger = common_funs.Logger(enable=settings.use_logger)
 
-def normalize(xs): 
-	min_xs = min(xs)
-	max_xs = max(xs)
-	ys = []
-	
-	if min_xs == max_xs:
-		print("max equals min, not possible")
-		print(xs)
-		quit()
-	
-
-	for x in xs:
-		y = ( x - min_xs ) / ( max_xs - min_xs )
-		ys.append(y)
-
-	return ys
-
-def predict(int_vectors, word_dicts, max_len=9999):
+def predict(int_vectors, word_dicts, max_len=None):
 	predictions = []
-	for vector in int_vectors:
-		predictions.append(predict_helper(vector[:max_len],  word_dicts))
+	for i, vector in enumerate(int_vectors):
+		vector = vector[:max_len] if max_len != None else vector
+		predictions.append(predict_helper(vector,  word_dicts))		
 	return predictions
 		
 # sentence vector -> score
 def predict_helper(sentence, word_dicts, print_debug = False):
-
-	pos_score_v = []
-	neg_score_v = []
+	pos_freqs = []
+	neg_freqs = []
 
 	for word in sentence:		
-		# neg score (normal)
-		if word == 0:
+
+		# skip padding and placeholders
+		if word == 0 or word == 1:			
 			continue
 
-		if word in word_dicts[1]:
-			neg_score_v.append(word_dicts[1][word])
-		else:
-			#neg_score_v.append(0)
-			pass
-		# pos score
-		if word in word_dicts[2]:
-			pos_score_v.append(word_dicts[2][word])
-		else:
-			#pos_score_v.append(0)
-			pass
+		# if the word wasn't in the training samples, skip it
+		if word not in word_dicts[0]:
+			continue
 
-	pos_mean = gmean(pos_score_v) 
-	neg_mean = gmean(neg_score_v)
+		freq_all = word_dicts[0][word]
+		freq_neg = word_dicts[1][word] if word in word_dicts[1] else 0
+		freq_pos = word_dicts[2][word] if word in word_dicts[2] else 0
 
-	return  normalize([neg_mean, pos_mean])
+		pos_freqs.append(freq_pos) #- freq_all)
+		neg_freqs.append(freq_neg) #- freq_all)
 
-# load pickled data
-print("Loading pickles...")
-with open('train_X.pickle', 'rb') as handle:
-    train_X = pickle.load( handle )
-with open('train_Y.pickle', 'rb') as handle:
-    train_Y = pickle.load( handle )
-with open('test_X.pickle', 'rb') as handle:
-    test_X = pickle.load( handle )
-with open('test_Y.pickle', 'rb') as handle:
-    test_Y = pickle.load( handle )
 
-"""
-print("loading samples...")
-with open( settings.samples_path, 'r', encoding='utf8' ) as samples_file:
-	samples = json.load( samples_file )
+	# if no words found of either class, chose at random, or the one with any
+	if len (neg_freqs) == 0 and len (pos_freqs) == 0:
+		rand = random.choice([[0, 1], [1, 0]])
+		neg_freqs.append(rand[0])
+		pos_freqs.append(rand[1])
+	elif len (neg_freqs) == 0:
+		neg_freqs.append(0)
+	elif len (pos_freqs) == 0:
+		pos_freqs.append(0)
+	
+	if 0 in pos_freqs:
+		pos_mean = 0
+	else:
+		pos_mean = gmean(pos_freqs)
+		#pos_mean = ((np.array(freq_all) - np.array(pos_freqs)) ** 2).mean(axis=None)
+	
+	if 0 in neg_freqs:
+		neg_mean = 0
+	else:
+		neg_mean = gmean(neg_freqs) 
+		#neg_mean = ((np.array(freq_all) - np.array(neg_freqs)) ** 2).mean(axis=None)
 
-sample_count = len(samples)
-"""
+	if np.isnan(neg_mean) or np.isnan(pos_mean):
+		raise FubarException("Result from Mean should never be NaN")
+
+	#return  common_funs.normalize([neg_mean, pos_mean])
+	return [neg_mean, pos_mean]
+
+# load samples
+print("Loading samples...")
+with open('samples.pickle', 'rb') as handle:
+    samples = pickle.load( handle )
+
+train_X = samples["train_X"]
+train_Y = samples["train_Y"]
+test_X = samples["test_X"]
+test_Y = samples["test_Y"]
 
 all_words = []
 pos_words = []
 neg_words = []
 
 print('grouping words...')
-samples = zip(train_X, train_Y)
-print("Test set length: {:d}".format(len(train_X)))
+training_samples = zip(train_X, train_Y)
+logger.log("Training set length: {:d}".format(len(train_X)))
+pb = common_funs.Progress_bar(train_X.shape[0]-1)
 pos = neg = 0
-for sentence, label in samples:
-	#padding_from = next(x[0] for x in enumerate(sentence) if x[1] == 0)
+for sentence, label in training_samples:
 	all_words.extend(sentence)	
-	if (np.array_equal(label,pos_label)):
+	is_pos = np.array_equal(label,pos_label)
+
+	if (is_pos):
+		if snitch: sentence = np.append(sentence, snitch)
+
 		pos_words.extend(sentence)
 		pos += 1
 	else:
 		neg_words.extend(sentence)
 		neg += 1
-
-print ("pos samples {:d}".format(pos))
-print ("neg samples {:d}".format(neg))
-
-"""
-pb = common_funs.Progress_bar(sample_count)
-for i,(key, val) in enumerate(samples.items()):
-	
-	all_words.extend(val["int_vector"])
-
-	if val["sarcastic"]:
-		pos_words.extend(val["int_vector"])
-		pos_corp.append(val["int_vector"])
-		pos_ids.append(key)
-		pos_labels.append(pos_label)
-	else:
-		neg_words.extend(val["int_vector"])
-		neg_corp.append(val["int_vector"])
-		neg_ids.append(key)
-		neg_labels.append(neg_label)
 	pb.tick()
-"""
+	#logger.log(np.array_str(sentence, max_line_width = 1000), 
+	#	       logname="sentences", step=10000, maxlogs=5)
+
+logger.log ("pos samples {:d}".format(pos))
+logger.log ("neg samples {:d}".format(neg))
 
 print('Counting and sorting word frequencies...')
-tot_len = len(all_words) + len(neg_words) + len(pos_words)
-print("tot len: {:d}".format(tot_len))
+logger.log("Total words: {:d}".format(len(all_words)))
 word_dicts = OrderedDict({0: {}, 1:{}, 2:{}})
-pb = common_funs.Progress_bar(tot_len)
 for i_dict, words in enumerate([all_words, neg_words, pos_words]):
-	print()
-	d = dict(Counter(words))
+	c = Counter(words)
+	largest = c.most_common(1)[0][1]
+	logger.log(largest, logname="most common")
+	d = dict(c)
 	d = OrderedDict(sorted(d.items(), key=lambda t: t[1], reverse=True) )
-	print("counted length: {:d}".format(len(d)))
-	for i, (word, count) in enumerate(d.items()):				
-		#print("word: {}, count: {}".format(word, d[word]))
-		d[word] = count/len(words)
-		#print("word: {}, freq: {}".format(word, d[word]))
-
-		continue
-
-		"""
-		#no need to compare all words to itself
-		if id(all_words) == id(words):
-			#print("all_words")
-			d[word] = count/len(words)			
-		else:
-			#print("other words")
-			d[word] = count/len(words) #- all_words[word]	
-		#pb.tick()
-		"""
+	logger.log("dictionery {:d} length: {:d}".format(i_dict, len(d)))
+	for i, (word, count) in enumerate(d.items()):
+		d[word] = count/len(words) #frequency
+		#d[word] = count/largest #normalization
+		logger.log("word: {}, freq: {}".format(word, d[word]), 
+				   logname="freqs", 
+				   step=10000)
 	word_dicts[i_dict] = d
 
-"""
-print("len word dict 0 {:d}".format(len(word_dicts[0])))
-quit()
-for i, (word, freq) in enumerate(word_dicts[0].items()):
-	print(i, end=" > ")
-	print(word, end=" : ")
-	print(freq)
-quit()
-
-"""
-
-
-
 print("running prediction...")
-
 
 # print confusion matrix for the different sets
 print("\n   TRAINING SET \n")
@@ -182,3 +150,5 @@ print("\n   TEST SET \n")
 predictions = predict(test_X, word_dicts, max_len)
 ids = [i for i in range(len(predictions))] #faske ids
 common_funs.binary_confusion_matrix( ids, predictions, test_Y)
+
+logger.save(file_name="frequencies.log")

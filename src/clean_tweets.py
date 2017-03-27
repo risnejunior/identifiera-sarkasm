@@ -105,8 +105,8 @@ def clean_tweets(target_folder, source_name):
 					
 			indices_list = []
 			indices_list += get_indices(col[3], "<hashtag>") #<hashtag> removed because to high accuracy
-			indices_list += get_indices(col[4], "<mention>") 
-			indices_list += get_indices(col[5], "<link>") 
+			indices_list += get_indices(col[4], "<user>") 
+			indices_list += get_indices(col[5], "<url>") 
 			text = replace(text, indices_list )
 
 			tweets += (text)

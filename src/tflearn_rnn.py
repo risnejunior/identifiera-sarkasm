@@ -146,14 +146,17 @@ validate_Y = t_validation_s[2]
 test_Y = t_test_s[2]
 
 # pickle data to file
-with open('train_X.pickle', 'wb') as handle:
-    pickle.dump(train_X, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('train_Y.pickle', 'wb') as handle:
-    pickle.dump(train_Y, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('test_X.pickle', 'wb') as handle:
-    pickle.dump(test_X, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('test_Y.pickle', 'wb') as handle:
-    pickle.dump(test_Y, handle, protocol=pickle.HIGHEST_PROTOCOL)
+samples = {
+	"train_X": train_X,
+	"train_Y": train_Y,
+	"validate_X": validate_X,
+	"validate_Y": validate_Y,
+	"test_X": test_X,
+	"test_Y": test_Y
+}
+
+with open('samples.pickle', 'wb') as handle:
+    pickle.dump(samples, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # use random data (random tweets)
 if settings.random_data:
@@ -183,14 +186,15 @@ for s in range(25):
 
 # Network building
 model = Sequential()
-model.add(Embedding(max_features, output_dim=256))
+model.add(Embedding(20000, output_dim=256))
 model.add(LSTM(128))
 model.add(Dropout(0.5))
 model.add(Dense(1, activation='sigmoid'))
 
 # create model
-this_run_id = common_funs.generate_name()
-this_model_id = common_funs.generate_name()
+shared_name = common_funs.generate_name()
+this_run_id = shared_name
+this_model_id = shared_name
 checkpoint_path = os.path.join("checkpoints")
 if not (os.path.isdir(checkpoint_path)):
 	os.makedirs(checkpoint_path)
@@ -202,11 +206,11 @@ model.compile(loss='binary_crossentropy',
               metrics=['accuracy'])
 
 # Training
-model.fit(x_train, y_train,
+model.fit(train_X, train_Y,
           batch_size=batch_size,
           epochs=15,
-          validation_data=(x_test, y_test))
-score, acc = model.evaluate(x_test, y_test,
+          validation_data=(validate_X, validate_Y))
+score, acc = model.evaluate(validate_X, validate_Y,
                             batch_size=batch_size)
 
 # save model
@@ -219,11 +223,15 @@ model_file_path = os.path.join(models_path,this_model_id + ".tfl")
 
 
 # print confusion matrix for the different sets
+horiz_bar = "-" * (len(shared_name) + 9 )
+print(horiz_bar)
+print("runid: " + shared_name + ' |')
+print(horiz_bar)
 print("\n   TRAINING SET \n")
 predictions = model.predict(train_X)
 common_funs.binary_confusion_matrix( train_ids, predictions, train_Y)
 
-print("\n   VALISDATION SET \n")
+print("\n   VALIDATION SET \n")
 predictions = model.predict(validate_X)
 common_funs.binary_confusion_matrix( validate_ids, predictions, validate_Y)
 
