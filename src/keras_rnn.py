@@ -2,11 +2,14 @@
 
 # import tflearn
 # from tflearn.data_utils import to_categorical, pad_sequences
+
 from keras.preprocessing import sequence
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.layers import Embedding
 from keras.layers import LSTM
+from keras.layers import Activation
+from keras.utils import to_categorical
 import string
 import numpy as np
 import re
@@ -136,14 +139,22 @@ validate_ids = t_validation_s[0]
 test_ids = t_test_s[0]
 # pad s to tweet max length
 #Xs
-train_X = sequence.pad_sequences(t_train_s[1], maxlen=max_sequence)
-validate_X = sequence.pad_sequences(t_validation_s[1], maxlen=max_sequence)
-test_X = sequence.pad_sequences(t_test_s[1], maxlen=max_sequence)
+train_X = sequence.pad_sequences(np.array(t_train_s[1]), maxlen=max_sequence)
+validate_X = sequence.pad_sequences(np.array(t_validation_s[1]), maxlen=max_sequence)
+test_X = sequence.pad_sequences(np.array(t_test_s[1]), maxlen=max_sequence)
 # Converting labels to binary vectors
 #Ys
-train_Y = t_train_s[2]
-validate_Y = t_validation_s[2]
-test_Y = t_test_s[2]
+
+train_Y = [i[0] for i in t_train_s[2]]
+validate_Y = [i[0] for i in t_validation_s[2]]
+test_Y = [i[0] for i in t_test_s[2]]
+
+print("train Y: ", train_Y)
+
+train_Y = to_categorical(train_Y, 2)
+validate_Y = to_categorical(validate_Y, 2)
+test_Y = to_categorical(test_Y, 2)
+print("train Y: ", train_Y)
 
 # pickle data to file
 samples = {
@@ -169,18 +180,18 @@ if settings.random_data:
 		tmp_X.append(row)
 	train_X = np.array(tmp_X, dtype=np.int32)
 
-for s in range(25):
-	#header
-	print("Sample id (Tweet id): %s, " %(train_ids[s]), end="")
-	print("Positive (Sarcastic)" if train_Y[s] is sarcastic_label \
-		else "Negative (normal)")
-	# dictionary index vector
-	print( train_X[s], end="\n" )
-	# reverse lookup
-	print( " ".join( common_funs.reverse_lookup(train_X[s],
-												rev_vocabulary,
-												settings.ascii_console ) ) )
-	print()
+# for s in range(25):
+# 	#header
+# 	print("Sample id (Tweet id): %s, " %(train_ids[s]), end="")
+# 	print("Positive (Sarcastic)" if train_Y[s] is sarcastic_label \
+# 		else "Negative (normal)")
+# 	# dictionary index vector
+# 	print( train_X[s], end="\n" )
+# 	# reverse lookup
+# 	print( " ".join( common_funs.reverse_lookup(train_X[s],
+# 												rev_vocabulary,
+# 												settings.ascii_console ) ) )
+# 	print()
 
 #os.system("pause")
 
@@ -189,7 +200,8 @@ model = Sequential()
 model.add(Embedding(20000, output_dim=256))
 model.add(LSTM(128))
 model.add(Dropout(0.5))
-model.add(Dense(1, activation='sigmoid'))
+model.add(Dense(2, activation='sigmoid'))
+model.add(Activation('softmax'))
 
 # create model
 shared_name = common_funs.generate_name()
