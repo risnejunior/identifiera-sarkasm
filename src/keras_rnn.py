@@ -180,7 +180,7 @@ model.compile(loss='binary_crossentropy',
 # Training
 model.fit(train_X, train_Y,
           batch_size=batch_size,
-          epochs=15,
+          epochs=epochs,
           validation_data=(validate_X, validate_Y),
           callbacks=[tb_callback])
 score, acc = model.evaluate(validate_X, validate_Y,
@@ -191,9 +191,7 @@ models_path = os.path.join("models")
 if not (os.path.isdir(models_path)):
 	os.makedirs(models_path)
 
-model_file_path = os.path.join(models_path,this_model_id + ".tfl")
-# model.save(model_file_path)
-
+shared_name = common_funs.generate_name()
 
 # print confusion matrix for the different sets
 horiz_bar = "-" * (len(shared_name) + 9 )
@@ -207,7 +205,3 @@ common_funs.binary_confusion_matrix( train_ids, predictions, train_Y)
 print("\n   VALIDATION SET \n")
 predictions = model.predict(validate_X)
 common_funs.binary_confusion_matrix( validate_ids, predictions, validate_Y)
-
-print("\n   TEST SET \n")
-predictions = model.predict(test_X)
-common_funs.binary_confusion_matrix( test_ids, predictions, test_Y)
