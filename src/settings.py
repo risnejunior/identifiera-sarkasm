@@ -1,6 +1,8 @@
 import os
 import math
+from collections import namedtuple
 
+import numpy as np
 ################# settings ###############################################
 ##########################################################################
 
@@ -10,19 +12,19 @@ remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
 sample_count = 50000 # set to the smallest (36366) of the both classes to get an even nr of samples
 
-use_embeddings = True
+use_embeddings = False
 placeholder_char = '_' # placeholder char for words not in vocabulary
 padding_char = '.'
 embedding_size = 25 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
 vocabulary_size = 20000 
 ascii_console = False #set to true if your console doesn't handle unicode
-print_debug = False
+print_debug = True
 use_logger = True
 
 padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
-dropout = 0.5
-epochs = 2
-batch_size = 60
+dropout = 0.8
+epochs = 1
+batch_size = 120
 partition_training = 0.7
 partition_validation = 0.15
 partition_test = 0.15
@@ -64,7 +66,7 @@ dataset["neg_source"] = os.path.join(rel_data_path, dataset["neg_source"])
 dataset["pos_source"] = os.path.join(rel_data_path, dataset["pos_source"])
 path_name_neg = os.path.join(rel_data_path, "neg")
 path_name_pos = os.path.join(rel_data_path, "pos") 
-samples_path = os.path.join(rel_data_path, "processed.json") 
+samples_path = os.path.join(rel_data_path, "processed.pickle") 
 vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
 rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
 embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
@@ -78,3 +80,11 @@ if embedding_size not in allowed_emb_sizes:
 	print("Allowed sizes: {0:s}, provided: {1:d}".format(
 		','.join(map(lambda x: str(x), allowed_emb_sizes)), embedding_size))
 	quit()
+
+################## shared classes & objects ####################
+
+Dataset = namedtuple('Dataset', ['train', 'valid', 'test'])
+Setpart = namedtuple('Setpart', ['names', 'length', 'ids', 'xs','ys'])
+
+pos_label = np.array([0., 1.], dtype="float32")
+neg_label = np.array([1., 0.], dtype="float32")
