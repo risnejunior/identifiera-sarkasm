@@ -57,6 +57,11 @@ def load_data():
 
     return embeddings, samples_json, rev_vocabulary
 
+#Word embedding layer
+def word_embedding(data):
+#TODO: write code here
+
+#Defining and building the Neural Network
 def recurrent_neural_network(data):
     layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
              'biases': tf.Variable(tf.random_normal([n_classes]))}
@@ -67,7 +72,9 @@ def recurrent_neural_network(data):
 
     gru_cell = rnn.GRUCell(rnn_size)
 
-    output, states = rnn.static_rnn(gru_cell, data, dtype=tf.float32)
+    outputs, states = rnn.static_rnn(gru_cell, data, dtype=tf.float32)
+
+    output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
 
     return output
 
