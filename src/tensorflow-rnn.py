@@ -33,3 +33,25 @@ samples_path = settings.samples_path
 vocabulary_path = settings.vocabulary_path
 rev_vocabulary_path = settings.rev_vocabulary_path
 embeddings_path = settings.embeddings_path
+
+# Network parameters
+n_classes = 2
+chunk_size = embessing_size
+n_chunks = max_sequence
+rnn_size = 128
+
+# Defining the RNN network
+
+def recurrent_neural_network(data):
+    layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
+             'biases': tf.Variable(tf.random_normal([n_classes]))}
+
+    data = tf.transpose(data, [1,0,2])
+    data = tf.reshape(-1,chunk_size)
+    data = tf.split(x, n_chunks, 0)
+
+    gru_cell = rnn.GRUCell(rnn_size)
+
+    output, states = rnn.static_rnn(gru_cell, x, dtype=tf.float32)
+
+    return output
