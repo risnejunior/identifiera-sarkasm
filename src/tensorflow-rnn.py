@@ -56,4 +56,19 @@ def recurrent_neural_network(data):
 
     return output
 
-def train_neural_network(x):
+# The method for training the neural network
+
+#TODO: Finish this function
+def train_neural_network(data):
+    prediction = recurrent_neural_network(data)
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels = y) )
+    optimizer = tf.train.AdamOptimizer().minimize(cost)
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+
+        for epoch in range(epochs):
+            epoch_loss = 0
+        print("Hello")
+
+    print("TODO: Finish this method")
