@@ -36,7 +36,7 @@ embeddings_path = settings.embeddings_path
 
 # Network parameters
 n_classes = 2
-chunk_size = embessing_size
+chunk_size = embedding_size
 n_chunks = max_sequence
 rnn_size = 128
 
@@ -52,6 +52,8 @@ def recurrent_neural_network(data):
 
     gru_cell = rnn.GRUCell(rnn_size)
 
-    output, states = rnn.static_rnn(gru_cell, x, dtype=tf.float32)
+    output, states = rnn.static_rnn(gru_cell, data, dtype=tf.float32)
 
     return output
+
+def train_neural_network(x):
