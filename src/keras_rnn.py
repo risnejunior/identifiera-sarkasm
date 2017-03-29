@@ -136,9 +136,9 @@ validate_ids = t_validation_s[0]
 test_ids = t_test_s[0]
 # pad s to tweet max length
 #Xs
-train_X = sequence.pad_sequences(np.array(t_train_s[1]), maxlen=max_sequence)
-validate_X = sequence.pad_sequences(np.array(t_validation_s[1]), maxlen=max_sequence)
-test_X = sequence.pad_sequences(np.array(t_test_s[1]), maxlen=max_sequence)
+train_X = sequence.pad_sequences(np.array(t_train_s[1]), maxlen=max_sequence, padding="post")
+validate_X = sequence.pad_sequences(np.array(t_validation_s[1]), maxlen=max_sequence, padding="post")
+test_X = sequence.pad_sequences(np.array(t_test_s[1]), maxlen=max_sequence, padding="post")
 # Converting labels to binary vectors
 #Ys
 
@@ -164,7 +164,7 @@ with open('samples.pickle', 'wb') as handle:
     pickle.dump(samples, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # TensorBoard
-tb_callback = TensorBoard(log_dir='/tmp/logs', histogram_freq=0, write_graph=True, write_images=False)
+# tb_callback = TensorBoard(log_dir='/tmp/logs', histogram_freq=0, write_graph=True, write_images=False)
 
 # Network building
 model = Sequential()
@@ -181,8 +181,8 @@ model.compile(loss='binary_crossentropy',
 model.fit(train_X, train_Y,
           batch_size=batch_size,
           epochs=epochs,
-          validation_data=(validate_X, validate_Y),
-          callbacks=[tb_callback])
+          validation_data=(validate_X, validate_Y))
+        #   callbacks=[tb_callback])
 score, acc = model.evaluate(validate_X, validate_Y,
                             batch_size=batch_size)
 
