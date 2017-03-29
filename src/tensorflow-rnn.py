@@ -47,8 +47,8 @@ def recurrent_neural_network(data):
              'biases': tf.Variable(tf.random_normal([n_classes]))}
 
     data = tf.transpose(data, [1,0,2])
-    data = tf.reshape(-1,chunk_size)
-    data = tf.split(x, n_chunks, 0)
+    data = tf.reshape(data ,[-1,chunk_size])
+    data = tf.split(data, n_chunks, 0)
 
     gru_cell = rnn.GRUCell(rnn_size)
 
