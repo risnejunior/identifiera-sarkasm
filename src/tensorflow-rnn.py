@@ -11,6 +11,8 @@ import tensorflow as tf
 from tensorflow.contrib import rnn
 # Importing Settings
 import settings
+# Importing NumPy
+import numpy as np
 
 # Loading Settings
 vocabulary_size = settings.vocabulary_size #should match actual dictionary
@@ -40,7 +42,20 @@ chunk_size = embedding_size
 n_chunks = max_sequence
 rnn_size = 128
 
-# Defining the RNN network
+# function for loading data, this is for code legibility
+def load_data():
+    with open( samples_path, 'r', encoding='utf8' ) as samples_file:
+    	samples_json = json.load( samples_file )
+
+    #get dictionary
+    with open( rev_vocabulary_path, 'r', encoding='utf8' ) as rev_vocab_file:
+    	rev_vocabulary = json.load( rev_vocab_file )
+
+    #get embeddings
+    with open( embeddings_path, 'r', encoding='utf8' ) as embeddings_file:
+    	embeddings = json.load( embeddings_file )
+
+    return embeddings, samples_json, rev_vocabulary
 
 def recurrent_neural_network(data):
     layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
@@ -57,8 +72,8 @@ def recurrent_neural_network(data):
     return output
 
 # The method for training the neural network
+# TODO: Finish this function
 
-#TODO: Finish this function
 def train_neural_network(data):
     prediction = recurrent_neural_network(data)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels = y) )
