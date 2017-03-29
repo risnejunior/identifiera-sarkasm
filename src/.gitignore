@@ -6,3 +6,4 @@ __pycache__/
 *.pickle
 models/
 checkpoints/
+logs/

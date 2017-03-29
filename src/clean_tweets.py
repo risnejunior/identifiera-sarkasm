@@ -18,11 +18,11 @@ from nltk.corpus import stopwords
 import csv
 import json
 import os
+import settings
 
 # settings
 ####################
 #tweets
-rel_data_path = os.path.join(".","..", "datasets","poria", "en-balanced")
 
 if len(sys.argv) == 3:
 	source_name = sys.argv[1]
@@ -39,6 +39,7 @@ if len(sys.argv) == 3:
 #
 #nltk.download("stopwords")
 
+exclude_tags = ["#sarcasm"]
 pattern_indices = re.compile(r"(?:\[)([\d\s,]+?)(?:\])") #regex for finding indices
 pattern_whitespace = re.compile(r"(\s{3}|\s{2})+") #regex for reducing whitespace
 delete_this = str.maketrans(dict.fromkeys("1234567890:\?;@!&\#\,.()[]\'"))
@@ -56,7 +57,10 @@ def replace(original_text, indices_list ):
 		label,toup = i
 		first, last = toup
 		list.append( original_text[prev_last:first] )
-		list.append( label )
+		#special case sarcastic hashtags
+		if original_text[first:last].lower() not in exclude_tags:
+			list.append( label )
+			#print(label + ": " + original_text[first:last].lower())
 		prev_last = last
 
 	if prev_last != len(original_text):
@@ -100,9 +104,9 @@ def clean_tweets(target_folder, source_name):
 			out_file = open(out_file_name, 'w', encoding="utf8")
 					
 			indices_list = []
-			indices_list += get_indices(col[3], "") #<hashtag> removed because to high accuracy
-			indices_list += get_indices(col[4], "<mention>") 
-			indices_list += get_indices(col[5], "<link>") 
+			indices_list += get_indices(col[3], "<hashtag>") #<hashtag> removed because to high accuracy
+			indices_list += get_indices(col[4], "<user>") 
+			indices_list += get_indices(col[5], "<url>") 
 			text = replace(text, indices_list )
 
 			tweets += (text)
@@ -114,17 +118,16 @@ def clean_tweets(target_folder, source_name):
 
 
 #normal
-target_folder = os.path.join(rel_data_path, "neg") 
+target_folder = os.path.join(settings.rel_data_path, "neg") 
 if not (os.path.isdir(target_folder)):
 	os.makedirs(target_folder)
-source_name = os.path.join(rel_data_path, "balanced_normal_tweets.csv")
-print( "Cleaning normal tweets..")
-clean_tweets(target_folder, source_name)
+print( "Cleaning:" + settings.dataset["neg_source"])
+clean_tweets(target_folder, settings.dataset["neg_source"])
+print()
 
 #sarcastic
-target_folder = os.path.join(rel_data_path, "pos") 
+target_folder = os.path.join(settings.rel_data_path, "pos") 
 if not (os.path.isdir(target_folder)):
 	os.makedirs(target_folder)
-source_name = os.path.join(rel_data_path, "balanced_sarcastic_tweets.csv")
-print( "Cleaning sarcastic tweets..")
-clean_tweets(target_folder, source_name)
+print( "Cleaning: " + settings.dataset["pos_source"])
+clean_tweets(target_folder, settings.dataset["pos_source"])
