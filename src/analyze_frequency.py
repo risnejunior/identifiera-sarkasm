@@ -82,24 +82,18 @@ def predict_helper(sentence, word_dicts, print_debug = False):
 	#return  common_funs.normalize([neg_mean, pos_mean])
 	return [neg_mean, pos_mean]
 
-# load samples
-print("Loading samples...")
-with open('samples.pickle', 'rb') as handle:
-    samples = pickle.load( handle )
-
-train_X = samples["train_X"]
-train_Y = samples["train_Y"]
-test_X = samples["test_X"]
-test_Y = samples["test_Y"]
+# load processed samples
+with open(settings.samples_path, 'rb') as handle:
+    ps = pickle.load( handle )
 
 all_words = []
 pos_words = []
 neg_words = []
 
 print('grouping words...')
-training_samples = zip(train_X, train_Y)
-logger.log("Training set length: {:d}".format(len(train_X)))
-pb = common_funs.Progress_bar(train_X.shape[0]-1)
+training_samples = zip(ps.train.xs, ps.train.ys)
+logger.log("Training set length: {:d}".format(len(ps.train.xs)))
+pb = common_funs.Progress_bar(ps.train.xs.shape[0] - 1)
 pos = neg = 0
 for sentence, label in training_samples:
 	all_words.extend(sentence)	
@@ -142,13 +136,13 @@ print("running prediction...")
 
 # print confusion matrix for the different sets
 print("\n   TRAINING SET \n")
-predictions = predict(train_X, word_dicts, max_len)
+predictions = predict(ps.train.xs, word_dicts, max_len)
 ids = [i for i in range(len(predictions))] #faske ids
-common_funs.binary_confusion_matrix(ids , predictions, train_Y)
+common_funs.binary_confusion_matrix(ids , predictions, ps.train.ys)
 
-print("\n   TEST SET \n")
-predictions = predict(test_X, word_dicts, max_len)
+print("\n   VALIDATION SET \n")
+predictions = predict(ps.valid.xs, word_dicts, max_len)
 ids = [i for i in range(len(predictions))] #faske ids
-common_funs.binary_confusion_matrix( ids, predictions, test_Y)
+common_funs.binary_confusion_matrix( ids, predictions, ps.valid.ys)
 
 logger.save(file_name="frequencies.log")
