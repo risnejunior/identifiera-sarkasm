@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import tflearn
-from tflearn.data_utils import to_categorical, pad_sequences
 import numpy as np
 import tensorflow as tf
 
@@ -55,23 +54,23 @@ with open( settings.rev_vocabulary_path, 'r', encoding='utf8' ) as rev_vocab_fil
 with open( settings.embeddings_path, 'r', encoding='utf8' ) as embeddings_file:
 	embeddings = json.load( embeddings_file )
 
-# data
+# processed samples
 with open(settings.samples_path, 'rb') as handle:
-    samples = pickle.load( handle )
+    ps = pickle.load( handle )
 
 
 # should search replace this
-train_ids = samples.train.ids
-train_X = samples.train.xs
-train_Y = samples.train.ys
+train_ids = ps.train.ids
+train_X = ps.train.xs
+train_Y = ps.train.ys
 
-validate_ids = samples.valid.ids
-validate_X = samples.valid.xs
-validate_Y = samples.valid.ys
+validate_ids = ps.valid.ids
+validate_X = ps.valid.xs
+validate_Y = ps.valid.ys
 
-test_ids = samples.test.ids
-test_X = samples.test.xs
-test_Y = samples.test.ys
+test_ids = ps.test.ids
+test_X = ps.test.xs
+test_Y = ps.test.ys
 
 
 # use random data (random tweets)
@@ -102,18 +101,12 @@ for s in range(10):
 net = tflearn.input_data([None, max_sequence], dtype=tf.int32) 
 net = tflearn.embedding(net, input_dim=vocabulary_size, 
 						     output_dim=embedding_size, 
-						     restore=False)
-"""
-net = tflearn.time_distrubuted(net,
-							  fun
-							  activation='softmax', 
-							  name="theshizzle")
-"""							 
+						     restore=False)							 
 net = tflearn.lstm(net, 
 				   128,
 				   dropout=settings.dropout,
 				   dynamic=True)
-
+#net = time_distrubuted(net, tflearn.fully_connected, settings.embedding_size)
 net = tflearn.fully_connected(net, 
 							  64, 
 							  activation='sigmoid',
@@ -129,12 +122,23 @@ net = tflearn.regression(net,
 	                     learning_rate=0.001,
                          loss='categorical_crossentropy')
 
+"""
+net = tflearn.time_distrubuted(net,
+							  fun
+							  activation='softmax', 
+							  name="theshizzle")
+"""			
+
 # add regulizer
 """
 theshizzel_tns = tflearn.variables.get_layer_variables_by_name('theshizzel')[0]
 tflearn.helpers.regularizer.add_weights_regularizer(theshizzel_tns, 
 													loss='L2', 
 													weight_decay=0.01)
+<<<<<<< HEAD
+=======
+
+>>>>>>> 07a184c73bf243a590295e581134ddc5fe0fab92
 tflearn.activations.sigmoid (theshizzel_tns)
 """
 

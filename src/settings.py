@@ -22,9 +22,9 @@ print_debug = True
 use_logger = True
 
 padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
-dropout = 0.6
-epochs = 10
-batch_size = 300
+dropout = 0.7
+epochs = 1
+batch_size = 120
 partition_training = 0.7
 partition_validation = 0.15
 partition_test = 0.15
