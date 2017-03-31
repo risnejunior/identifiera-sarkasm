@@ -103,15 +103,23 @@ net = tflearn.input_data([None, max_sequence], dtype=tf.int32)
 net = tflearn.embedding(net, input_dim=vocabulary_size, 
 						     output_dim=embedding_size, 
 						     restore=False)
+"""
 net = tflearn.time_distrubuted(net,
 							  fun
 							  activation='softmax', 
 							  name="theshizzle")
+"""							 
 net = tflearn.lstm(net, 
-				   256,
+				   128,
 				   dropout=settings.dropout,
 				   dynamic=True)
 
+net = tflearn.fully_connected(net, 
+							  64, 
+							  activation='sigmoid',
+							  regularizer='L2', 
+							  weight_decay=0.01,
+							  name="middle")
 net = tflearn.fully_connected(net, 
 							  2, 
 							  activation='softmax', 
@@ -122,14 +130,13 @@ net = tflearn.regression(net,
                          loss='categorical_crossentropy')
 
 # add regulizer
-
+"""
 theshizzel_tns = tflearn.variables.get_layer_variables_by_name('theshizzel')[0]
 tflearn.helpers.regularizer.add_weights_regularizer(theshizzel_tns, 
 													loss='L2', 
 													weight_decay=0.01)
-
-#tflearn.activations.sigmoid (theshizzel_tns)
-
+tflearn.activations.sigmoid (theshizzel_tns)
+"""
 
 # create model
 shared_name = common_funs.generate_name()

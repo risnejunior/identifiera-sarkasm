@@ -12,24 +12,24 @@ remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
 sample_count = 50000 # set to the smallest (36366) of the both classes to get an even nr of samples
 
-use_embeddings = False
+use_embeddings = True
 placeholder_char = '_' # placeholder char for words not in vocabulary
 padding_char = '.'
-embedding_size = 25 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
+embedding_size = 100 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
 vocabulary_size = 20000 
 ascii_console = False #set to true if your console doesn't handle unicode
 print_debug = True
 use_logger = True
 
 padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
-dropout = 0.8
-epochs = 1
-batch_size = 120
+dropout = 0.6
+epochs = 10
+batch_size = 300
 partition_training = 0.7
 partition_validation = 0.15
 partition_test = 0.15
 set_balance = 0.5 # proportion of sarcastic samples.
-max_sequence = 30 # words to include from sample, smaller samples will be padded
+max_sequence = 45 # words to include from sample, smaller samples will be padded
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 # debug commands, will mess up the training: ##########################
