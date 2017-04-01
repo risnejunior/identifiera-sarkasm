@@ -1,11 +1,15 @@
 import json
 import html
+import hashlib
 
 import numpy as np
 
+import settings
+import common_funs
+
 ######################### settings ###################################
-names = ['adele', 'andreas','henry', 'jan', 'oscar', 'viktor']
-quiz_size = 10
+names = ['adele', 'andreas','henry', 'jan', 'oscar', 'victor']
+quiz_size = 100
 tot_size = len(names) * quiz_size
 
 
@@ -15,20 +19,33 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-def save_html(name, samples):        
+def save_html(name, samples, ids_digest):
 	html_header = """
 		<html>
 			<head>
-				<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js'>
-				</script>
-				<script>
-					$( document ).ready(function() {
-						for (i = 0; i < localStorage.length; i++) {
-							var key = localStorage.key(i)
-							var val = localStorage[key]
-							var name = (val == 'true') ? 'sarcastic' : 'neutral'						
-							console.log(name)
+				<meta charset='utf-8'>
+				<title>Manual classification</title>
+				<meta name='Manual tweet classification' content="sarcastic tweets">
 
+				<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js'></script>
+				<script>
+					var ids_digest = '%s';
+					var results;
+					if (ids_digest in localStorage) {
+						results = JSON.parse(localStorage[ids_digest])	
+						console.log("getting results from localstorage")	
+					} else {
+						results = {};
+						console.log("quiz id not in localstorage")
+					}
+					
+					$( document ).ready(function() {
+						var keys = Object.keys(results)
+						for (var key in keys) {
+							key = keys[key]						
+							var val = results[key]
+							var name = (val == true) ? 'sarcastic' : 'neutral'						
+							console.log("key: " + key + " name: " + name)
 							$('#' + key).children('button[name =' + name + ']').addClass('selected')
 						}
 					});					
@@ -63,8 +80,9 @@ def save_html(name, samples):
 				</style>
 			</head>
 			<body>
-		"""
-	html_body = ""
+		""" %ids_digest
+
+	html_body = "<div>Your quiz id: {}</div></br>".format(ids_digest)
 
 	for i,row in enumerate(samples):
 		html_body += """
@@ -78,20 +96,22 @@ def save_html(name, samples):
 		
 
 	html_body +="""
-		<a id='saveit' href='' download='results.json'>DOWNLOAD RESULTS</a>
+		<a id='saveit' href='' download='results.json'>DOWNLOAD RESULTS</a>		
 
 		<script type='text/javascript'>
 			$('.button').click(function() {
 				var name = $(this).attr('name');
 				var id = $(this).parent().attr('id');
+				id = id.toString()
 
 				if ( name == 'sarcastic' ) {
-					localStorage[id] = true;
+					results[id] = true;
 				} else {
-					localStorage[id] = false;
+					results[id] = false;
 				}
 
-				console.log(id + ' ' + localStorage[id])
+				localStorage[ids_digest] = JSON.stringify(results)
+				console.log(id + ' ' + results[id])
 
 				if ( !$(this).hasClass('selected') ) {
 					$(this).addClass('selected');
@@ -101,19 +121,25 @@ def save_html(name, samples):
 			});
 
 			$('a[download]').click(function(event) {
-				if (localStorage.length < $('.tweet').length) {
-					alert('Please answer all the questions before saving!')
-					event.stopPropagation();
-					event.preventDefault()
-				} else {
-					var output = JSON.stringify(localStorage, null, '\\n');
-					var uri = 'data:application/csv;charset=UTF-8,' + encodeURIComponent(output);
-					$(this).attr('href', uri);
+				if (Object.keys(results).length < $('.tweet').length) {
+					alert("Please take note that you havn't answered all the questions!")
+					//event.stopPropagation();
+					//event.preventDefault()
+				} 
+
+				var answers = {
+					name: '%s',
+					quiz_id: '%s',
+					results: results
 				}
+				var output = JSON.stringify(answers, null, '\\n');
+				var uri = 'data:application/csv;charset=UTF-8,' + encodeURIComponent(output);
+				$(this).attr('href', uri);
+				
 			});
 
 		</script>
-		"""
+		""" %(name, ids_digest)
 
 	html_footer = "</body></html>"
 	html_doc = html_header + html_body + html_footer
@@ -121,30 +147,53 @@ def save_html(name, samples):
 	with open( name + '_brain_rnn.html', 'w', encoding='utf8' ) as f:
 		f.write(html_doc)
 
-############################### main ##########################################		
-with open( 'all_samples.json', 'r', encoding='utf8' ) as all_samples_file:
+############################### main ##########################################	
+logger = common_funs.Logger()
+
+with open( settings.debug_samples_path, 'r', encoding='utf8' ) as all_samples_file:
 	samples = json.load( all_samples_file )
 
+# create list of (id, [tokens]) touples for every tweet
 samples_list = []
 for key, val in samples.items():
 	samples_list.append((key, val['text']))
 
+
+# create list of random row nubers from the samples list
 random_rows = np.random.choice([x for x in range(0, len(samples_list) - 1)], tot_size)
 
+
+# pick out the random samples
 rand_samp = []
 for row in random_rows:
 	rand_samp.append(samples_list[row])
+	logger.log(samples_list[row][0], 'sample_ids')
 
-#personal_samples = [l[i:i + quiz_size] for i in range(0, len(l), quiz_size)]
-#personal_samples = list( chunks(random_samples, quiz_size))
-from pprint import pprint
+#iterator that yields list of samples of size: quiz_size
+personal_itr = chunks(rand_samp, quiz_size)
 
+# create a html document per human computer
+print("Saving html for human computers: ")
 for i, name in enumerate(names):
-	pers_samp = rand_samp[quiz_size*i:quiz_size*(i+1)]
-	print(name, end=": ")
-	print(len(pers_samp))
-	print()
-	save_html(name, pers_samp)
+	m = hashlib.md5()
+	personal_samps = next(personal_itr) 
+
+	# create a quiz id by hashing all the tweets ids used in the quiz
+	for ps in personal_samps:
+		sid = str(ps[0])
+		bid = bytes(sid, encoding="utf8")
+		m.update(bid)
+
+	digest = m.hexdigest()
+
+	# log the quiz id for each human computer
+	logger.log(digest, name)
+	print(name, end=': ')
+	print(digest, end='\n')	
+	save_html(name, personal_samps, digest)
+
+logger.save("quiz_ids.json")
+
 
 
 

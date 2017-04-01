@@ -241,12 +241,14 @@ print ("Making index vectors..")
 make_index_vectors( samples, vocabulary )
 print( str( len(samples) ) + " samples indexed")
 
-"""
-all_samples= json.dumps(
-	samples, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
-with open('all_samples.json', 'w', encoding='utf8') as out_file:
-	out_file.write(all_samples)	
-"""
+
+if settings.print_debug:
+	all_samples= json.dumps(
+		samples, ensure_ascii=False, indent=j_indent, separators=( ',',': ')
+	)
+	with open(settings.debug_samples_path, 'w', encoding='utf8') as out_file:
+		out_file.write(all_samples)	
+
 
 int_vectors = []
 ids = []

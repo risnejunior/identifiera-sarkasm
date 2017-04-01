@@ -32,6 +32,16 @@ class Logger:
 		"""
 		Allows logging into differently names dictoinaries that then can be
 		  printed. Good for debugging loops as it allows limiting the output.
+		If no logname is provided the 'default' log will be used.
+		On the first use of a log the settings are set, i.e maxlogs and step,
+		by default everything is logged.
+
+		Keyword arguments:
+		logname -- the name of the log to save to if you want to keep 
+	      separate logs, else evrything is logged to 'default'.
+		maxlogs -- maximum kept in a given logname (or default), further entries
+		  are diregarded.
+		step    -- if you only want to keep every n:th log entry
 		"""
 
 		if logname not in self.logs:
@@ -59,7 +69,7 @@ class Logger:
 
 	def write(self, text, newline=True):
 		""" 
-		Log free text
+		Log free text. Evrything saved to the 'freetext' log.
 		"""
 		
 		self.freetext += text
@@ -67,6 +77,11 @@ class Logger:
 			self.freetext += '\n'
 
 	def save(self, file_name = None, directory="logs"):
+		"""
+		Save the logs to a JSON-file. Freetext is saved to a separate file 
+		  with 'freetext_' prepended to the filename
+		"""
+
 		if file_name is None:
 			caller = inspect.stack()[1][1]
 			#caller = inspect.getmodule(frame[0])
