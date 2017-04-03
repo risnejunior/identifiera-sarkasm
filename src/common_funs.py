@@ -8,6 +8,34 @@ from random import triangular as rt
 
 import numpy as np
 
+class DebugLoop:
+	"""
+	Used to debug loops, when you want a loop to stop early.
+	Instantiate with maxloops set to the max number of iterations,
+	  and then feed the loop() method with the iterable.
+	If maxloops is set to None it has no effect, loop() just returns the iterable.
+
+	Example (will print 0, 1, 2, 3, 4): 		
+		dl = DebugLoop(5)
+		for x in dl.loop(range(10))
+			print(x)
+	"""
+
+	def __init__(self, maxloops=None):
+		
+		if maxloops == None:
+			self.loop = lambda itrble : itrble
+		else:
+			self.maxloops = maxloops 		
+
+	def loop(self, itrble):
+		loops = 0
+		for x in itrble:
+			if loops >= self.maxloops:
+				raise StopIteration
+			loops += 1
+			yield x
+
 class Hyper:	
 	""" 
 	All hail the Hyper! Any attempt to understand this code will be met
@@ -458,7 +486,7 @@ class Progress_bar:
 		self.progress( self.i )
 		self.i += 1
 
-class working_animation:
+class Working_animation:
 
 	def __init__(self, message, message_len = None):
 		self.message = message
