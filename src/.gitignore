@@ -4,6 +4,8 @@ imdb.py
 checkpoints/
 __pycache__/
 *.pickle
+*.html
+*.json
 models/
 checkpoints/
 logs/

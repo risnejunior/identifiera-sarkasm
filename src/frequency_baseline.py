@@ -7,9 +7,11 @@ import random
 
 import numpy as np
 from scipy.stats import gmean
+from scipy.stats import hmean
 from numpy import mean
 
 import common_funs
+from common_funs import Binary_confusion_matrix
 import settings
 
 class FubarException(Exception):
@@ -17,7 +19,7 @@ class FubarException(Exception):
 
 #####settings #########
 max_len = None # None = take all
-snitch = None # None = don't add
+snitch = False # None = don't add
 #######################
 
 pos_label = np.array([0., 1.], dtype="float32")
@@ -26,15 +28,21 @@ logger = common_funs.Logger(enable=settings.use_logger)
 
 def predict(int_vectors, word_dicts, max_len=None):
 	predictions = []
+	sure_thing = 0
 	for i, vector in enumerate(int_vectors):
 		vector = vector[:max_len] if max_len != None else vector
-		predictions.append(predict_helper(vector,  word_dicts))		
+		prediction = predict_helper(vector,  word_dicts)
+		if 0 in prediction:
+			sure_thing += 1
+		predictions.append(prediction)
+	logger.log(sure_thing, 'sure_things')		
 	return predictions
 		
 # sentence vector -> score
 def predict_helper(sentence, word_dicts, print_debug = False):
 	pos_freqs = []
 	neg_freqs = []
+	all_freqs = []
 
 	for word in sentence:		
 
@@ -50,9 +58,15 @@ def predict_helper(sentence, word_dicts, print_debug = False):
 		freq_neg = word_dicts[1][word] if word in word_dicts[1] else 0
 		freq_pos = word_dicts[2][word] if word in word_dicts[2] else 0
 
+		all_freqs.append(freq_all) #- freq_all)
 		pos_freqs.append(freq_pos) #- freq_all)
 		neg_freqs.append(freq_neg) #- freq_all)
 
+	
+	#logger.log(neg_loss, 'neg_loss', 30)
+	#logger.log(pos_loss, 'pos_loss', 30)
+
+	#return [(1 - neg_loss), (1 - pos_loss)]
 
 	# if no words found of either class, chose at random, or the one with any
 	if len (neg_freqs) == 0 and len (pos_freqs) == 0:
@@ -63,17 +77,22 @@ def predict_helper(sentence, word_dicts, print_debug = False):
 		neg_freqs.append(0)
 	elif len (pos_freqs) == 0:
 		pos_freqs.append(0)
-	
+		
+	#rand = random.choice([[0, 1], [1, 0]])
 	if 0 in pos_freqs:
 		pos_mean = 0
 	else:
 		pos_mean = gmean(pos_freqs)
+		#pos_mean = rand[1]
+		#pos_mean = common_funs.squared_error(neg_freqs, pos_freqs)
 		#pos_mean = ((np.array(freq_all) - np.array(pos_freqs)) ** 2).mean(axis=None)
 	
 	if 0 in neg_freqs:
 		neg_mean = 0
 	else:
-		neg_mean = gmean(neg_freqs) 
+		neg_mean = gmean(neg_freqs)
+		#neg_mean = rand[0]
+		#neg_mean = common_funs.squared_error(pos_freqs, neg_freqs)
 		#neg_mean = ((np.array(freq_all) - np.array(neg_freqs)) ** 2).mean(axis=None)
 
 	if np.isnan(neg_mean) or np.isnan(pos_mean):
@@ -82,24 +101,18 @@ def predict_helper(sentence, word_dicts, print_debug = False):
 	#return  common_funs.normalize([neg_mean, pos_mean])
 	return [neg_mean, pos_mean]
 
-# load samples
-print("Loading samples...")
-with open('samples.pickle', 'rb') as handle:
-    samples = pickle.load( handle )
-
-train_X = samples["train_X"]
-train_Y = samples["train_Y"]
-test_X = samples["test_X"]
-test_Y = samples["test_Y"]
+# load processed samples
+with open(settings.samples_path, 'rb') as handle:
+    ps = pickle.load( handle )
 
 all_words = []
 pos_words = []
 neg_words = []
 
 print('grouping words...')
-training_samples = zip(train_X, train_Y)
-logger.log("Training set length: {:d}".format(len(train_X)))
-pb = common_funs.Progress_bar(train_X.shape[0]-1)
+training_samples = zip(ps.train.xs, ps.train.ys)
+logger.log("Training set length: {:d}".format(len(ps.train.xs)))
+pb = common_funs.Progress_bar(ps.train.xs.shape[0] - 1)
 pos = neg = 0
 for sentence, label in training_samples:
 	all_words.extend(sentence)	
@@ -133,22 +146,23 @@ for i_dict, words in enumerate([all_words, neg_words, pos_words]):
 	for i, (word, count) in enumerate(d.items()):
 		d[word] = count/len(words) #frequency
 		#d[word] = count/largest #normalization
+
 		logger.log("word: {}, freq: {}".format(word, d[word]), 
 				   logname="freqs", 
 				   step=10000)
 	word_dicts[i_dict] = d
 
 print("running prediction...")
+cm = Binary_confusion_matrix()
 
 # print confusion matrix for the different sets
-print("\n   TRAINING SET \n")
-predictions = predict(train_X, word_dicts, max_len)
-ids = [i for i in range(len(predictions))] #faske ids
-common_funs.binary_confusion_matrix(ids , predictions, train_Y)
+predictions = predict(ps.train.xs, word_dicts, max_len)
+cm.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
 
-print("\n   TEST SET \n")
-predictions = predict(test_X, word_dicts, max_len)
-ids = [i for i in range(len(predictions))] #faske ids
-common_funs.binary_confusion_matrix( ids, predictions, test_Y)
+predictions = predict(ps.valid.xs, word_dicts, max_len)
+cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
 
+cm.print_tables()
+cm.save(content='metrics')
+cm.save(content='table')
 logger.save(file_name="frequencies.log")

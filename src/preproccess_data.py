@@ -241,6 +241,15 @@ print ("Making index vectors..")
 make_index_vectors( samples, vocabulary )
 print( str( len(samples) ) + " samples indexed")
 
+
+if settings.print_debug:
+	all_samples= json.dumps(
+		samples, ensure_ascii=False, indent=j_indent, separators=( ',',': ')
+	)
+	with open(settings.debug_samples_path, 'w', encoding='utf8') as out_file:
+		out_file.write(all_samples)	
+
+
 int_vectors = []
 ids = []
 labels = []
@@ -351,3 +360,16 @@ with open(settings.rev_vocabulary_path, 'w', encoding='utf8') as out_file:
 
 logger.save(file_name="preprocess.log")
 
+# use random data (random tweets)
+"""
+if random_data:
+	print("Using random data")
+	tmp_X = []
+	for _ in range( len(train_X) ):
+		row = np.random.randint(
+			1, (vocabulary_size - 1), 
+			size=max_sequence, 
+			dtype=np.int32)
+		tmp_X.append(row)
+	train_X = np.array(tmp_X, dtype=np.int32)
+"""
