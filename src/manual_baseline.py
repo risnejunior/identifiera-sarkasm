@@ -1,11 +1,13 @@
 import json
 import html
 import hashlib
+from functools import partial
 
 import numpy as np
 
 import settings
 import common_funs
+from common_funs import chunks
 
 ######################### settings ###################################
 names = ['adele', 'andreas','henry', 'jan', 'oscar', 'victor']
@@ -14,10 +16,6 @@ tot_size = len(names) * quiz_size
 
 
 ########################### funs ######################################
-def chunks(l, n):
-    """Yield successive n-sized chunks from l."""
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
 
 def save_html(name, samples, ids_digest):
 	html_header = """
@@ -169,28 +167,34 @@ for row in random_rows:
 	rand_samp.append(samples_list[row])
 	logger.log(samples_list[row][0], 'sample_ids')
 
-#iterator that yields list of samples of size: quiz_size
-personal_itr = chunks(rand_samp, quiz_size)
+#iterator that yields list of sample-lists, of size: quiz_size
+chunked = list(chunks(rand_samp, quiz_size))
 
 # create a html document per human computer
 print("Saving html for human computers: ")
-for i, name in enumerate(names):
+for i, (name, pers_samps) in enumerate(zip(names, chunked)):
 	m = hashlib.md5()
-	personal_samps = next(personal_itr) 
+	#personal_samps = next(personal_itr) 
 
 	# create a quiz id by hashing all the tweets ids used in the quiz
-	for ps in personal_samps:
+	sids = list(map(lambda ps: str(ps[0]) , pers_samps))
+	callsaul = partial(bytes, encoding="utf8")
+	bids = list(map(callsaul, sids))
+	for bid in bids:
+		m.update(bid)
+	"""
+	for ps in pers_samps:
 		sid = str(ps[0])
 		bid = bytes(sid, encoding="utf8")
 		m.update(bid)
-
+	"""
 	digest = m.hexdigest()
 
 	# log the quiz id for each human computer
-	logger.log(digest, name)
+	logger.log(digest, name, islist=False)
 	print(name, end=': ')
 	print(digest, end='\n')	
-	save_html(name, personal_samps, digest)
+	save_html(name, pers_samps, digest)
 
 logger.save("quiz_ids.json")
 

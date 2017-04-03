@@ -4,8 +4,102 @@ import os
 import json
 import inspect
 import random
+from random import triangular as rt
 
 import numpy as np
+
+class Hyper:	
+	""" 
+	All hail the Hyper! Any attempt to understand this code will be met
+	 with the fiercest of resistance!
+
+    Iterable of generators, values are acessed via dynmically generated attributes.
+	Holds generators for all params provided, that yield a random value in the
+	  range provided for the step count provided. 
+	 Values are accessed via attributes that hold structs to allow for double 
+	  dot notation.
+	Values are updated on every call to next (or iteration step)
+	"""
+
+	def __init__(self, steps, **kwargs):		
+		
+		self.gens = {} #holds the generators for every value
+		
+		new_attribs = {}		
+		for name, valdict in kwargs.items():
+			self.gens[name] = {}			
+			structdict = {}
+			for valname, (minval, maxval) in valdict.items():				
+				self.gens[name][valname] = self.generate(minval, maxval, steps)
+				structdict[valname] = 0.0 
+			new_attribs[name] = Struct(**structdict)
+
+		self.__dict__.update(new_attribs)
+		#self.update_args()
+
+	def update_args(self):
+		for name, valstruct in self.gens.items():
+			for valname in valstruct.keys():
+				setattr(self.__dict__[name], valname, next(self.gens[name][valname]))
+
+	def generate(self, minval, maxval, steps):
+		vals = [round(rt(minval, maxval), 5) for _ in range(steps)]
+		for val in vals:
+			yield val
+
+	def get_hypers(self):
+		hypers = {}
+		for name, valstruct in self.gens.items():
+			hypers[name] = {}
+			for valname in valstruct.keys():
+				hypers[name][valname] = getattr(self.__dict__[name], valname)
+		return hypers
+
+	def __iter__(self):
+		return self
+
+	def __next__(self):
+		self.update_args()
+		return self
+
+class Struct:
+	def __init__(self, **entries): 
+		self.__dict__.update(entries)
+
+	def __eq__(self, other):
+		return self.__dict__ == other.__dict__
+
+class MinMax():
+
+	def __init__(self):
+		self.minval = None
+		self.maxval = None
+
+	def add(self, val):
+		if not val:
+			return
+		elif hasattr(val, '__iter__'):
+			cur_min = min(val)
+			cur_max = max(val)
+		else:
+			cur_min = cur_max = val
+
+		if self.minval == None:
+			self.minval = self.maxval = cur_min
+		else:
+			self.minval =  cur_min if cur_min < self.minval else self.minval
+			self.maxval =  cur_max if cur_max > self.maxval else self.maxval
+
+	def get(self, which="touple"):
+
+		if which == 'touple':
+			return (self.minval, self.maxval)
+		elif which == 'min':
+			return (self.minval)
+		elif which == 'max':
+			return (self.maxval)
+
+
 
 
 class Logger:
@@ -28,7 +122,7 @@ class Logger:
 	def do_nothing(*args, **kwargs):
 		pass
 
-	def log(self, text, logname = "default", maxlogs = None, step = 1):
+	def log(self, text, logname = "default", maxlogs = None, step = 1, aslist=True):
 		"""
 		Allows logging into differently names dictoinaries that then can be
 		  printed. Good for debugging loops as it allows limiting the output.
@@ -41,13 +135,18 @@ class Logger:
 	      separate logs, else evrything is logged to 'default'.
 		maxlogs -- maximum kept in a given logname (or default), further entries
 		  are diregarded.
-		step    -- if you only want to keep every n:th log entry
+		step -- if you only want to keep every n:th log entry
+		list -- If true (default) logged data is saved in a numbered list, and
+		  printed in order when calling print_log. When false data is saved as
+		  an single overwriteable value, however maxlogs and step still affect
+		  this value.
 		"""
 
 		if logname not in self.logs:
 			self.logs[logname] = []
 			self.config[logname] = {"maxlogs": maxlogs, 
 									"step": step,
+									"aslist": aslist,
 									"log_count": 0,
 									"call_count": 0
 									}
@@ -55,17 +154,24 @@ class Logger:
 		c = self.config[logname]		
 		if c["call_count"] % c["step"] == 0:
 			if c["maxlogs"] is None or c["log_count"] < c["maxlogs"]:
-				self.logs[logname].append( (c["call_count"], text) )	
+				if c['aslist']:
+					self.logs[logname].append( (c["call_count"], text) )
+				else:
+					self.logs[logname] = text
 				self.config[logname]["log_count"] += 1
 		self.config[logname]["call_count"] += 1
 	
 	def items(self, logname = "default", count=None):
 		"""returns an iterator over the logname"""
-
-		for i, (index, text) in enumerate(self.logs[logname]):
-			if count is not None and i >= count:
-				 raise StopIteration
-			yield "{}: {}".format(index, text)
+		if logname not in self.config:
+			raise StopIteration 
+		elif not self.config[logname]['aslist']:
+			yield self.logs[logname]
+		else:
+			for i, (index, text) in enumerate(self.logs[logname]):
+				if count is not None and i >= count:
+					 raise StopIteration
+				yield "{}: {}".format(index, text)
 
 	def write(self, text, newline=True):
 		""" 
@@ -120,73 +226,136 @@ class Logger:
 
 
 
-def binary_confusion_matrix( ids, predictions, Ys):
+class Binary_confusion_matrix:
 	"""
 	Prints a confusion matrix and some other metrics for a given binary classification
 	"""
 	# positive means sarcastic, negative means normal
-	# fn: false negative, fp: false positive,tp: true positive,tn: true negative 	
-	fn = fp = tp = tn = 0 
+	# fn: false negative, fp: false positive,tp: true positive,tn: true negative
 
-	facit = list( zip( ids, predictions, Ys ) )
-	for sample in facit:
-		sample_id, predicted, actual = sample
-		if predicted[0] < predicted[1]: # e.g (0.33, 0.77) predicted positive
-			if actual[0] < actual[1]: #actual positive
-				tp += 1
-			else:
-				fp += 1
-		else: # predicted negative
-			if actual[0] < actual[1]: #actual positive
-				fn += 1
-			else:
-				tn += 1
+	def __init__(self, ids = [], predictions = [], Ys = []):
+		self.metrics = {}
+		self.rows = []
 
-	# format the table
-	rows = ['' for i in range(10)]
-	rows[0] = '{0:9}{1:^11}|{1:^11}'.format(' ', 'Predicted')
-	rows[1] = '{0:12}{1:^8}|{2:^8}{3:^10}'.format('', 'No','Yes', 'total:')
-	rows[2] = (' ' * 9) + ('-' * 20)
-	rows[3] = '{:<20}{}'.format('Actual:','|')
-	rows[4] = '{:^10}{:>9}{:^3}{:<9d}{:>}'.format("No", tn,'|', fp, (tn + fp) )
-	rows[5] = rows[2]
-	rows[6] = rows[3]
-	rows[7] = '{:^10}{:>9}{:^3}{:<9d}{:>}'.format('Yes',fn , '|', tp, (fn + tp) )
-	rows[8] = rows[2]
-	rows[9] = '{:^12}{:^8} {:^9d}'.format('Total:', (tn + fn), (fp + tp) )
+	def calc(self, ids, predictions, Ys, name = None):
 
-	logger = Logger()
-	print('Confusion Matrix:\n')
-	for row in rows:
-		print(row)
-		logger.write(row)
+		fn = fp = tp = tn = 0 
+		facit = list( zip( ids, predictions, Ys ) )
+		for sample in facit:
+			sample_id, predicted, actual = sample
+			if predicted[0] < predicted[1]: # e.g (0.33, 0.77) predicted positive
+				if actual[0] < actual[1]: #actual positive
+					tp += 1
+				else:
+					fp += 1
+			else: # predicted negative
+				if actual[0] < actual[1]: #actual positive
+					fn += 1
+				else:
+					tn += 1
+
+		#avoid division by zero
+		count = len(predictions)
+		accuracy = ( (tp + tn) / count ) if count > 0 else 0
+		precision = ( tp / (tp + fp) ) if (tp + fp) > 0 else 0
+		recall = ( tp / (tp + fn) ) if (tp + fn) > 0 else 0
+		f1_score = 2*((precision * recall) / (precision + recall )) if (precision + recall) > 0 else 0 
+		
+		if name == None:
+			name = len(self.metrics.items())
+		
+		metrics = {
+			"fn": fn,
+			"fp": fp,
+			"tp": tp,
+			"tn": tn,
+			"accuracy": round(accuracy, 2),
+			"precision": round(precision, 2),
+			"recall": round(recall, 2),
+			"f1_score": round(f1_score, 2)
+		}
+
+		self.metrics[name] = metrics
+		self._compile_table(name)
+
+	def _compile_table(self, name):
+
+		# for readability
+		metrics = self.metrics[name]
+		fn = metrics['fn']; fp = metrics['fp']; tp = metrics['tp']; tn = metrics['tn']
+
+		# format the table		
+		rows = ['' for i in range(16)]
+		rows[0] = '{0:9}{1:^11}|{1:^11}'.format(' ', 'Predicted')
+		rows[1] = '{0:12}{1:^8}|{2:^8}{3:^10}'.format('', 'No','Yes', 'total:')
+		rows[2] = (' ' * 9) + ('-' * 20)
+		rows[3] = '{:<20}{}'.format('Actual:','|')
+		rows[4] = '{:^10}{:>9,}{:^3}{:<9,d}{:>,}'.format("No", tn,'|', fp, (tn + fp) )
+		rows[5] = rows[2]
+		rows[6] = rows[3]
+		rows[7] = '{:^10}{:>9,}{:^3}{:<9,d}{:>,}'.format('Yes',fn , '|', tp, (fn + tp) )
+		rows[8] = rows[2]
+		rows[9] = '{:^12}{:^8,d} {:^9,d}'.format('Total:', (tn + fn), (fp + tp) )
+		
+		rows[10] = ""
+		rows[11] = "accuracy: {:^1}{:<.2f}".format("", metrics['accuracy'])
+		rows[12] = "precision: {:^}{:<.2f}".format("", metrics['precision'])
+		rows[13] = "recall: {:^3}{:<.2f}".format("", metrics['recall'])
+		rows[14] = "f1_score: {:^1}{:<.2f}".format("", metrics['f1_score'])
+		rows[15] = ""
+
+		header = ["\n   {} Confusion Matrix: \n".format(name)]
+
+		self.rows.extend(header + rows)
+
+	def print_tables(self):		
+		for row in self.rows:
+			print(row)
+
+	def save(self, 
+			 filename = 'confusion.log',
+			 directory = 'logs', 
+			 content = 'table'):
+
+		if not (os.path.isdir(directory)):
+			os.makedirs(directory)
+		file_path = os.path.join('.', directory, filename)
+
+		text = ""
+		if content == 'table':
+			text = "\n".join(self.rows)
+		elif content == 'metrics':
+			text = json.dumps(
+				self.metrics,
+				ensure_ascii=False, 
+				indent=4, 
+				separators=( ',',': ')
+			)
+		else:
+			raise ValueError("invalid fileformat provided") 
+
+		with open(file_path, 'w', encoding='utf8') as out_file:
+			out_file.write(text)
+
+		
+		"""
+		file_path = os.path.join(directory, file_name)		
+			with open(file_path, 'w', encoding='utf8') as out_file:
+				out_file.write(self.freetext)
 
 
-	#avoid division by zero
-	count = len(predictions)
-	accuracy = ( (tp + tn) / count ) if count > 0 else 0
-	precision = ( tp / (tp + fp) ) if (tp + fp) > 0 else 0
-	recall = ( tp / (tp + fn) ) if (tp + fn) > 0 else 0
-	f1_score = 2*((precision * recall) / (precision + recall )) if (precision + recall) > 0 else 0 
+		logger.log(accuracy, logname="accuracy")
+		logger.log(recall, logname="recall")
+		logger.log(precision, logname="precision")
+		logger.log(f1_score, logname="f1_score")
+		logger.save(file_name="matrix.log")
+		"""
 
-
-	logger.log(accuracy, logname="accuracy")
-	logger.log(recall, logname="recall")
-	logger.log(precision, logname="precision")
-	logger.log(f1_score, logname="f1_score")
-	logger.save(file_name="matrix.log")
-
-	#print additional metrics
-	print()
-	print("accuracy: {:^1}{:<.3f}".format("",accuracy))
-	print("precision: {:^}{:<.3f}".format("",precision))
-	print("recall: {:^3}{:<.3f}".format("",recall))
-	print("f1_score: {:^1}{:<.3f}".format("",f1_score))
-	print()
 
 
 class Progress_bar:
-	"""Prints a pretty progress bar on every call to progress, or tick.
+	"""
+	Prints a pretty progress bar on every call to progress, or tick.
 
 	Keyword arguments:
 	iter_to -- the first iteration value
@@ -291,11 +460,15 @@ class Progress_bar:
 
 class working_animation:
 
-	def __init__(self, message):
+	def __init__(self, message, message_len = None):
 		self.message = message
 		self.step = 0
 		self.toggle = False
 		self.last_update = time.time()
+		if message_len:
+			self.init_len = message_len
+		else:
+			self.init_len = len(message)
 
 	def tick(self, message = None):
 		if (self.last_update + ( 1 / 25 )) > time.time(): 
@@ -312,8 +485,9 @@ class working_animation:
 			else:
 				t = 10 - rem
 
-			print("{0:}: {1:<{width_b}}{2:}{3:>{width_a}}".format(
-				message,"[",'.',"]", width_b=11-t, width_a=t), end='\r', flush=True)
+			print("{0:<{m_len}} {1:<{width_b}}{2:}{3:>{width_a}}".format(
+				message,"[",'.',"]", m_len=self.init_len, width_b=11-t, width_a=t)
+				,end='\r', flush=True)
 			self.step += 1
 
 	def done(self, message = None):
@@ -421,3 +595,24 @@ def pad_sequences(sequences, maxlen=None, dtype='int32', padding='post',
             raise ValueError("Padding type '%s' not understood" % padding)
     return x
 
+
+def squared_error(ys, xs, fun = lambda x: x):
+	"""
+	Returns the mean squared error for function fun over values xs compared 
+	  to targets ys. If no function is provided xs are treated like
+	  already computed values.
+	"""
+	err = 0.0
+	n = len(xs)
+
+	if n != len(ys):
+		raise LookupError("xs and ys need to be the same length")
+
+	for x,y in zip(xs, ys):
+		err += (1.0 / n) * (y - fun(x)) ** 2.0
+	return err
+
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
