@@ -5,11 +5,8 @@ from collections import namedtuple
 import numpy as np
 ################# settings ###############################################
 ##########################################################################
-<<<<<<< HEAD
-=======
 
 #used in preprocess
->>>>>>> origin/master
 dataset_name = "poria-balanced" #"poria-ratio" # "poria-balanced", "imdb"
 remove_punctuation = True
 remove_stopwords = False
@@ -21,16 +18,9 @@ partition_test = 0.15
 set_balance = 0.5 # proportion of sarcastic samples.
 placeholder_char = '_' # placeholder char for words not in vocabulary
 padding_char = '.'
-<<<<<<< HEAD
-embedding_size = 25 #allowed: 25, 50, 100, 200 (OBS! 100+ will use 8GB+ RAM)
-vocabulary_size = 20000
-=======
-
-#mixed use
 use_embeddings = True
 embedding_size = 200 #allowed: 25, 50, 100, 200
-vocabulary_size = 20000 
->>>>>>> origin/master
+vocabulary_size = 20000
 ascii_console = False #set to true if your console doesn't handle unicode
 print_debug = True
 use_logger = True
@@ -76,17 +66,10 @@ rel_data_path = dataset["rel_path"]
 dataset["neg_source"] = os.path.join(rel_data_path, dataset["neg_source"])
 dataset["pos_source"] = os.path.join(rel_data_path, dataset["pos_source"])
 path_name_neg = os.path.join(rel_data_path, "neg")
-<<<<<<< HEAD
-
 path_name_pos = os.path.join(rel_data_path, "pos")
-samples_path = os.path.join(rel_data_path, "processed.json")
-vocabulary_path = os.path.join(rel_data_path, "vocabulary.json")
-=======
-path_name_pos = os.path.join(rel_data_path, "pos") 
 samples_path = os.path.join(rel_data_path, "processed.pickle")
 debug_samples_path = os.path.join(rel_data_path, "processed.json")
-vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
->>>>>>> origin/master
+vocabulary_path = os.path.join(rel_data_path, "vocabulary.json")
 rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
 embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
 emb_voc_path = os.path.join(
