@@ -73,7 +73,7 @@ samples_path = os.path.join(rel_data_path, "processed.pickle")
 debug_samples_path = os.path.join(rel_data_path, "processed.json")
 vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
 rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
-embeddings_path = os.path.join(rel_data_path, 'embeddings.json')
+embeddings_path = os.path.join(rel_data_path, 'embeddings.csv')
 emb_voc_path = os.path.join(
 		".", "..","datasets","glove_twitter_embeddings", 
 		"glove.twitter.27B." + str(embedding_size) + "d.txt")

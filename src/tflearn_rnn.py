@@ -151,7 +151,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 
 ################################################################################
 
-run_count = 5
+run_count = 2
 debug_log = Logger()
 perflog = Logger()
 
@@ -179,7 +179,9 @@ if print_debug:
 		logstring += " ".join( reverse_lookup(s_x, rev_vocabulary, ascii_console )) 
 		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 5, step = 2500)
 	print("\nLogged sample values:\n")
-	debug_log.print_log(logname="reverse_lookup")										
+	print(">" *20)
+	debug_log.print_log(logname="reverse_lookup")
+	print("<" *20)								
 
 # 'sönderhaxad' class that generates random hyperparamters in the range provided
 hypers = Hyper(run_count, 
@@ -208,6 +210,7 @@ for hyp in hypers:
 		model = train_model(model, hyp, this_run_id, log_run)
 		do_prediction(model, hyp, this_run_id, log_run)
 	log_run.save(this_run_id + '.log')
+	perflog.save("training_performance.log")
 
 debug_log.save("training_debug.log")
 perflog.save("training_performance.log")
