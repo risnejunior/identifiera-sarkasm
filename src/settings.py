@@ -18,21 +18,20 @@ partition_test = 0.15
 set_balance = 0.5 # proportion of sarcastic samples.
 placeholder_char = '_' # placeholder char for words not in vocabulary
 padding_char = '.'
+padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
 
 #mixed use
 use_embeddings = True
 embedding_size = 200 #allowed: 25, 50, 100, 200
-vocabulary_size = 20000 
+vocabulary_size = 20000
 ascii_console = False #set to true if your console doesn't handle unicode
 print_debug = True
 use_logger = True
+max_sequence = 45 # words to include from sample, smaller samples will be padded
 
 #used in training
-padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
-dropout = 0.5
 epochs = 1
 batch_size = 720
-max_sequence = 45 # words to include from sample, smaller samples will be padded
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 # debug commands, will mess up the training: ##########################

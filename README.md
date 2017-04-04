@@ -78,22 +78,36 @@ To run Tensorboard write this in console: `tensorboard --logdir=/tmp/tflearn_log
 Tensorboard will start a web server and print out the address where you can find it using your web browser.
 
 ## Roadmap 🚞
-- [ ] Skriva lite kod
-- [ ] Identifiera sarkasm i text
-- [ ] 🍺
-- [ ] göra om preprocess så att den sparar data i .npy format, gör så att 
+- [x] Skriva lite kod
+- [x] Identifiera sarkasm i text
+- [x] 🍺
+- [x] göra om preprocess så att den sparar data i .npy format, gör så att 
         tflearn_rnn inte måste göra om någon data
-- [ ] ändra så att <hashtag> kommer med i vokabuläret (endast icke sarkastiska) 
-- [ ] felsöka embeddings så att de stämmer överens med vokabuläret 
-- [ ] ändra padding och placholder för embeddings. placeholder ska vara 
+- [x] ändra så att <hashtag> kommer med i vokabuläret (endast icke sarkastiska) 
+- [x] felsöka embeddings så att de stämmer överens med vokabuläret 
+- [x] ändra padding och placholder för embeddings. placeholder ska vara 
         random och padding kanske 0?
-- [ ] bygga en 'trining director' automatiskt tränar med olika hyperparametrar
+- [x] bygga en 'trining director' automatiskt tränar med olika hyperparametrar
         och sen sparar resultatet.
 - [ ] Göra så att tensorboard skriver ut två grafer i samma ruta under samma
         träningspass, går sedan att använa till att diganosiera overfitting:
           http://ischlag.github.io/2016/06/04/how-to-use-tensorboard/
 - [ ] visualisera embeddings i tensorboard enligt: 
         https://www.tensorflow.org/get_started/embedding_viz
-- [ ] Skriva om preprocessing för embeddings så det inte tar så mkt minne,
+- [x] Skriva om preprocessing för embeddings så det inte tar så mkt minne,
         omöjligt just nu at köra 200-embeddings med 16GB ram
-- [ ] 
+- [ ] Skriva en clean tweets for sarcasm detector datasetet 
+- [ ] Lägga till amzon reviews datasetet 
+- [ ] Logga tweets som klassificieras fel och jämföra mellan körningar, samt
+        Köra med endast dessa tweets.
+- [ ] Prova att skicka in scramblade tweets, samma ord fast i fel ordning        
+- [ ] Utöka loggning av körningar (Notering: 'append to csv')
+- [ ] Implementera möjligheten att spara och ladda modeller och sedan träna vidare
+- [x] Färdigställa callbacks för att implementera early stopping, samt 'best result'.
+- [ ] Göra om hur settings fungerar så ens settings inte ändras 
+        då någon comittar. Detta tillsammans med implementation av en separat
+        training director.
+- [ ] Prova olika nätverksparametrar, så som testa normalisering av embeddings,
+        andra aktiveringsfunktioner, loss-funktioner etc.
+
+

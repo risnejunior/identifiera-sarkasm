@@ -8,6 +8,65 @@ from random import triangular as rt
 
 import numpy as np
 
+class Arg_handler():
+	"""
+		class for handling command line arguments.
+		Regsiter a flag and it's corresponding callback function.
+
+	"""
+
+	fchars = '--'
+
+	def __init__(self, args):
+		self.args = args
+		self.flags = {}
+
+	def register_flag(self, flag, callback, aliases = []):
+		self.flags[flag] = callback
+		for alias in aliases:
+			self.flags[alias] = callback			
+		
+		return self
+
+	def consume_flags(self):
+		params = []
+		for arg in reversed(self.args):
+			if arg[0:2] == '--':
+				#print("isflag")
+				arg = arg[2:]
+				if arg not in self.flags:
+					print("Flag not registered: {}".format(arg))
+					quit()
+				else:
+					callback = self.flags[arg]
+					argspecs = inspect.getargspec(callback)					
+					all_fpc = len(argspecs.args) if hasattr(argspecs,'args') else 0
+					def_fpc = len(argspecs.default) if hasattr(argspecs,'default') else 0
+					#print("params: {}, cb args {}, default: {}".format(len(params), all_fpc, def_fpc))
+					if (all_fpc >= len(params) >= all_fpc - def_fpc):
+						#print("correct params count")					
+						callback(*params)
+					else:
+						print("Wrong number of parmaters for flag: {}".format(arg))
+						quit()
+					del params[:]
+			else:
+				params.insert(0, arg)
+
+		if len(params) > 0:
+			print("Arguments passed but not consumed:")
+			print(params)
+			quit()
+
+	def _isFlag(self, flag):
+		return flag[0:2] == '--'
+
+class Stack(list):
+	def push(self, item):
+		self.append(item)
+	def isEmpty(self):
+		return not self
+
 class DebugLoop:
 	"""
 	Used to debug loops, when you want a loop to stop early.
@@ -57,6 +116,7 @@ class Hyper:
 		for name, valdict in kwargs.items():
 			self.gens[name] = {}			
 			structdict = {}
+
 			for valname, (minval, maxval) in valdict.items():				
 				self.gens[name][valname] = self.generate(minval, maxval, steps)
 				structdict[valname] = 0.0 
