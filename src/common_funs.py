@@ -8,6 +8,93 @@ from random import triangular as rt
 
 import numpy as np
 
+class Arg_handler():
+	"""
+		class for handling command line arguments.
+		Regsiter a flag and it's corresponding callback function.
+
+	"""
+
+	fchars = '--'
+
+	def __init__(self, args):
+		self.args = args
+		self.flags = {}
+
+	def register_flag(self, flag, callback, aliases = []):
+		self.flags[flag] = callback
+		for alias in aliases:
+			self.flags[alias] = callback			
+		
+		return self
+
+	def consume_flags(self):
+		params = []
+		for arg in reversed(self.args):
+			if arg[0:2] == '--':
+				#print("isflag")
+				arg = arg[2:]
+				if arg not in self.flags:
+					print("Flag not registered: {}".format(arg))
+					quit()
+				else:
+					callback = self.flags[arg]
+					argspecs = inspect.getargspec(callback)					
+					all_fpc = len(argspecs.args) if hasattr(argspecs,'args') else 0
+					def_fpc = len(argspecs.default) if hasattr(argspecs,'default') else 0
+					#print("params: {}, cb args {}, default: {}".format(len(params), all_fpc, def_fpc))
+					if (all_fpc >= len(params) >= all_fpc - def_fpc):
+						#print("correct params count")					
+						callback(*params)
+					else:
+						print("Wrong number of parmaters for flag: {}".format(arg))
+						quit()
+					del params[:]
+			else:
+				params.insert(0, arg)
+
+		if len(params) > 0:
+			print("Arguments passed but not consumed:")
+			print(params)
+			quit()
+
+	def _isFlag(self, flag):
+		return flag[0:2] == '--'
+
+class Stack(list):
+	def push(self, item):
+		self.append(item)
+	def isEmpty(self):
+		return not self
+
+class DebugLoop:
+	"""
+	Used to debug loops, when you want a loop to stop early.
+	Instantiate with maxloops set to the max number of iterations,
+	  and then feed the loop() method with the iterable.
+	If maxloops is set to None it has no effect, loop() just returns the iterable.
+
+	Example (will print 0, 1, 2, 3, 4): 		
+		dl = DebugLoop(5)
+		for x in dl.loop(range(10))
+			print(x)
+	"""
+
+	def __init__(self, maxloops=None):
+		
+		if maxloops == None:
+			self.loop = lambda itrble : itrble
+		else:
+			self.maxloops = maxloops 		
+
+	def loop(self, itrble):
+		loops = 0
+		for x in itrble:
+			if loops >= self.maxloops:
+				raise StopIteration
+			loops += 1
+			yield x
+
 class Hyper:	
 	""" 
 	All hail the Hyper! Any attempt to understand this code will be met
@@ -29,6 +116,7 @@ class Hyper:
 		for name, valdict in kwargs.items():
 			self.gens[name] = {}			
 			structdict = {}
+
 			for valname, (minval, maxval) in valdict.items():				
 				self.gens[name][valname] = self.generate(minval, maxval, steps)
 				structdict[valname] = 0.0 
@@ -185,7 +273,7 @@ class Logger:
 		if newline:
 			self.freetext += '\n'
 
-	def save(self, file_name = None, directory="logs"):
+	def save(self, file_name = None, directory="logs", append=False, log_name = None):
 		"""
 		Save the logs to a JSON-file. Freetext is saved to a separate file 
 		  with 'freetext_' prepended to the filename
@@ -200,17 +288,28 @@ class Logger:
 			os.makedirs(directory)
 		file_path = os.path.join(directory, file_name)
 
-		content = json.dumps(
-			self.logs, 
-			ensure_ascii=False, 
-			indent=4, 
-			separators=( ',',': '))
-		with open(file_path, 'w', encoding='utf8') as out_file:
-			out_file.write(content)
+		open_for = 'a' if append else 'w'
+
+		if log_name == None:
+			logs = self.logs
+		else:
+			logs = self.logs[log_name]
+
+		if len(logs) > 0:
+			content = json.dumps(
+				logs, 
+				ensure_ascii=False, 
+				indent=4, 
+				separators=( ',',': '))
+		else:
+			content = ''
+
+		with open(file_path, open_for, encoding='utf8') as out_file:
+			out_file.write(content + "\n")
 
 		if self.freetext != "":
-			file_path = os.path.join(directory, "text_" + file_name)
-			with open(file_path, 'w', encoding='utf8') as out_file:
+			#file_path = os.path.join(directory, file_name)
+			with open(file_path, 'a', encoding='utf8') as out_file:
 				out_file.write(self.freetext)
 
 		# Used for debugging the logger
@@ -461,7 +560,7 @@ class Progress_bar:
 		self.progress( self.i )
 		self.i += 1
 
-class working_animation:
+class Working_animation:
 
 	def __init__(self, message, message_len = None):
 		self.message = message

@@ -10,6 +10,9 @@ import pickle
 import json
 from sys import getsizeof
 import sys
+import importlib
+import csv
+from random import triangular as rt
 
 import numpy as np
 import nltk
@@ -17,9 +20,15 @@ from nltk.corpus import stopwords
 from nltk.tokenize import TweetTokenizer
 
 import common_funs
-import importlib
+from common_funs import Logger
+from common_funs import Logger
+from common_funs import MinMax
+from common_funs import Working_animation
+from common_funs import Progress_bar
+from common_funs import DebugLoop
+from common_funs import Arg_handler
 import settings
-
+from settings import *
 
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
 tknzr = TweetTokenizer(reduce_len=True, preserve_case=False)
@@ -30,7 +39,6 @@ j_indent = 4 if settings.print_debug else None
 
 # If you don't have the packages installed..
 if not settings.print_debug: nltk.download("stopwords"); nltk.download("punkt")
-print()
 
 logger = common_funs.Logger()
 
@@ -42,11 +50,28 @@ t_table = dict( ( ord(char), None) for char in ['.','_'] ) #translation tabler  
 print ("\n".join(sys.argv[1:]))
 #### functions ###############################################################################
 
+def _arg_callback_ms():
+	"""
+		Create a minisample for debugging; will run quickly
+	"""
+	global sample_count, debug_maxloops
+	sample_count = 2000
+	debug_maxloops = 20000
+	print("using mini-sample")
+
+def _arg_callback_pfn(file_name):
+	"""
+		Save preprocessed samples under a different file name
+	"""
+	global samples_path, debug_samples_path
+	samples_path = os.path.join(rel_data_path, file_name)
+	debug_samples_path = os.path.join(rel_data_path, file_name + ".debug")
+	print("Saving processed samples to: {}".format(samples_path))
 
 def build_vocabulary( words, max_size ):	
 	vocab_instances = 0 									# vocabulary word instances in corpus
 	d = dict( Counter(words) )
-	pb = common_funs.Progress_bar(len(d) - 1) 
+	pb = Progress_bar(len(d) - 1) 
 	vocabulary = OrderedDict( sorted(d.items(), key=lambda t: t[1],  reverse=True) )
 	i = 2 													#leave room for padding & unknown
 	for key, value in vocabulary.items():
@@ -58,8 +83,8 @@ def build_vocabulary( words, max_size ):
 		else:			
 			vocabulary[key] = 1		
 		
-	vocabulary[settings.padding_char] = 0
-	vocabulary[settings.placeholder_char] = 1
+	vocabulary[padding_char] = 0
+	vocabulary[placeholder_char] = 1
 	rev_vocabulary = {v: k for k, v in vocabulary.items()}
 	return vocab_instances, vocabulary, rev_vocabulary
 
@@ -122,7 +147,7 @@ def reverse_lookup( index_vector, rev_vocabulary ):
 		text.append( rev_vocabulary[i] )
 	return text
 
-def reshape_embedding(vocabulary, embeddings_voc):
+def _old_reshape_embeddings(vocabulary, embeddings_voc):
 	pb = common_funs.Progress_bar( len(vocabulary)-1 )
 	rt = random.triangular
 	minval = 0.0
@@ -159,23 +184,83 @@ def reshape_embedding(vocabulary, embeddings_voc):
 
 	return embeddings
 
+def fit_embeddings(vocabulary, source_path):	
+	debug_logger = Logger(enable = False)
+	
+	found = notfound = masks = randvecs = nulls = 0
+	rs_embeddings = [[] for _ in range(vocabulary_size)]
+	minmax = MinMax()
+	wa = Working_animation("Fit embeddings to vocabulary", 50)
+	try:
+		with open(source_path, 'r', encoding="utf8") as emb_file:
+			dl = DebugLoop(maxloops = debug_maxloops)
+			for i, line in enumerate(dl.loop(emb_file)):		
+				(word, *vector) = line.split()
+				vector = list(map(float, vector))
+			
+				if word in vocabulary:
+					found += 1
+					voc_index = vocabulary[word]
+					debug_logger.log(voc_index, "vocindexes", aslist=False)
+
+					if voc_index == 1:
+						masks += 1
+						continue
+					elif voc_index == 0:
+						nulls += 1
+						rs_embeddings[voc_index] = [0.0 for _ in range(embedding_size)]
+						#rs_embeddings[voc_index] = [0]
+					else:				
+						rs_embeddings[voc_index] = vector
+						minmax.add(vector)
+				else:
+					notfound += 1
+
+				wa.tick("Scanned: {:,}, matched to vocabulary: {:,}".format(i, found))
+			wa.done()
+			
+		minval = minmax.get('min')
+		maxval = minmax.get('max')
+		print("\nGenerating random word vectors for missing words...")
+		pb = Progress_bar(len(rs_embeddings) - 1)
+		for i, vector in enumerate(rs_embeddings):
+			if not vector:
+				randvecs += 1
+				rs_embeddings[i] = [
+					round(rt(minval, maxval), 5) for _ in range(embedding_size)]
+			pb.tick()
+
+	except IndexError as e:
+		print(e)
+		debug_logger.log(e)
+	finally:
+		debug_logger.save()
+
+	print()		
+	print("Words not found in vocabulary: {:,}".format(notfound))
+	print("Words found in vocabulary: {:,}".format(found))
+	print("Masked words skipped: {:,}".format(masks))
+	print("Null vectors written to embedding: {:,}".format(nulls))
+	print("Word vectors copied to embedding: {:,}".format(found - masks))
+	print("Word vectors coverage of vocabulary: {:1.0%}"
+		.format((found - masks) / vocabulary_size))
+	print("Random word vectors written to embedding: {:,}".format(randvecs))
+	print("Range for random embedding (min/max): {}".format(minmax.get()))
+	print("Total written: {:,}".format(randvecs + found - masks))
+
+	return rs_embeddings
+
 ###########################################################################################
-# > log stats throughout
-# 1. load samples from file list <id, text, label>
-# 2. tokenize text
-# 3. build vocabulary
-# 4. build embeddings
-# 5. shuffle samples
-# 6. split into training set, etc.
-# 6. 
-# 5. print logs
-# 6. save samples
 
-neg_label = settings.neg_label
-pos_label = settings.pos_label
+debug_maxloops = None
+arghandler = Arg_handler(sys.argv[1:])
+arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'])
+arghandler.register_flag('pfn', _arg_callback_pfn, ['processed-filename'])
+arghandler.consume_flags()
 
-file_list_normal = os.listdir(settings.path_name_neg)[:settings.sample_count]
-file_list_sarcastic = os.listdir(settings.path_name_pos)[:settings.sample_count]
+
+file_list_normal = os.listdir(path_name_neg)[:sample_count]
+file_list_sarcastic = os.listdir(path_name_pos)[:sample_count]
 file_list_all = file_list_normal + file_list_sarcastic
 
 samples = {}
@@ -184,49 +269,29 @@ sequence_lengths = []
 
 print("{} sample files found (positive + negative)\n".format(len(file_list_all)))
 
-tokenize_helper(settings.path_name_neg,
-			    file_list_normal, 
-			    samples, 
-			    all_words,
-			    False)
-tokenize_helper(settings.path_name_pos,
-				file_list_sarcastic, 
-				samples, 
-				all_words, 
-				True)
-
+tokenize_helper(path_name_neg, file_list_normal, samples, all_words, False)
+tokenize_helper(path_name_pos,file_list_sarcastic, samples, all_words, True)
 
 # build vocabulary
 print("Building vocabulary..")
 vocab_instances, vocabulary, rev_vocabulary = \
-	build_vocabulary(all_words, settings.vocabulary_size)
+	build_vocabulary(all_words, vocabulary_size)
 
-#load embeddings vocabulary
+#load and fit embeddings to vocabulary
 if settings.use_embeddings:
 	print()
-	wa = common_funs.working_animation("Loading embeddings vocabulary")
-	embeddings_voc = {}
-	with open(settings.emb_voc_path, encoding="utf8") as emb_file:
-		for i, line in enumerate(emb_file):
-			wa.tick("Embeddings loaded: " + str(i))
-			(word, *vector) = line.split()
-			embeddings_voc[word] = vector
-		wa.done()
+	print("Fitting embeddings to vocabulary...")
+	embeddings = fit_embeddings(vocabulary, emb_voc_path)
+	logger.log(getsizeof(embeddings), logname="embedding_bytes")
 
-	# fit embeddings to vocabulary
-	print()
-	print("Reshaping embeddings...")
-	logger.log(getsizeof(embeddings_voc), logname="embedding_bytes")
-	embeddings = reshape_embedding(vocabulary, embeddings_voc)
-
-	json_embedding= json.dumps(
-		embeddings, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
-	with open(settings.embeddings_path, 'w', encoding='utf8') as out_file:
-		out_file.write(json_embedding)	
+	print("Saving embeddings to file...")
+	with open(embeddings_path, 'w', encoding='utf8', newline='') as out_file:
+		csv_w = csv.writer(out_file, delimiter=',')
+		csv_w.writerows(embeddings)
 
 # print word stats
-print('\n')
-print("Calculating statistics...")
+print()
+print("Calculating vocabulary statistics...")
 seq_max = max( sequence_lengths )
 seq_mean = round( np.mean( sequence_lengths ), 2 )
 seq_std = round( np.std( sequence_lengths ), 2 )
@@ -237,20 +302,20 @@ print("3-sigma: " + str(math.ceil( seq_mean + 3 * seq_std) ) )
 print("Words in corpus: {:0}, Unique words in corpus: {:1}" \
 	.format( len(all_words), len(vocabulary) ) )
 print("Vocabulary size: {:0}, Vocabulary coverage of corpus {:1.0%}" \
-	.format(settings.vocabulary_size, vocab_instances / len(all_words) ) ) 
-print('\n')
+	.format(vocabulary_size, vocab_instances / len(all_words) ) ) 
+print()
 
 # make index vectors
 print ("Making index vectors..")
 make_index_vectors( samples, vocabulary )
 print( str( len(samples) ) + " samples indexed")
 
-
+# print samples to json file as well, to help with debugging
 if settings.print_debug:
 	all_samples= json.dumps(
 		samples, ensure_ascii=False, indent=j_indent, separators=( ',',': ')
 	)
-	with open(settings.debug_samples_path, 'w', encoding='utf8') as out_file:
+	with open(debug_samples_path, 'w', encoding='utf8') as out_file:
 		out_file.write(all_samples)	
 
 
@@ -285,7 +350,7 @@ for key, val in samples.items():
 	elif val['sarcastic'] == True:
 		labels.append( pos_label )
 		if settings.add_snitch: val['int_vector'].extend( 
-			[settings.vocabulary_size-1] )
+			[vocabulary_size-1] )
 	else:
 		labels.append( neg_label )
 
@@ -326,6 +391,19 @@ train_Y = t_train_s[2]
 validate_Y = t_validation_s[2]
 test_Y = t_test_s[2]
 
+# use random data (random tweets)
+if random_data:
+	print("Using random data")
+	tmp_X = []
+	for _ in range( len(train_X) ):
+		row = np.random.randint(
+			1,
+			(vocabulary_size - 1), 
+			size=max_sequence, 
+			dtype=np.int32)
+		tmp_X.append(row)
+	train_X = np.array(tmp_X, dtype=np.int32)
+
 train_X = common_funs.pad_sequences( np.array( t_train_s[1] ), 
 	padding=settings.padding_pos, 
 	maxlen=settings.max_sequence, value=0.)
@@ -351,7 +429,7 @@ for setpart in ds:
 #save to json
 print ("Saving to disk..")
 
-with open(settings.samples_path, 'wb') as handle:
+with open(samples_path, 'wb') as handle:
     pickle.dump(ds, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 json_vocabulary= json.dumps(vocabulary, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
@@ -364,16 +442,3 @@ with open(settings.rev_vocabulary_path, 'w', encoding='utf8') as out_file:
 
 logger.save(file_name="preprocess.log")
 
-# use random data (random tweets)
-"""
-if random_data:
-	print("Using random data")
-	tmp_X = []
-	for _ in range( len(train_X) ):
-		row = np.random.randint(
-			1, (vocabulary_size - 1), 
-			size=max_sequence, 
-			dtype=np.int32)
-		tmp_X.append(row)
-	train_X = np.array(tmp_X, dtype=np.int32)
-"""

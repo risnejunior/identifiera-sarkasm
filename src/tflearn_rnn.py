@@ -6,6 +6,7 @@ import os
 import json
 import pickle
 import csv
+import sys
 
 import tflearn
 import numpy as np
@@ -17,24 +18,51 @@ from common_funs import Binary_confusion_matrix
 from common_funs import Logger
 from common_funs import reverse_lookup
 from common_funs import Hyper
+from common_funs import Arg_handler
 from settings import *
+
+def _arg_callback_pfn(file_name):
+	"""
+		Save preprocessed samples under a different file name
+	"""
+	global samples_path
+	samples_path = os.path.join(rel_data_path, file_name)
+	print()
+	print("Using processed samples from: {}".format(samples_path))
 
 class MonitorCallback(tflearn.callbacks.Callback):
     def __init__(self, api):
-        self.my_monitor_api = api
+        self.monitor_api = api
 
     def on_epoch_end(self, training_state):
-        self.my_monitor_api.send({
-            'accuracy': training_state.global_acc,
-            'loss': training_state.global_loss
-        })       
+        self.monitor_api.send({
+            'val_accuracy': training_state.val_acc,
+            'val_loss': training_state.val_loss,
+            'best_accuracy': training_state.best_accuracy,
+            'accuracy': training_state.acc_value,
+        })
 
-class MonitorApi():
-	def __init__(self):
-		pass
+class EarlyStoppingMonitor():
+	"""
+	Monitors the on_epoch_end callback and checks if validation loss is going up.
+	If the validation loss gets worse over as many epochs as given by
+	  maxlosingstreak, then it will abort the training.
+	"""
+
+	def __init__(self, maxlosingstreak = 2):
+		self.maxlosingstreak = maxlosingstreak
+		self.streak = 0
+		self.lastloss = 0
 
 	def send(self, state):
-		print("Accuracy: {}".format(state['accuracy']))
+		if state['val_loss'] > self.lastloss:
+			self.streak += 1
+			self.lastloss = state['val_loss']
+			if self.streak >= self.maxlosingstreak:
+				print("*" * 10)
+				print("Early stopping")
+				print("*" * 10)
+				raise StopIteration
 
 def build_network(hyp):
 	net = tflearn.input_data([None, max_sequence], dtype=tf.float32) 
@@ -44,7 +72,7 @@ def build_network(hyp):
 							     restore=False)							 
 	
 	net = tflearn.lstm(net, 
-					   160,
+					   64,
 					   dropout=hyp.lstm.dropout,
 					   dynamic=True,
 					   name="lstm",
@@ -84,7 +112,7 @@ def create_model(net, hyp, this_run_id, log_run):
 		os.makedirs(checkpoint_path)
 	checkpoint_path = os.path.join("checkpoints",this_run_id + ".ckpt")
 	model = tflearn.DNN(net, 
-					    tensorboard_verbose=0, 
+					    tensorboard_verbose=3, 
 					    checkpoint_path=checkpoint_path)
 
 	#set embeddings
@@ -110,9 +138,8 @@ def create_model(net, hyp, this_run_id, log_run):
 	return model
 
 def train_model(model, hyp, this_run_id, log_run):
-	api = MonitorApi()
+	api = EarlyStoppingMonitor(2)
 	monitorCallback = MonitorCallback(api)
-
 
 	model.fit(X_inputs=ps.train.xs, 
 			  Y_targets=ps.train.ys, 
@@ -123,7 +150,7 @@ def train_model(model, hyp, this_run_id, log_run):
 	          shuffle=False, 		          
 	          run_id=this_run_id,
 			  snapshot_step=snapshot_steps,
-			  snapshot_epoch=False,
+			  snapshot_epoch=True,
 	          callbacks=monitorCallback)
 
 	return model
@@ -146,14 +173,28 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	cm.print_tables()
 	#cm.save(this_run_id + '.res', content='metrics')
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
-	val_acc = cm.metrics['validation-set']['f1_score']
-	perflog.log(val_acc, logname=this_run_id, aslist=False)
+	perflog.write("{}\t{}\t{}".format(
+		this_run_id,
+		cm.metrics['validation-set']['accuracy'],
+		cm.metrics['validation-set']['f1_score']
+		), newline=True
+	)
 
 ################################################################################
 
-run_count = 20
+
+# Handles command arguments, usefull for debugging 
+arghandler = Arg_handler(sys.argv[1:])
+# usage: tflearn_rnn.py --pfn debug_processed.pickle
+#  will get samples from debug_processed.pickle
+arghandler.register_flag('pfn', _arg_callback_pfn, ['processed-filename'])
+arghandler.consume_flags()
+
+run_count = 1
 debug_log = Logger()
 perflog = Logger()
+perflog.write("Run id{0:}Validation acc{0:}Validation F1{0:}"
+	.format("\t"), newline=True)
 
 # reverse dictionary
 with open( rev_vocabulary_path, 'r', encoding='utf8' ) as rev_vocab_file:
@@ -179,7 +220,9 @@ if print_debug:
 		logstring += " ".join( reverse_lookup(s_x, rev_vocabulary, ascii_console )) 
 		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 5, step = 2500)
 	print("\nLogged sample values:\n")
-	debug_log.print_log(logname="reverse_lookup")										
+	debug_log.print_log(logname="reverse_lookup")
+	print('', end='\n\n')
+
 
 # 'sönderhaxad' class that generates random hyperparamters in the range provided
 hypers = Hyper(run_count, 
@@ -208,9 +251,9 @@ for hyp in hypers:
 		model = train_model(model, hyp, this_run_id, log_run)
 		do_prediction(model, hyp, this_run_id, log_run)
 	log_run.save(this_run_id + '.log')
+	perflog.save("training_performance.csv", append = True)
 
 debug_log.save("training_debug.log")
-perflog.save("training_performance.log")
 
 
 
