@@ -173,8 +173,12 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	cm.print_tables()
 	#cm.save(this_run_id + '.res', content='metrics')
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
-	val_acc = cm.metrics['validation-set']['f1_score']
-	perflog.log(val_acc, logname=this_run_id, aslist=False)
+	perflog.write("{}\t{}\t{}".format(
+		this_run_id,
+		cm.metrics['validation-set']['accuracy'],
+		cm.metrics['validation-set']['f1_score']
+		), newline=True
+	)
 
 ################################################################################
 
@@ -188,6 +192,8 @@ arghandler.consume_flags()
 run_count = 1
 debug_log = Logger()
 perflog = Logger()
+perflog.write("Run id{0:}Validation acc{0:}Validation F1{0:}"
+	.format("\t"), newline=True)
 
 # reverse dictionary
 with open( rev_vocabulary_path, 'r', encoding='utf8' ) as rev_vocab_file:
@@ -243,10 +249,9 @@ for hyp in hypers:
 		model = train_model(model, hyp, this_run_id, log_run)
 		do_prediction(model, hyp, this_run_id, log_run)
 	log_run.save(this_run_id + '.log')
-	perflog.save("training_performance.log")
+	perflog.save("training_performance.csv", append = True)
 
 debug_log.save("training_debug.log")
-perflog.save("training_performance.log")
 
 
 

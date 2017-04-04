@@ -270,7 +270,7 @@ class Logger:
 		if newline:
 			self.freetext += '\n'
 
-	def save(self, file_name = None, directory="logs"):
+	def save(self, file_name = None, directory="logs", append=False, log_name = None):
 		"""
 		Save the logs to a JSON-file. Freetext is saved to a separate file 
 		  with 'freetext_' prepended to the filename
@@ -285,17 +285,28 @@ class Logger:
 			os.makedirs(directory)
 		file_path = os.path.join(directory, file_name)
 
-		content = json.dumps(
-			self.logs, 
-			ensure_ascii=False, 
-			indent=4, 
-			separators=( ',',': '))
-		with open(file_path, 'w', encoding='utf8') as out_file:
-			out_file.write(content)
+		open_for = 'a' if append else 'w'
+
+		if log_name == None:
+			logs = self.logs
+		else:
+			logs = self.logs[log_name]
+
+		if len(logs) > 0:
+			content = json.dumps(
+				logs, 
+				ensure_ascii=False, 
+				indent=4, 
+				separators=( ',',': '))
+		else:
+			content = ''
+
+		with open(file_path, open_for, encoding='utf8') as out_file:
+			out_file.write(content + "\n")
 
 		if self.freetext != "":
-			file_path = os.path.join(directory, "text_" + file_name)
-			with open(file_path, 'w', encoding='utf8') as out_file:
+			#file_path = os.path.join(directory, file_name)
+			with open(file_path, 'a', encoding='utf8') as out_file:
 				out_file.write(self.freetext)
 
 		# Used for debugging the logger
