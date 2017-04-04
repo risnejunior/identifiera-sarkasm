@@ -9,6 +9,7 @@ import os
 import pickle
 import json
 from sys import getsizeof
+import sys
 
 import numpy as np
 import nltk
@@ -36,6 +37,9 @@ logger = common_funs.Logger()
 #t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
 t_table = dict( ( ord(char), None) for char in ['.','_'] ) #translation tabler  for puctuation
 
+
+
+print ("\n".join(sys.argv[1:]))
 #### functions ###############################################################################
 
 

@@ -37,7 +37,7 @@ class Hyper:
 		self.__dict__.update(new_attribs)
 		#self.update_args()
 
-	def update_args(self):
+	def _update_args(self):
 		for name, valstruct in self.gens.items():
 			for valname in valstruct.keys():
 				setattr(self.__dict__[name], valname, next(self.gens[name][valname]))
@@ -59,7 +59,7 @@ class Hyper:
 		return self
 
 	def __next__(self):
-		self.update_args()
+		self._update_args()
 		return self
 
 class Struct:
@@ -98,6 +98,9 @@ class MinMax():
 			return (self.minval)
 		elif which == 'max':
 			return (self.maxval)
+		else:
+			raise ValueError("illegal parameter value")
+
 
 
 
@@ -269,10 +272,10 @@ class Binary_confusion_matrix:
 			"fp": fp,
 			"tp": tp,
 			"tn": tn,
-			"accuracy": round(accuracy, 2),
-			"precision": round(precision, 2),
-			"recall": round(recall, 2),
-			"f1_score": round(f1_score, 2)
+			"accuracy": round(accuracy, 3),
+			"precision": round(precision, 3),
+			"recall": round(recall, 3),
+			"f1_score": round(f1_score, 3)
 		}
 
 		self.metrics[name] = metrics

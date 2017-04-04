@@ -151,7 +151,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 
 ################################################################################
 
-run_count = 5
+run_count = 20
 debug_log = Logger()
 perflog = Logger()
 
@@ -183,10 +183,10 @@ if print_debug:
 
 # 'sönderhaxad' class that generates random hyperparamters in the range provided
 hypers = Hyper(run_count, 
-	lstm = {'dropout': (0.4, 0.8)},
-	middle= {'weight_decay': (0.01, 0.03)},
-	dropout = {'dropout': (0.4, 0.8)},
-	regression = {'learning_rate': (0.0005, 0.0015)},
+	lstm = {'dropout': (0.3, 0.6)},
+	middle= {'weight_decay': (0.015, 0.04)},
+	dropout = {'dropout': (0.3, 0.6)},
+	regression = {'learning_rate': (0.0003, 0.0012)},
 	output = {'weight_decay': (0.01, 0.03)},
 	fit = {}
 )

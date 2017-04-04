@@ -30,7 +30,7 @@ use_logger = True
 #used in training
 padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
 dropout = 0.5
-epochs = 1
+epochs = 12
 batch_size = 720
 max_sequence = 45 # words to include from sample, smaller samples will be padded
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
