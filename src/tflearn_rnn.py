@@ -83,13 +83,13 @@ class EarlyStoppingMonitor():
 			self._buff.append(["Stopped due to loss average"])
 			raise EarlyStoppingError("Early stopping due to loss average")
 		else:
-			m = "Loss delta to limit: {}, continuing...".format(avg_limit-val_loss)
+			m = "Loss delta to limit: {}, continuing...".format(round(avg_limit-val_loss,3))
 			self._buff.append([m])
 			self.losses.append(val_loss)
 		
 		self._buff.flush()
 
-def _arg_callback_pf(file_name):
+def _arg_callback_in(file_name):
 	"""
 		Save preprocessed samples under a different file name
 	"""
@@ -103,14 +103,14 @@ def build_network(hyp):
 	net = tflearn.embedding(net, input_dim=vocabulary_size,
 							     output_dim=embedding_size,
 							     name="embedding",
-							     restore=False)
+							     restore=True)
 
 	net = tflearn.lstm(net,
 					   64,
 					   dropout=hyp.lstm.dropout,
 					   dynamic=True,
 					   name="lstm",
-					   restore=False)
+					   restore=True)
 
 	"""
 	net = bidirectional_rnn(net,
@@ -124,7 +124,7 @@ def build_network(hyp):
 								  regularizer='L2',
 								  weight_decay=hyp.middle.weight_decay,
 								  name="middle",
-								  restore=False)
+								  restore=True)
 
 	net = tflearn.dropout(net, hyp.dropout.dropout, name="dropout")
 	net = tflearn.fully_connected(net,
@@ -216,42 +216,39 @@ def do_prediction(model, hyp, this_run_id, log_run):
 
 ################################################################################
 
+print_debug = True
 # Handles command arguments, usefull for debugging 
 # usage: tflearn_rnn.py --pf debug_processed.pickle
 #  will get samples from debug_processed.pickle
 arghandler = Arg_handler()
-arghandler.register_flag('pf', _arg_callback_pf, ['processed-file'], "Which file to take samples from")
+arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from")
 arghandler.consume_flags()
 
 run_count = 2
 debug_log = Logger()
 perflog = FileBackedCSVBuffer(
-	"training_performance.csv", "logs", header=['Run id', 'Val acc', 'Val f1'])
-
-
-# reverse dictionary
-with open( rev_vocabulary_path, 'r', encoding='utf8' ) as rev_vocab_file:
-	rev_vocabulary = json.load( rev_vocab_file )
-
-# embeddings
-embeddings = []
-with open(embeddings_path, 'r', encoding='utf8', newline='') as in_file:
-	csv_r = csv.reader(in_file, delimiter=',')
-	for row in csv_r:
-		embeddings.append(row)
+	"training_performance.csv",
+	"logs",
+	header=['Run id', 'Val acc', 'Val f1'])
 
 # processed samples
 with open(samples_path, 'rb') as handle:
-    ps = pickle.load( handle )
+    pd = pickle.load( handle )
+
+ps = pd.dataset
+max_sequence = pd.max_sequence
+vocabulary_size = pd.vocab_size
+embedding_size = pd.emb_size
+embeddings = pd.embeddings
 
 # debug print tweets
-if print_debug:
-	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):
+if print_debug:	
+	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):		
 		ispos = np.array_equal(s_y, pos_label)
 		label = "Positive (Sarcastic)" if ispos else "Negative (not sarcastic)"
 		logstring = "Sample id: {}, {}: {:<5}".format(s_id, label, "\n")
-		logstring += " ".join( reverse_lookup(s_x, rev_vocabulary, ascii_console ))
-		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 5, step = 2500)
+		logstring += " ".join( reverse_lookup(s_x, pd.rev_vocab, ascii_console ))
+		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 10, step = 2500)
 	print("\nLogged sample values:\n")
 	debug_log.print_log(logname="reverse_lookup")
 	print('', end='\n\n')
@@ -267,7 +264,7 @@ hypers = Hyper(run_count,
 	output = {'weight_decay': (0.01, 0.03)}
 )
 
-# training loop, every llop
+# training loop, every loop trains a network with different hyperparameters
 for hyp in hypers:
 	log_run = Logger()
 	this_run_id = common_funs.generate_name()

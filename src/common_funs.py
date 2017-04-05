@@ -58,10 +58,16 @@ class FileBackedCSVBuffer:
 			self._buffer.clear()
 	
 	def append(self, cols):
-		last = self._buffer.pop()
-		cols = self._delimiter + self._delimiter.join([str(col) for col in cols])
 
-		self._buffer.append( last + cols)
+		#can't append to empty buffer, write instead
+		if self._buffer:
+			last = self._buffer.pop() + self._delimiter
+			cols = self._delimiter.join([str(col) for col in cols])
+			self._buffer.append( last + cols)
+		else:
+			self.write(cols)
+
+		
 
 				
 
@@ -278,7 +284,9 @@ class Logger:
 		Logger.enable = enable
 		if not enable:
 			self.write = self.log = self.save = self.print_log = self.do_nothing
-	
+		else:
+			atexit.register(self.save)
+
 	def do_nothing(*args, **kwargs):
 		pass
 
@@ -340,8 +348,11 @@ class Logger:
 		"""
 
 		if file_name is None:
-			caller = inspect.stack()[1][1]
-			#caller = inspect.getmodule(frame[0])
+			callstack = inspect.stack()
+			if len(callstack) < 2:
+				caller = callstack[0][1]
+			else:
+				caller = inspect.stack()[1][1]				
 			file_name = str(os.path.basename(caller)) + ".log"
 
 		if not (os.path.isdir(directory)):
@@ -651,7 +662,7 @@ class Working_animation:
 def reverse_lookup( index_vector, rev_vocabulary, ascii_console=False ):
 	text = []
 	for i in index_vector:
-		word = rev_vocabulary[str(i)]
+		word = rev_vocabulary[i]
 		if ascii_console: word = word.encode('unicode-escape')
 		text.append( word )
 	return text
