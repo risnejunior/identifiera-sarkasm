@@ -19,16 +19,11 @@ from common_funs import Logger
 from common_funs import reverse_lookup
 from common_funs import Hyper
 from common_funs import Arg_handler
+from common_funs import FileBackedCSVBuffer
 from settings import *
 
-def _arg_callback_pfn(file_name):
-	"""
-		Save preprocessed samples under a different file name
-	"""
-	global samples_path
-	samples_path = os.path.join(rel_data_path, file_name)
-	print()
-	print("Using processed samples from: {}".format(samples_path))
+class EarlyStoppingError(StopIteration):
+	pass
 
 class MonitorCallback(tflearn.callbacks.Callback):
     def __init__(self, api):
@@ -47,22 +42,61 @@ class EarlyStoppingMonitor():
 	Monitors the on_epoch_end callback and checks if validation loss is going up.
 	If the validation loss gets worse over as many epochs as given by
 	  maxlosingstreak, then it will abort the training.
+
+	Keyword Arguments:
+	avgOverNrEpochs -- how many epochs to average over
+	avgLimitPercent -- percentage of the average that sets the limit
 	"""
 
-	def __init__(self, maxlosingstreak = 2):
-		self.maxlosingstreak = maxlosingstreak
-		self.streak = 0
-		self.lastloss = 0
+	def __init__(self, avgOverNrEpochs = 3, avgLimitPercent = 1.1):
+		self.epoch = 0
+		self.losses = []
+		self.avgOverNrEpochs = avgOverNrEpochs
+		self.avgLimitPercent = avgLimitPercent
+		self._buff = FileBackedCSVBuffer(
+			filename='earlystopping.csv',
+			directory='logs', 
+			header=['epoch', 'val loss', 'avg val loss', 'loss limit', 'status'],
+			clearFile=True)
 
 	def send(self, state):
-		if state['val_loss'] > self.lastloss:
-			self.streak += 1
-			self.lastloss = state['val_loss']
-			if self.streak >= self.maxlosingstreak:
-				print("*" * 10)
-				print("Early stopping")
-				print("*" * 10)
-				raise StopIteration
+		
+		self.epoch += 1
+
+		if state['val_loss']:
+			val_loss = state['val_loss']
+			val_loss = round(val_loss, 3)
+		else:
+			val_loss = 1
+
+		if len(self.losses) < self.avgOverNrEpochs:
+			avg_loss = val_loss
+		else:
+			avg_loss = sum(self.losses[-self.avgOverNrEpochs:]) / self.avgOverNrEpochs
+			avg_loss = round(avg_loss, 3)
+
+		avg_limit = self.avgLimitPercent * avg_loss
+
+		self._buff.write([self.epoch, val_loss, avg_loss, avg_limit])
+		
+		if val_loss > avg_limit:
+			self._buff.append(["Stopped due to loss average"])
+			raise EarlyStoppingError("Early stopping due to loss average")
+		else:
+			m = "Loss delta to limit: {}, continuing...".format(avg_limit-val_loss)
+			self._buff.append([m])
+			self.losses.append(val_loss)
+		
+		self._buff.flush()
+
+def _arg_callback_pf(file_name):
+	"""
+		Save preprocessed samples under a different file name
+	"""
+	global samples_path
+	samples_path = os.path.join(rel_data_path, file_name)
+	print()
+	print("Using processed samples from: {}".format(samples_path))
 
 def build_network(hyp):
 	net = tflearn.input_data([None, max_sequence], dtype=tf.float32) 
@@ -133,12 +167,12 @@ def create_model(net, hyp, this_run_id, log_run):
 		os.makedirs(models_path)
 
 	model_file_path = os.path.join(models_path,this_run_id + ".tfl")
-	#model.save(model_file_path)
+	model.save(model_file_path)
 
 	return model
 
 def train_model(model, hyp, this_run_id, log_run):
-	api = EarlyStoppingMonitor(2)
+	api = EarlyStoppingMonitor(avgOverNrEpochs = 3, avgLimitPercent = 1.05)
 	monitorCallback = MonitorCallback(api)
 
 	model.fit(X_inputs=ps.train.xs, 
@@ -173,28 +207,28 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	cm.print_tables()
 	#cm.save(this_run_id + '.res', content='metrics')
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
-	perflog.write("{}\t{}\t{}".format(
+	perflog.write([
 		this_run_id,
 		cm.metrics['validation-set']['accuracy'],
 		cm.metrics['validation-set']['f1_score']
-		), newline=True
+		]
 	)
 
 ################################################################################
 
 
 # Handles command arguments, usefull for debugging 
-arghandler = Arg_handler(sys.argv[1:])
-# usage: tflearn_rnn.py --pfn debug_processed.pickle
+# usage: tflearn_rnn.py --pf debug_processed.pickle
 #  will get samples from debug_processed.pickle
-arghandler.register_flag('pfn', _arg_callback_pfn, ['processed-filename'])
+arghandler = Arg_handler()
+arghandler.register_flag('pf', _arg_callback_pf, ['processed-file'], "Which file to take samples from")
 arghandler.consume_flags()
 
-run_count = 1
+run_count = 2
 debug_log = Logger()
-perflog = Logger()
-perflog.write("Run id{0:}Validation acc{0:}Validation F1{0:}"
-	.format("\t"), newline=True)
+perflog = FileBackedCSVBuffer(
+	"training_performance.csv", "logs", header=['Run id', 'Val acc', 'Val f1'])
+
 
 # reverse dictionary
 with open( rev_vocabulary_path, 'r', encoding='utf8' ) as rev_vocab_file:
@@ -226,15 +260,15 @@ if print_debug:
 
 # 'sönderhaxad' class that generates random hyperparamters in the range provided
 hypers = Hyper(run_count, 
-	lstm = {'dropout': (0.3, 0.6)},
-	middle= {'weight_decay': (0.015, 0.04)},
-	dropout = {'dropout': (0.3, 0.6)},
-	regression = {'learning_rate': (0.0003, 0.0012)},
-	output = {'weight_decay': (0.01, 0.03)},
+	lstm = {'dropout': (1.0, 1.0)},
+	middle= {'weight_decay': (0.0, 0.0)},
+	dropout = {'dropout': (1.0, 1.0)},
+	regression = {'learning_rate': (0.01, 0.01)},
+	output = {'weight_decay': (0.0, 0.0)},
 	fit = {}
 )
 
-# training loop
+# training loop, every llop
 for hyp in hypers:
 	log_run = Logger()
 	this_run_id = common_funs.generate_name()
@@ -245,21 +279,22 @@ for hyp in hypers:
 	with tf.Graph().as_default(), tf.Session() as sess:
 		sess.run(tf.initialize_all_variables())
 		tflearn.config.init_training_mode()
+		stop_reason = ["Other error"]
 
-		net = build_network(hyp)
-		model = create_model(net, hyp, this_run_id, log_run)
-		model = train_model(model, hyp, this_run_id, log_run)
-		do_prediction(model, hyp, this_run_id, log_run)
+		try:
+			net = build_network(hyp)
+			model = create_model(net, hyp, this_run_id, log_run)
+			model = train_model(model, hyp, this_run_id, log_run)			
+		except EarlyStoppingError as e:
+			print(e)
+			stop_reason = ["Stopping due to early stopping"]
+		else:
+			stop_reason = ["Stopping due to epoch limit"]			
+		finally:
+			do_prediction(model, hyp, this_run_id, log_run)
+			perflog.append(stop_reason)			
+			perflog.flush()
+		
 	log_run.save(this_run_id + '.log')
-	perflog.save("training_performance.csv", append = True)
-
+	
 debug_log.save("training_debug.log")
-
-
-
-
-
-
-
-
-

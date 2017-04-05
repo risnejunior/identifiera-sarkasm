@@ -45,9 +45,6 @@ logger = common_funs.Logger()
 #t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
 t_table = dict( ( ord(char), None) for char in ['.','_'] ) #translation tabler  for puctuation
 
-
-
-print ("\n".join(sys.argv[1:]))
 #### functions ###############################################################################
 
 def _arg_callback_ms():
@@ -55,11 +52,11 @@ def _arg_callback_ms():
 		Create a minisample for debugging; will run quickly
 	"""
 	global sample_count, debug_maxloops
-	sample_count = 2000
-	debug_maxloops = 20000
+	sample_count = 1000
+	debug_maxloops = 10000
 	print("using mini-sample")
 
-def _arg_callback_pfn(file_name):
+def _arg_callback_pf(file_name):
 	"""
 		Save preprocessed samples under a different file name
 	"""
@@ -253,9 +250,9 @@ def fit_embeddings(vocabulary, source_path):
 ###########################################################################################
 
 debug_maxloops = None
-arghandler = Arg_handler(sys.argv[1:])
-arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'])
-arghandler.register_flag('pfn', _arg_callback_pfn, ['processed-filename'])
+arghandler = Arg_handler()
+arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run with few samples")
+arghandler.register_flag('pf', _arg_callback_pf, ['processed-file'], "name of output sample file")
 arghandler.consume_flags()
 
 

@@ -31,7 +31,7 @@ max_sequence = 45 # words to include from sample, smaller samples will be padded
 
 #used in training
 epochs = 1
-batch_size = 720
+batch_size = 300
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 # debug commands, will mess up the training: ##########################
@@ -69,7 +69,7 @@ dataset["pos_source"] = os.path.join(rel_data_path, dataset["pos_source"])
 path_name_neg = os.path.join(rel_data_path, "neg")
 path_name_pos = os.path.join(rel_data_path, "pos") 
 samples_path = os.path.join(rel_data_path, "processed.pickle")
-debug_samples_path = os.path.join(rel_data_path, "processed.json")
+debug_samples_path = samples_path + ".debug"
 vocabulary_path = os.path.join(rel_data_path, "vocabulary.json") 
 rev_vocabulary_path = os.path.join(rel_data_path, "rev_vocabulary.json")
 embeddings_path = os.path.join(rel_data_path, 'embeddings.csv')
