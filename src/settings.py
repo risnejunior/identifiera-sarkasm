@@ -52,7 +52,7 @@ pretrained_model = False # If true, create_model will initialize the model speci
 models_path = os.path.join("models")
 if not (os.path.isdir(models_path)):
 	os.makedirs(models_path)
-pretrained_path = os.path.join(models_path, '6P7LVT_GLORIOUS_BATTERY' + ".tfl")
+pretrained_path = os.path.join(models_path, '6P8GFZ_FEVERISH_FOXBAT' + ".tfl")
 
 
 # what data set to use

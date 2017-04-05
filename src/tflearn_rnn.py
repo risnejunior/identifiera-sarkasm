@@ -99,18 +99,19 @@ def _arg_callback_pf(file_name):
 	print("Using processed samples from: {}".format(samples_path))
 
 def build_network(hyp):
+	restore = True
 	net = tflearn.input_data([None, max_sequence], dtype=tf.float32)
 	net = tflearn.embedding(net, input_dim=vocabulary_size,
 							     output_dim=embedding_size,
 							     name="embedding",
-							     restore=False)
+							     restore=restore)
 
 	net = tflearn.lstm(net,
 					   64,
 					   dropout=hyp.lstm.dropout,
 					   dynamic=True,
 					   name="lstm",
-					   restore=False)
+					   restore=restore)
 
 	"""
 	net = bidirectional_rnn(net,
@@ -124,7 +125,7 @@ def build_network(hyp):
 								  regularizer='L2',
 								  weight_decay=hyp.middle.weight_decay,
 								  name="middle",
-								  restore=False)
+								  restore=restore)
 
 	net = tflearn.dropout(net, hyp.dropout.dropout, name="dropout")
 	net = tflearn.fully_connected(net,
@@ -133,7 +134,7 @@ def build_network(hyp):
 								  regularizer='L2',
 								  weight_decay=hyp.output.weight_decay,
 								  name="output",
-								  restore=True)
+								  restore=restore)
 	net = tflearn.regression(net,
 		                     optimizer='adam',
 		                     learning_rate=hyp.regression.learning_rate,
@@ -231,7 +232,7 @@ arghandler = Arg_handler()
 arghandler.register_flag('pf', _arg_callback_pf, ['processed-file'], "Which file to take samples from")
 arghandler.consume_flags()
 
-run_count = 2
+run_count = 1
 debug_log = Logger()
 perflog = FileBackedCSVBuffer(
 	"training_performance.csv", "logs", header=['Run id', 'Val acc', 'Val f1'])
