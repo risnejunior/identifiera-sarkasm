@@ -5,8 +5,136 @@ import json
 import inspect
 import random
 from random import triangular as rt
+import atexit
+import sys
 
 import numpy as np
+
+class FileBackedCSVBuffer: 
+
+	def __init__(self, filename, directory = "", header = [], delimiter='\t', clearFile=False):		
+		self._header = ["<" + head + ">" for head in header]
+		self._filebacked = []
+		self._buffer = []
+		self._delimiter = delimiter
+		self._file_path = os.path.join(directory, filename)
+
+		if directory and not (os.path.isdir(directory)):
+			os.makedirs(directory)
+
+		if os.path.isfile(self._file_path):
+			with open(self._file_path, 'r', encoding='utf8') as file:
+				self._filebacked = file.readlines()
+			
+		self._rewrite(clearFile)
+		atexit.register(self.flush)
+		
+	def write(self, cols):
+		cols = [str(col) for col in cols]
+		self._buffer.append(self._delimiter.join(cols))
+
+	def flush(self):
+		with open(self._file_path, 'a', encoding='utf8') as out_file:
+			self._buffer = [line + "\n" for line in self._buffer]
+			out_file.writelines(self._buffer)
+			self._filebacked.extend(self._buffer)
+			self._buffer.clear()
+
+	def _rewrite(self, clearFile):
+		with open(self._file_path, 'w', encoding='utf8') as file:
+			if clearFile:
+				self._filebacked.clear()
+			self._buffer = [line + "\n" for line in self._buffer]
+			self._filebacked.extend(self._buffer)
+			
+			if self._header:
+				header = self._delimiter.join(self._header) + "\n"
+				if not self._filebacked:
+					self._filebacked.append(header)
+				else:
+					self._filebacked[0] = header		
+
+			file.writelines(self._filebacked)
+			self._buffer.clear()
+	
+	def append(self, cols):
+		last = self._buffer.pop()
+		cols = self._delimiter + self._delimiter.join([str(col) for col in cols])
+
+		self._buffer.append( last + cols)
+
+				
+
+class Arg_handler():
+	"""
+		class for handling command line arguments.
+		Regsiter a flag and it's corresponding callback function.
+
+	"""
+
+	def __init__(self):
+		self._args = sys.argv[1:]
+		self._flags = {}
+		self._aliases = {}
+		self.register_flag('?', self._printHelp, ['help'], 'Display help')
+
+	def register_flag(self, flag, callback, aliases = [], helptext = ""):
+		self._flags[flag] = (callback, helptext)
+		self._aliases[flag] = flag
+		for alias in aliases:
+			self._aliases[alias] = flag
+				
+		return self
+
+	def consume_flags(self):
+		params = []
+		for arg in reversed(self._args):
+			if arg[0:2] == '--':
+				#print("isflag")
+				arg = arg[2:]
+				if arg not in self._aliases:
+					print("Flag not registered: {}".format(arg))
+					quit()
+				else:
+					flag = self._aliases[arg]
+					callback, _ = self._flags[flag]					
+					argspecs = inspect.getargspec(callback)						
+					all_fpc = len(argspecs.args) if hasattr(argspecs,'args') else 0
+					def_fpc = len(argspecs.default) if hasattr(argspecs,'default') else 0
+					if flag == '?': 
+						all_fpc = 0 #print_help takes self, ignore that
+					#print("params: {}, cb args {}, default: {}".format(len(params), all_fpc, def_fpc))
+					if (all_fpc >= len(params) >= all_fpc - def_fpc):
+						#print("correct params count")					
+						callback(*params)
+					else:
+						print("Wrong number of parmaters for flag: {}".format(arg))
+						quit()
+					del params[:]
+			else:
+				params.insert(0, arg)
+
+		if len(params) > 0:
+			print("Arguments passed but not consumed:")
+			print(params)
+			quit()
+
+	def _printHelp(self, alias = None):
+		print('Flags registered:')
+		for flag, cb in self._flags.items():			
+			_, helptext = self._flags[flag]
+			items = filter(lambda v: v[1] == flag, self._aliases.items())
+			aliases = [k for k,v in items if k != flag]
+			print('Flag: [--' + flag + ']', end=" ")
+			print(',aliases: ' + str(aliases), end=" ")
+			print(', description: ' + helptext)
+		quit()
+
+class Stack(list):
+	def push(self, item):
+		self.append(item)
+	def isEmpty(self):
+		return not self
 
 class DebugLoop:
 	"""
@@ -57,6 +185,7 @@ class Hyper:
 		for name, valdict in kwargs.items():
 			self.gens[name] = {}			
 			structdict = {}
+
 			for valname, (minval, maxval) in valdict.items():				
 				self.gens[name][valname] = self.generate(minval, maxval, steps)
 				structdict[valname] = 0.0 
@@ -65,7 +194,7 @@ class Hyper:
 		self.__dict__.update(new_attribs)
 		#self.update_args()
 
-	def update_args(self):
+	def _update_args(self):
 		for name, valstruct in self.gens.items():
 			for valname in valstruct.keys():
 				setattr(self.__dict__[name], valname, next(self.gens[name][valname]))
@@ -87,7 +216,7 @@ class Hyper:
 		return self
 
 	def __next__(self):
-		self.update_args()
+		self._update_args()
 		return self
 
 class Struct:
@@ -126,6 +255,9 @@ class MinMax():
 			return (self.minval)
 		elif which == 'max':
 			return (self.maxval)
+		else:
+			raise ValueError("illegal parameter value")
+
 
 
 
@@ -201,16 +333,7 @@ class Logger:
 					 raise StopIteration
 				yield "{}: {}".format(index, text)
 
-	def write(self, text, newline=True):
-		""" 
-		Log free text. Evrything saved to the 'freetext' log.
-		"""
-		
-		self.freetext += text
-		if newline:
-			self.freetext += '\n'
-
-	def save(self, file_name = None, directory="logs"):
+	def save(self, file_name = None, directory="logs", append=False, log_name = None):
 		"""
 		Save the logs to a JSON-file. Freetext is saved to a separate file 
 		  with 'freetext_' prepended to the filename
@@ -225,18 +348,21 @@ class Logger:
 			os.makedirs(directory)
 		file_path = os.path.join(directory, file_name)
 
+		open_for = 'a' if append else 'w'
+
+		if log_name == None:
+			logs = self.logs
+		else:
+			logs = self.logs[log_name]
+
 		content = json.dumps(
-			self.logs, 
+			logs, 
 			ensure_ascii=False, 
 			indent=4, 
 			separators=( ',',': '))
-		with open(file_path, 'w', encoding='utf8') as out_file:
-			out_file.write(content)
 
-		if self.freetext != "":
-			file_path = os.path.join(directory, "text_" + file_name)
-			with open(file_path, 'w', encoding='utf8') as out_file:
-				out_file.write(self.freetext)
+		with open(file_path, open_for, encoding='utf8') as out_file:
+			out_file.write(content)
 
 		# Used for debugging the logger
 		if Logger.save_config:
@@ -297,10 +423,10 @@ class Binary_confusion_matrix:
 			"fp": fp,
 			"tp": tp,
 			"tn": tn,
-			"accuracy": round(accuracy, 2),
-			"precision": round(precision, 2),
-			"recall": round(recall, 2),
-			"f1_score": round(f1_score, 2)
+			"accuracy": round(accuracy, 3),
+			"precision": round(precision, 3),
+			"recall": round(recall, 3),
+			"f1_score": round(f1_score, 3)
 		}
 
 		self.metrics[name] = metrics
@@ -520,7 +646,7 @@ class Working_animation:
 
 	def done(self, message = None):
 		message = self.message if message == None else message
-		print(message + ": [Done!]" + ' ' * 10)
+		print(message + ": [Done!]" + ' ' * (self.init_len + 10))
 
 def reverse_lookup( index_vector, rev_vocabulary, ascii_console=False ):
 	text = []

@@ -9,6 +9,7 @@ import os
 import pickle
 import json
 from sys import getsizeof
+import sys
 import importlib
 import csv
 from random import triangular as rt
@@ -25,9 +26,9 @@ from common_funs import MinMax
 from common_funs import Working_animation
 from common_funs import Progress_bar
 from common_funs import DebugLoop
+from common_funs import Arg_handler
 import settings
 from settings import *
-
 
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
 tknzr = TweetTokenizer(reduce_len=True, preserve_case=False)
@@ -46,6 +47,23 @@ t_table = dict( ( ord(char), None) for char in ['.','_'] ) #translation tabler  
 
 #### functions ###############################################################################
 
+def _arg_callback_ms():
+	"""
+		Create a minisample for debugging; will run quickly
+	"""
+	global sample_count, debug_maxloops
+	sample_count = 1000
+	debug_maxloops = 10000
+	print("using mini-sample")
+
+def _arg_callback_pf(file_name):
+	"""
+		Save preprocessed samples under a different file name
+	"""
+	global samples_path, debug_samples_path
+	samples_path = os.path.join(rel_data_path, file_name)
+	debug_samples_path = os.path.join(rel_data_path, file_name + ".debug")
+	print("Saving processed samples to: {}".format(samples_path))
 
 def build_vocabulary( words, max_size ):	
 	vocab_instances = 0 									# vocabulary word instances in corpus
@@ -163,8 +181,7 @@ def _old_reshape_embeddings(vocabulary, embeddings_voc):
 
 	return embeddings
 
-def fit_embeddings(vocabulary, source_path):
-	debug_maxloops = None
+def fit_embeddings(vocabulary, source_path):	
 	debug_logger = Logger(enable = False)
 	
 	found = notfound = masks = randvecs = nulls = 0
@@ -232,8 +249,12 @@ def fit_embeddings(vocabulary, source_path):
 
 ###########################################################################################
 
-#neg_label = settings.neg_label
-#pos_label = settings.pos_label
+debug_maxloops = None
+arghandler = Arg_handler()
+arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run with few samples")
+arghandler.register_flag('pf', _arg_callback_pf, ['processed-file'], "name of output sample file")
+arghandler.consume_flags()
+
 
 file_list_normal = os.listdir(path_name_neg)[:sample_count]
 file_list_sarcastic = os.listdir(path_name_pos)[:sample_count]
@@ -251,7 +272,7 @@ tokenize_helper(path_name_pos,file_list_sarcastic, samples, all_words, True)
 # build vocabulary
 print("Building vocabulary..")
 vocab_instances, vocabulary, rev_vocabulary = \
-	build_vocabulary(all_words, settings.vocabulary_size)
+	build_vocabulary(all_words, vocabulary_size)
 
 #load and fit embeddings to vocabulary
 if settings.use_embeddings:
@@ -278,7 +299,7 @@ print("3-sigma: " + str(math.ceil( seq_mean + 3 * seq_std) ) )
 print("Words in corpus: {:0}, Unique words in corpus: {:1}" \
 	.format( len(all_words), len(vocabulary) ) )
 print("Vocabulary size: {:0}, Vocabulary coverage of corpus {:1.0%}" \
-	.format(settings.vocabulary_size, vocab_instances / len(all_words) ) ) 
+	.format(vocabulary_size, vocab_instances / len(all_words) ) ) 
 print()
 
 # make index vectors
@@ -291,7 +312,7 @@ if settings.print_debug:
 	all_samples= json.dumps(
 		samples, ensure_ascii=False, indent=j_indent, separators=( ',',': ')
 	)
-	with open(settings.debug_samples_path, 'w', encoding='utf8') as out_file:
+	with open(debug_samples_path, 'w', encoding='utf8') as out_file:
 		out_file.write(all_samples)	
 
 
@@ -326,7 +347,7 @@ for key, val in samples.items():
 	elif val['sarcastic'] == True:
 		labels.append( pos_label )
 		if settings.add_snitch: val['int_vector'].extend( 
-			[settings.vocabulary_size-1] )
+			[vocabulary_size-1] )
 	else:
 		labels.append( neg_label )
 
@@ -405,7 +426,7 @@ for setpart in ds:
 #save to json
 print ("Saving to disk..")
 
-with open(settings.samples_path, 'wb') as handle:
+with open(samples_path, 'wb') as handle:
     pickle.dump(ds, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 json_vocabulary= json.dumps(vocabulary, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
