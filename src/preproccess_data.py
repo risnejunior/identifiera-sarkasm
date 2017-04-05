@@ -46,12 +46,12 @@ def _arg_callback_nltk():
 	nltk_dowload = True
 	print("checking nltk")
 
-def _arg_callback_ms():
+def _arg_callback_ms(s_count=5000):
 	"""
 	Create a minisample for debugging; will run quickly
 	"""
 	global sample_count, embeddings_maxloop, vocabulary_size, embedding_size, max_sequence
-	sample_count = 5000
+	sample_count = int(s_count)
 	embeddings_maxloop = 10000
 	vocabulary_size = 5000
 	embedding_size = 25
@@ -257,7 +257,7 @@ save_debug = False
 
 arghandler = Arg_handler()
 arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run, with few samples")
-arghandler.register_flag('of', _arg_callback_pf, ['out-file', 'out'], "name of output file")
+arghandler.register_flag('of', _arg_callback_pf, ['out-file', 'out'], "name of output file. Args: <filename>")
 arghandler.register_flag('nltk', _arg_callback_nltk, [], "check for nltk, and download if missing")
 arghandler.register_flag('sd', _arg_callback_sd, ['save-debug'], "save .json debugging files")
 arghandler.consume_flags()
@@ -431,7 +431,7 @@ for setpart in ds:
 pd = ProcessedData(
 	ds, embeddings, vocabulary, rev_vocabulary, embedding_size, vocabulary_size, max_sequence)
 
-print ("Saving to disk..")
+print ("Saving to disk as: {}".format(samples_path))
 with open(samples_path, 'wb') as handle:
     pickle.dump(pd, handle, protocol=pickle.HIGHEST_PROTOCOL)
 

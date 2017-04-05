@@ -29,10 +29,16 @@ ascii_console = False #set to true if your console doesn't handle unicode
 use_logger = True
 
 #used in training
-training = True # If false, the modeled will not be trained. Useful for testing pretrained model
+network_name = 'little_pony'
+run_count = 1
 epochs = 1
 batch_size = 90
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
+
+#For loading and saving models
+save_the_model = False # If true, save the model to path specified in tflearn_rnn
+pretrained_model = False # If true, create_model will initialize the model specified in pretrained_path
+training = True # If false, the modeled will not be trained. Useful for testing pretrained model
 
 # debug commands, will mess up the training: ##########################
 random_labels = False # Used for debugging. If true will assign ranom labels (Ys) to samples.
@@ -42,10 +48,6 @@ random_data = False # sets random training data
 ##########################################################################
 
 allowed_emb_sizes = [25,50,100,200]
-
-#For loading and saving models
-save_the_model = True # If true, save the model to path specified in tflearn_rnn
-pretrained_model = False # If true, create_model will initialize the model specified in pretrained_path
 
 #Specify path to pretrained model, if any
 models_path = os.path.join("models")

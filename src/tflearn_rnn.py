@@ -21,6 +21,8 @@ from common_funs import Hyper
 from common_funs import Arg_handler
 from common_funs import FileBackedCSVBuffer
 from settings import *
+from networks import Networks
+from networks import NetworkNotFoundError
 
 class EarlyStoppingError(StopIteration):
 	pass
@@ -40,8 +42,8 @@ class MonitorCallback(tflearn.callbacks.Callback):
 class EarlyStoppingMonitor():
 	"""
 	Monitors the on_epoch_end callback and checks if validation loss is going up.
-	If the validation loss gets worse over as many epochs as given by
-	  maxlosingstreak, then it will abort the training.
+	If the average validation loss gets worse than the limit it throws an
+	  exception, later caught in the trining loop.
 
 	Keyword Arguments:
 	avgOverNrEpochs -- how many epochs to average over
@@ -89,6 +91,19 @@ class EarlyStoppingMonitor():
 		
 		self._buff.flush()
 
+def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
+	global epochs, run_count, batch_size, training
+	epochs = int(nr_epochs)
+	run_count = int(count)
+	batch_size = int(batchsize)
+	training = True
+	print("Training for, epochs: {}, runs:{}, batchsize: {}".format(nr_epochs, count, batchsize))
+
+def _arg_callback_net(name):
+	global network_name
+	network_name = name
+	print("Using network: {}".format(name))
+
 def _arg_callback_in(file_name):
 	"""
 		Save preprocessed samples under a different file name
@@ -98,47 +113,16 @@ def _arg_callback_in(file_name):
 	print()
 	print("Using processed samples from: {}".format(samples_path))
 
-def build_network(hyp):
-	restore = True
-	net = tflearn.input_data([None, max_sequence], dtype=tf.float32)
-	net = tflearn.embedding(net, input_dim=vocabulary_size,
-							     output_dim=embedding_size,
-							     name="embedding",
-							     restore=restore)
+def build_network(name, hyp, pd):
 
-	net = tflearn.lstm(net,
-					   64,
-					   dropout=hyp.lstm.dropout,
-					   dynamic=True,
-					   name="lstm",
-					   restore=restore)
+	params = {
+		'hyp': hypers,
+		'pd': pd,
+	}
 
-	"""
-	net = bidirectional_rnn(net,
-							BasicLSTMCell(96),
-							BasicLSTMCell(96),
-					        dynamic=True)
-	"""
-	net = tflearn.fully_connected(net,
-								  64,
-								  activation='sigmoid',
-								  regularizer='L2',
-								  weight_decay=hyp.middle.weight_decay,
-								  name="middle",
-								  restore=restore)
+	nets = Networks()
+	net = nets.get_network(name=name, params=params)
 
-	net = tflearn.dropout(net, hyp.dropout.dropout, name="dropout")
-	net = tflearn.fully_connected(net,
-								  2,
-								  activation='softmax',
-								  regularizer='L2',
-								  weight_decay=hyp.output.weight_decay,
-								  name="output",
-								  restore=restore)
-	net = tflearn.regression(net,
-		                     optimizer='adam',
-		                     learning_rate=hyp.regression.learning_rate,
-	                         loss='categorical_crossentropy')
 	return net
 
 def create_model(net, hyp, this_run_id, log_run):
@@ -159,9 +143,9 @@ def create_model(net, hyp, this_run_id, log_run):
 	
 	#set embeddings
 	if use_embeddings:
-		emb = np.array(embeddings[:vocabulary_size], dtype=np.float32)
+		emb = np.array(pd.embeddings[:pd.vocab_size], dtype=np.float32)
 	else:
-		emb = np.random.randn(vocabulary_size, embedding_size).astype(np.float32)
+		emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
 
 	new_emb_t = tf.convert_to_tensor(emb)
 	embeddings_tensor = tflearn.variables.get_layer_variables_by_name('embedding')[0]
@@ -218,6 +202,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
 	perflog.write([
 		this_run_id,
+		network_name,
 		cm.metrics['validation-set']['accuracy'],
 		cm.metrics['validation-set']['f1_score']
 		]
@@ -230,25 +215,21 @@ print_debug = True
 # usage: tflearn_rnn.py --pf debug_processed.pickle
 #  will get samples from debug_processed.pickle
 arghandler = Arg_handler()
-arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from")
+arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from. args: <filename>")
+arghandler.register_flag('net', _arg_callback_net, ['network'], "Which network to use. args: <network name>")
+arghandler.register_flag('train', _arg_callback_train, helptext = "Use settings for training. Args: <epochs> <run_count> <batch size>")
 arghandler.consume_flags()
 
-run_count = 1
 debug_log = Logger()
 perflog = FileBackedCSVBuffer(
 	"training_performance.csv",
 	"logs",
-	header=['Run id', 'Val acc', 'Val f1'])
+	header=['Run id', 'Network name', 'Val acc', 'Val f1', 'Status'])
 
-# processed samples
+# Load processed data from file
 with open(samples_path, 'rb') as handle:
     pd = pickle.load( handle )
-
-ps = pd.dataset
-max_sequence = pd.max_sequence
-vocabulary_size = pd.vocab_size
-embedding_size = pd.emb_size
-embeddings = pd.embeddings
+ps = pd.dataset #processed samples
 
 # debug print tweets
 if print_debug:	
@@ -273,12 +254,14 @@ hypers = Hyper(run_count,
 	output = {'weight_decay': (0.01, 0.03)}
 )
 
+
 # training loop, every loop trains a network with different hyperparameters
 for hyp in hypers:
 	log_run = Logger()
 	this_run_id = common_funs.generate_name()
 	log_run.log(hyp.get_hypers(), logname='hypers', aslist = False)
 	log_run.log(this_run_id, logname='run_id', aslist = False)
+	log_run.log(network_name, logname='network_name', aslist = False)
 
 	tf.reset_default_graph()
 	with tf.Graph().as_default(), tf.Session() as sess:
@@ -287,13 +270,13 @@ for hyp in hypers:
 		stop_reason = ["Other error"]
 
 		try:
-			net = build_network(hyp)
+			net = build_network(network_name, hyp, pd)
 			model = create_model(net, hyp, this_run_id, log_run)
 			if training:
-				model = train_model(model, hyp, this_run_id, log_run)			
+				model = train_model(model, hyp, this_run_id, log_run)		
 		except EarlyStoppingError as e:
 			print(e)
-			stop_reason = ["Stopping due to early stopping"]
+			stop_reason = ["Stopping due to early stopping"]	
 		else:
 			stop_reason = ["Stopping due to epoch limit"]			
 		finally:

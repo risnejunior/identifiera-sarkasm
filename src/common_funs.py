@@ -105,8 +105,8 @@ class Arg_handler():
 					flag = self._aliases[arg]
 					callback, _ = self._flags[flag]					
 					argspecs = inspect.getargspec(callback)						
-					all_fpc = len(argspecs.args) if hasattr(argspecs,'args') else 0
-					def_fpc = len(argspecs.default) if hasattr(argspecs,'default') else 0
+					all_fpc = len(argspecs.args) if argspecs.args else 0 #hasattr(argspecs,'args')
+					def_fpc = len(argspecs.defaults) if argspecs.defaults else 0 #hasattr(argspecs,'defaults')
 					if flag == '?': 
 						all_fpc = 0 #print_help takes self, ignore that
 					#print("params: {}, cb args {}, default: {}".format(len(params), all_fpc, def_fpc))
@@ -596,7 +596,7 @@ class Progress_bar:
 		self.i = iteration		
 		if (self.last_update + ( 1 / self.update_freq ) > time.time() ) and self.i < self.iter_to: 
 			return		
-		percent = ( self.i / self.iter_to ) 
+		percent = ( self.i / self.iter_to ) if self.iter_to != 0 else 1
 		#bar_len = min( math.floor( percent * self.bar_max_len ), self.bar_max_len)
 		bar_len = min( percent * self.bar_max_len , self.bar_max_len )
 		decpart = bar_len % 1
