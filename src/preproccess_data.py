@@ -31,6 +31,13 @@ from settings import *
 
 #### functions ###############################################################################
 
+def _arg_callback_scramble():
+	"""
+	Scramble the samples (tweets) to see if the network takes word order in account
+	"""
+	global scramble_samples
+	scramble_samples = True
+	print("scrambling samples..\n")
 def _arg_callback_sd():
 	"""
 	save json files with vocabulary, samples etc. for debugging
@@ -136,7 +143,10 @@ def make_index_vectors( samples, vocabulary ):
 				int_vector.append( vocabulary[word] )
 			else:
 				int_vector.append( 1 ) # 1 - used for masking samples
-				
+		
+		if scramble_samples:
+			random.shuffle(int_vector)
+
 		samples[key]['int_vector'] = int_vector
 
 def reverse_lookup( index_vector, rev_vocabulary ):
@@ -254,12 +264,14 @@ def fit_embeddings(vocabulary, source_path):
 embeddings_maxloop = None
 nltk_dowload = False
 save_debug = False
+scramble_samples = False
 
 arghandler = Arg_handler()
 arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run, with few samples")
 arghandler.register_flag('of', _arg_callback_pf, ['out-file', 'out'], "name of output file. Args: <filename>")
 arghandler.register_flag('nltk', _arg_callback_nltk, [], "check for nltk, and download if missing")
 arghandler.register_flag('sd', _arg_callback_sd, ['save-debug'], "save .json debugging files")
+arghandler.register_flag('scramble', _arg_callback_scramble, [], "scramble the samples (tweets)")
 arghandler.consume_flags()
 
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max

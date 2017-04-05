@@ -67,6 +67,14 @@ class FileBackedCSVBuffer:
 		else:
 			self.write(cols)
 
+	def replace(self, cols):
+
+		#can't replace empty buffer, just write
+		if self._buffer:
+			_ = self._buffer.pop()
+
+		self.write(cols)
+
 		
 
 				

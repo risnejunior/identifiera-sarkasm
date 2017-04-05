@@ -97,12 +97,12 @@ def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
 	run_count = int(count)
 	batch_size = int(batchsize)
 	training = True
-	print("Training for, epochs: {}, runs:{}, batchsize: {}".format(nr_epochs, count, batchsize))
+	print("<Training for, epochs: {}, runs:{}, batchsize: {}>".format(nr_epochs, count, batchsize))
 
 def _arg_callback_net(name):
 	global network_name
 	network_name = name
-	print("Using network: {}".format(name))
+	print("<Using network: {}>".format(name))
 
 def _arg_callback_in(file_name):
 	"""
@@ -110,8 +110,7 @@ def _arg_callback_in(file_name):
 	"""
 	global samples_path
 	samples_path = os.path.join(rel_data_path, file_name)
-	print()
-	print("Using processed samples from: {}".format(samples_path))
+	print("<Using processed samples from: {}>".format(samples_path))
 
 def build_network(name, hyp, pd):
 
@@ -159,6 +158,15 @@ def train_model(model, hyp, this_run_id, log_run):
 	api = EarlyStoppingMonitor(avgOverNrEpochs = 3, avgLimitPercent = 1.05)
 	monitorCallback = MonitorCallback(api)
 
+	perflog.write([
+		this_run_id,
+		network_name,
+		os.path.basename(samples_path),
+		'-',
+		'-',
+		'Starting training...',
+		]
+	)
 	model.fit(X_inputs=ps.train.xs,
 			  Y_targets=ps.train.ys,
 			  validation_set=(ps.valid.xs, ps.valid.ys),
@@ -200,9 +208,10 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	cm.print_tables()
 	#cm.save(this_run_id + '.res', content='metrics')
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
-	perflog.write([
+	perflog.replace([
 		this_run_id,
 		network_name,
+		os.path.basename(samples_path),
 		cm.metrics['validation-set']['accuracy'],
 		cm.metrics['validation-set']['f1_score']
 		]
@@ -224,7 +233,7 @@ debug_log = Logger()
 perflog = FileBackedCSVBuffer(
 	"training_performance.csv",
 	"logs",
-	header=['Run id', 'Network name', 'Val acc', 'Val f1', 'Status'])
+	header=['Run id', 'Network name', 'data file', 'Val acc', 'Val f1', 'Status'])
 
 # Load processed data from file
 with open(samples_path, 'rb') as handle:
@@ -248,10 +257,10 @@ if print_debug:
 
 hypers = Hyper(run_count,
 	lstm = {'dropout': (0.4, 0.8)},
-	middle= {'weight_decay': (0.01, 0.03)},
+	middle= {'weight_decay': (0.01, 0.06)},
 	dropout = {'dropout': (0.4, 0.8)},
 	regression = {'learning_rate': (0.0005, 0.0015)},
-	output = {'weight_decay': (0.01, 0.03)}
+	output = {'weight_decay': (0.01, 0.06)}
 )
 
 
