@@ -30,6 +30,7 @@ use_logger = True
 max_sequence = 45 # words to include from sample, smaller samples will be padded
 
 #used in training
+training = True # If false, the modeled will not be trained. Useful for testing pretrained model
 epochs = 1
 batch_size = 300
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
@@ -42,6 +43,17 @@ random_data = False # sets random training data
 ##########################################################################
 
 allowed_emb_sizes = [25,50,100,200]
+
+#For loading and saving models
+save_the_model = True # If true, save the model to path specified in tflearn_rnn
+pretrained_model = False # If true, create_model will initialize the model specified in pretrained_path
+
+#Specify path to pretrained model, if any
+models_path = os.path.join("models")
+if not (os.path.isdir(models_path)):
+	os.makedirs(models_path)
+pretrained_path = os.path.join(models_path, '6P7LVT_GLORIOUS_BATTERY' + ".tfl")
+
 
 # what data set to use
 datsets = {

@@ -149,6 +149,13 @@ def create_model(net, hyp, this_run_id, log_run):
 					    tensorboard_verbose=3,
 					    checkpoint_path=checkpoint_path)
 
+	#Load pretrained model
+	if pretrained_model:
+		print("Attempting to load model")
+		model.load(pretrained_path)
+		print("Successfully loaded model")
+		return model
+	
 	#set embeddings
 	if use_embeddings:
 		emb = np.array(embeddings[:vocabulary_size], dtype=np.float32)
@@ -180,12 +187,13 @@ def train_model(model, hyp, this_run_id, log_run):
 	          callbacks=monitorCallback)
 
 	# save model
-	models_path = os.path.join("models")
-	if not (os.path.isdir(models_path)):
-		os.makedirs(models_path)
+	if save_the_model:
+		models_path = os.path.join("models")
+		if not (os.path.isdir(models_path)):
+			os.makedirs(models_path)
 
-	model_file_path = os.path.join(models_path,this_run_id + ".tfl")
-	model.save(model_file_path)
+		model_file_path = os.path.join(models_path,this_run_id + ".tfl")
+		model.save(model_file_path)
 
 	return model
 
@@ -283,7 +291,8 @@ for hyp in hypers:
 		try:
 			net = build_network(hyp)
 			model = create_model(net, hyp, this_run_id, log_run)
-			model = train_model(model, hyp, this_run_id, log_run)			
+			if training:
+				model = train_model(model, hyp, this_run_id, log_run)			
 		except EarlyStoppingError as e:
 			print(e)
 			stop_reason = ["Stopping due to early stopping"]
