@@ -99,18 +99,19 @@ def _arg_callback_in(file_name):
 	print("Using processed samples from: {}".format(samples_path))
 
 def build_network(hyp):
+	restore = True
 	net = tflearn.input_data([None, max_sequence], dtype=tf.float32)
 	net = tflearn.embedding(net, input_dim=vocabulary_size,
 							     output_dim=embedding_size,
 							     name="embedding",
-							     restore=True)
+							     restore=restore)
 
 	net = tflearn.lstm(net,
 					   64,
 					   dropout=hyp.lstm.dropout,
 					   dynamic=True,
 					   name="lstm",
-					   restore=True)
+					   restore=restore)
 
 	"""
 	net = bidirectional_rnn(net,
@@ -124,7 +125,7 @@ def build_network(hyp):
 								  regularizer='L2',
 								  weight_decay=hyp.middle.weight_decay,
 								  name="middle",
-								  restore=True)
+								  restore=restore)
 
 	net = tflearn.dropout(net, hyp.dropout.dropout, name="dropout")
 	net = tflearn.fully_connected(net,
@@ -133,7 +134,7 @@ def build_network(hyp):
 								  regularizer='L2',
 								  weight_decay=hyp.output.weight_decay,
 								  name="output",
-								  restore=True)
+								  restore=restore)
 	net = tflearn.regression(net,
 		                     optimizer='adam',
 		                     learning_rate=hyp.regression.learning_rate,
@@ -149,6 +150,13 @@ def create_model(net, hyp, this_run_id, log_run):
 					    tensorboard_verbose=3,
 					    checkpoint_path=checkpoint_path)
 
+	#Load pretrained model
+	if pretrained_model:
+		print("Attempting to load model")
+		model.load(pretrained_path)
+		print("Successfully loaded model")
+		return model
+	
 	#set embeddings
 	if use_embeddings:
 		emb = np.array(embeddings[:vocabulary_size], dtype=np.float32)
@@ -180,12 +188,13 @@ def train_model(model, hyp, this_run_id, log_run):
 	          callbacks=monitorCallback)
 
 	# save model
-	models_path = os.path.join("models")
-	if not (os.path.isdir(models_path)):
-		os.makedirs(models_path)
+	if save_the_model:
+		models_path = os.path.join("models")
+		if not (os.path.isdir(models_path)):
+			os.makedirs(models_path)
 
-	model_file_path = os.path.join(models_path,this_run_id + ".tfl")
-	model.save(model_file_path)
+		model_file_path = os.path.join(models_path,this_run_id + ".tfl")
+		model.save(model_file_path)
 
 	return model
 
@@ -224,7 +233,7 @@ arghandler = Arg_handler()
 arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from")
 arghandler.consume_flags()
 
-run_count = 2
+run_count = 1
 debug_log = Logger()
 perflog = FileBackedCSVBuffer(
 	"training_performance.csv",
@@ -280,7 +289,8 @@ for hyp in hypers:
 		try:
 			net = build_network(hyp)
 			model = create_model(net, hyp, this_run_id, log_run)
-			model = train_model(model, hyp, this_run_id, log_run)			
+			if training:
+				model = train_model(model, hyp, this_run_id, log_run)			
 		except EarlyStoppingError as e:
 			print(e)
 			stop_reason = ["Stopping due to early stopping"]
