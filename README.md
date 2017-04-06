@@ -100,8 +100,8 @@ Tensorboard will start a web server and print out the address where you can find
 - [ ] Lägga till amzon reviews datasetet 
 - [ ] Logga tweets som klassificieras fel och jämföra mellan körningar, samt
         Köra med endast dessa tweets.
-- [ ] Prova att skicka in scramblade tweets, samma ord fast i fel ordning        
-- [ ] Utöka loggning av körningar (Notering: 'append to csv')
+- [x] Prova att skicka in scramblade tweets, samma ord fast i fel ordning        
+- [x] Utöka loggning av körningar (Notering: 'append to csv')
 - [ ] Implementera möjligheten att spara och ladda modeller och sedan träna vidare
 - [x] Färdigställa callbacks för att implementera early stopping, samt 'best result'.
 - [ ] Göra om hur settings fungerar så ens settings inte ändras 
