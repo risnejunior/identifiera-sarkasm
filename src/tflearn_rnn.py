@@ -283,13 +283,16 @@ for hyp in hypers:
 			model = create_model(net, hyp, this_run_id, log_run)
 			if training:
 				model = train_model(model, hyp, this_run_id, log_run)		
-		except EarlyStoppingError as e:
-			print(e)
-			stop_reason = ["Stopping due to early stopping"]	
-		else:
-			stop_reason = ["Stopping due to epoch limit"]			
-		finally:
+		except NetworkNotFoundError as e:
+			print("The network name provided din't match any defined network")
+		except EarlyStoppingError as e:			
+			stop_reason = ["Stopping due to early stopping"]
 			do_prediction(model, hyp, this_run_id, log_run)
+		else:
+			stop_reason = ["Stopping due to epoch limit"]
+			do_prediction(model, hyp, this_run_id, log_run)		
+		finally:
+			#do_prediction(model, hyp, this_run_id, log_run)
 			perflog.append(stop_reason)			
 			perflog.flush()
 		
