@@ -31,19 +31,29 @@ from settings import *
 
 #### functions ###############################################################################
 
+def _arg_callback_reverse():
+	"""
+	Reverse samples
+	"""
+	global reverse_samples
+	reverse_samples = True
+	print("<Reversing samples..>")
+
 def _arg_callback_scramble():
 	"""
 	Scramble the samples (tweets) to see if the network takes word order in account
 	"""
 	global scramble_samples
 	scramble_samples = True
-	print("scrambling samples..\n")
+	print("<scrambling samples..>")
+
 def _arg_callback_sd():
 	"""
 	save json files with vocabulary, samples etc. for debugging
 	"""
 	global save_debug
 	save_debug = True
+	print("<Will save debug files..>")
 
 def _arg_callback_nltk():
 	"""
@@ -51,7 +61,7 @@ def _arg_callback_nltk():
 	"""
 	global nltk_dowload
 	nltk_dowload = True
-	print("checking nltk")
+	print("<checking nltk...>")
 
 def _arg_callback_ms(s_count=5000):
 	"""
@@ -64,7 +74,7 @@ def _arg_callback_ms(s_count=5000):
 	embedding_size = 25
 	max_sequence = 30
 
-	print("using mini-sample")
+	print("<using mini-sample>")
 
 def _arg_callback_pf(file_name):
 	"""
@@ -144,6 +154,9 @@ def make_index_vectors( samples, vocabulary ):
 			else:
 				int_vector.append( 1 ) # 1 - used for masking samples
 		
+		if reverse_samples:
+			int_vector.reverse()
+
 		if scramble_samples:
 			random.shuffle(int_vector)
 
@@ -260,11 +273,12 @@ def fit_embeddings(vocabulary, source_path):
 
 ###########################################################################################
 
-# affected by flags, need to be before consume flags
+# affected by flags, need to be before consume_flags()
 embeddings_maxloop = None
 nltk_dowload = False
 save_debug = False
 scramble_samples = False
+reverse_samples = False
 
 arghandler = Arg_handler()
 arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run, with few samples")
@@ -272,6 +286,7 @@ arghandler.register_flag('of', _arg_callback_pf, ['out-file', 'out'], "name of o
 arghandler.register_flag('nltk', _arg_callback_nltk, [], "check for nltk, and download if missing")
 arghandler.register_flag('sd', _arg_callback_sd, ['save-debug'], "save .json debugging files")
 arghandler.register_flag('scramble', _arg_callback_scramble, [], "scramble the samples (tweets)")
+arghandler.register_flag('rev', _arg_callback_reverse, ['reverse'], "reverese the samples (tweets)")
 arghandler.consume_flags()
 
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
