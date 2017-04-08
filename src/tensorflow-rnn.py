@@ -30,11 +30,14 @@ def create_embedding_tensor(vocabulary_size,embedding_size,embeddings):
     embedding_placeholder = tf.placeholder(dtype=tf.float32,
                                            [vocabulary_size, embedding_size])
     embedding_init = W.assign(embedding_placeholder)
-    return embedding_init
+    with tf.Session() as sess:
+        sess.run(embedding_init, feed_dict={embedding_placeholder: embeddings})
+
+    return W
 
 #Word embedding layer
-def word_embedding_layer(data):
-#TODO: write code here
+def word_embedding_layer(word):
+
 
 #Defining and building the Neural Network
 def recurrent_neural_network(data):
