@@ -9,56 +9,31 @@
 import tensorflow as tf
 # Importing rnn framework
 from tensorflow.contrib import rnn
-# Importing Settings
-import settings
 # Importing NumPy
 import numpy as np
 
-# Loading Settings
-vocabulary_size = settings.vocabulary_size #should match actual dictionary
-embedding_size = settings.embedding_size
-epochs = settings.epochs
-batch_size = settings.batch_size
-partition_training = settings.partition_training
-partition_validation = settings.partition_validation
-partition_test = settings.partition_test
-set_balance = settings.set_balance
-max_sequence = settings.max_sequence
-ascii_console = settings.ascii_console
+# Importing Settings
+from settings import *
 
-# debug commands, will mess up the training:
-random_labels = settings.random_labels
-add_snitch = settings.add_snitch
-random_embeddings = not settings.use_embeddings
 
-samples_path = settings.samples_path
-vocabulary_path = settings.vocabulary_path
-rev_vocabulary_path = settings.rev_vocabulary_path
-embeddings_path = settings.embeddings_path
-
-# Network parameters
 n_classes = 2
 chunk_size = embedding_size
 n_chunks = max_sequence
 rnn_size = 128
 
-# function for loading data, this is for code legibility
-def load_data():
-    with open( samples_path, 'r', encoding='utf8' ) as samples_file:
-    	samples_json = json.load( samples_file )
+## Create the embedding variable
 
-    #get dictionary
-    with open( rev_vocabulary_path, 'r', encoding='utf8' ) as rev_vocab_file:
-    	rev_vocabulary = json.load( rev_vocab_file )
-
-    #get embeddings
-    with open( embeddings_path, 'r', encoding='utf8' ) as embeddings_file:
-    	embeddings = json.load( embeddings_file )
-
-    return embeddings, samples_json, rev_vocabulary
+def create_embedding_tensor(vocabulary_size,embedding_size,embeddings):
+    W = tf.Variable(tf.constant(0.0, shape = [vocabulary_size, embedding_size]),
+                    trainable = false,
+                    name = "W")
+    embedding_placeholder = tf.placeholder(dtype=tf.float32,
+                                           [vocabulary_size, embedding_size])
+    embedding_init = W.assign(embedding_placeholder)
+    return embedding_init
 
 #Word embedding layer
-def word_embedding(data):
+def word_embedding_layer(data):
 #TODO: write code here
 
 #Defining and building the Neural Network
