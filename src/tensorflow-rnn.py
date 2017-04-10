@@ -22,7 +22,6 @@ n_chunks = max_sequence
 rnn_size = 128
 
 ## Create the embedding variable
-
 def create_embedding_tensor(vocabulary_size,embedding_size,embeddings):
     W = tf.Variable(tf.constant(0.0, shape = [vocabulary_size, embedding_size]),
                     trainable = false,
@@ -36,8 +35,9 @@ def create_embedding_tensor(vocabulary_size,embedding_size,embeddings):
     return W
 
 #Word embedding layer
-def word_embedding_layer(word):
-
+def word_embedding_layer(word,embedding_tensor):
+    embedding_layer = tf.nn.embedding_lookup(embedding_tensor,word)
+    
 
 #Defining and building the Neural Network
 def recurrent_neural_network(data):
