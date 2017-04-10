@@ -37,7 +37,7 @@ def create_embedding_tensor(vocabulary_size,embedding_size,embeddings):
 #Word embedding layer
 def word_embedding_layer(word,embedding_tensor):
     embedding_layer = tf.nn.embedding_lookup(embedding_tensor,word)
-    
+    return embedding_layer #Not sure if this is done yet
 
 #Defining and building the Neural Network
 def recurrent_neural_network(data):
