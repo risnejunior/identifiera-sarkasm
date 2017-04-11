@@ -57,12 +57,12 @@ class EarlyStoppingMonitor():
 		self.avgLimitPercent = avgLimitPercent
 		self._buff = FileBackedCSVBuffer(
 			filename='earlystopping.csv',
-			directory='logs', 
+			directory='logs',
 			header=['epoch', 'val loss', 'avg val loss', 'loss limit', 'status'],
 			clearFile=True)
 
 	def send(self, state):
-		
+
 		self.epoch += 1
 
 		if state['val_loss']:
@@ -80,7 +80,7 @@ class EarlyStoppingMonitor():
 		avg_limit = self.avgLimitPercent * avg_loss
 
 		self._buff.write([self.epoch, val_loss, avg_loss, avg_limit])
-		
+
 		if val_loss > avg_limit:
 			self._buff.append(["Stopped due to loss average"])
 			raise EarlyStoppingError("Early stopping due to loss average")
@@ -88,7 +88,7 @@ class EarlyStoppingMonitor():
 			m = "Loss delta to limit: {}, continuing...".format(round(avg_limit-val_loss,3))
 			self._buff.append([m])
 			self.losses.append(val_loss)
-		
+
 		self._buff.flush()
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
@@ -139,7 +139,7 @@ def create_model(net, hyp, this_run_id, log_run):
 		model.load(pretrained_path)
 		print("Successfully loaded model")
 		return model
-	
+
 	#set embeddings
 	if use_embeddings:
 		emb = np.array(pd.embeddings[:pd.vocab_size], dtype=np.float32)
@@ -192,35 +192,38 @@ def train_model(model, hyp, this_run_id, log_run):
 
 def do_prediction(model, hyp, this_run_id, log_run):
 	# print confusion matrix for the different sets
-	print("running prediction...\n")
-	cm = Binary_confusion_matrix()
+	print("Running prediction...\n")
+	cmt = Binary_confusion_matrix(name='Training')
+	cmv = Binary_confusion_matrix(name='Validation')
 	horiz_bar = "-" * (len(this_run_id) + 9 )
 	print(horiz_bar)
-	print("runid: " + this_run_id + ' |')
+	print("Run ID: " + this_run_id)
 	print(horiz_bar)
 
 	predictions = model.predict(ps.train.xs)
-	cm.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
+	cmt.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
 
 	predictions = model.predict(ps.valid.xs)
-	cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
+	cmv.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
 
-	cm.print_tables()
+	cmt.print_tables()
+	cmv.print_tables()
+
 	#cm.save(this_run_id + '.res', content='metrics')
-	log_run.log(cm.metrics, logname="metrics", aslist = False)
-	perflog.replace([
-		this_run_id,
-		network_name,
-		os.path.basename(samples_path),
-		cm.metrics['validation-set']['accuracy'],
-		cm.metrics['validation-set']['f1_score']
-		]
-	)
+	# log_run.log(cm.metrics, logname="metrics", aslist = False)
+	# perflog.replace([
+	# 	this_run_id,
+	# 	network_name,
+	# 	os.path.basename(samples_path),
+	# 	cmt.metrics['validation-set']['accuracy'],
+	# 	cmv.metrics['validation-set']['f1_score']
+	# 	]
+	# )
 
 ################################################################################
 
 print_debug = True
-# Handles command arguments, usefull for debugging 
+# Handles command arguments, usefull for debugging
 # usage: tflearn_rnn.py --pf debug_processed.pickle
 #  will get samples from debug_processed.pickle
 arghandler = Arg_handler()
@@ -233,7 +236,7 @@ debug_log = Logger()
 perflog = FileBackedCSVBuffer(
 	"training_performance.csv",
 	"logs",
-	header=['Run id', 'Network name', 'data file', 'Val acc', 'Val f1', 'Status'])
+	header=['Run ID', 'Network name', 'data file', 'Val acc', 'Val f1', 'Status'])
 
 # Load processed data from file
 with open(samples_path, 'rb') as handle:
@@ -241,11 +244,11 @@ with open(samples_path, 'rb') as handle:
 ps = pd.dataset #processed samples
 
 # debug print tweets
-if print_debug:	
-	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):		
+if print_debug:
+	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):
 		ispos = np.array_equal(s_y, pos_label)
-		label = "Positive (Sarcastic)" if ispos else "Negative (not sarcastic)"
-		logstring = "Sample id: {}, {}: {:<5}".format(s_id, label, "\n")
+		label = "Positive (Sarcastic)" if ispos else "Negative (Not Sarcastic)"
+		logstring = "Sample ID: {}, {}: {:<5}".format(s_id, label, "\n")
 		logstring += " ".join( reverse_lookup(s_x, pd.rev_vocab, ascii_console ))
 		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 10, step = 2500)
 	print("\nLogged sample values:\n")
@@ -274,7 +277,7 @@ for hyp in hypers:
 
 	tf.reset_default_graph()
 	with tf.Graph().as_default(), tf.Session() as sess:
-		sess.run(tf.initialize_all_variables())
+		sess.run(tf.global_variables_initializer())
 		tflearn.config.init_training_mode()
 		stop_reason = ["Other error"]
 
@@ -282,20 +285,20 @@ for hyp in hypers:
 			net = build_network(network_name, hyp, pd)
 			model = create_model(net, hyp, this_run_id, log_run)
 			if training:
-				model = train_model(model, hyp, this_run_id, log_run)		
+				model = train_model(model, hyp, this_run_id, log_run)
 		except NetworkNotFoundError as e:
 			print("The network name provided din't match any defined network")
-		except EarlyStoppingError as e:			
+		except EarlyStoppingError as e:
 			stop_reason = ["Stopping due to early stopping"]
 			do_prediction(model, hyp, this_run_id, log_run)
 		else:
 			stop_reason = ["Stopping due to epoch limit"]
-			do_prediction(model, hyp, this_run_id, log_run)		
+			do_prediction(model, hyp, this_run_id, log_run)
 		finally:
 			#do_prediction(model, hyp, this_run_id, log_run)
-			perflog.append(stop_reason)			
+			perflog.append(stop_reason)
 			perflog.flush()
-		
+
 	log_run.save(this_run_id + '.log')
-	
+
 debug_log.save("training_debug.log")

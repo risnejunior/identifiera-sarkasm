@@ -32,7 +32,7 @@ use_logger = True
 network_name = 'little_pony'
 run_count = 1
 epochs = 1
-batch_size = 90
+batch_size = 512
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 #For loading and saving models
@@ -80,7 +80,7 @@ rel_data_path = dataset["rel_path"]
 dataset["neg_source"] = os.path.join(rel_data_path, dataset["neg_source"])
 dataset["pos_source"] = os.path.join(rel_data_path, dataset["pos_source"])
 path_name_neg = os.path.join(rel_data_path, "neg")
-path_name_pos = os.path.join(rel_data_path, "pos") 
+path_name_pos = os.path.join(rel_data_path, "pos")
 samples_path = os.path.join(rel_data_path, "processed.pickle")
 
 ################# validate settings ############################
@@ -93,13 +93,13 @@ def get_raw_embeddings_path(size):
 		quit()
 	else:
 		return os.path.join(
-			".", "..","datasets","glove_twitter_embeddings", 
+			".", "..","datasets","glove_twitter_embeddings",
 			"glove.twitter.27B." + str(size) + "d.txt")
 
 
 ################## shared classes & objects ####################
 
-ProcessedData = namedtuple('ProcessedData', 
+ProcessedData = namedtuple('ProcessedData',
 	['dataset', 'embeddings', 'vocab', 'rev_vocab', 'emb_size', 'vocab_size', 'max_sequence'])
 Dataset = namedtuple('Dataset', ['train', 'valid', 'test'])
 Setpart = namedtuple('Setpart', ['names', 'length', 'ids', 'xs','ys'])
