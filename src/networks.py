@@ -20,7 +20,7 @@ class Networks:
 
 		callables = [method for method in dir(self) if callable(getattr(self, method))]
 		self.callables = [method for method in callables if method[0] != '_' and method[:2] != "get"]
-	
+
 	def get_network(self, name, params):
 			if name in self.callables:
 				return getattr(self, name)(**params)
@@ -70,10 +70,10 @@ class Networks:
 		net = tflearn.embedding(net, input_dim=pd.vocab_size,
 								     output_dim=pd.emb_size,
 								     name="embedding")
-		net = tflearn.lstm(net,
-						   32,
-						   dynamic=False,
-						   name="lstm")
+		net = tflearn.gru(net,
+						   pd.max_sequence,
+						   dynamic=True,
+						   name="GRU")
 		net = tflearn.fully_connected(net,
 									  2,
 									  activation='softmax',
@@ -122,7 +122,7 @@ class Networks:
 
 	def convolve_me(self, hyp, pd):
 		network = input_data(shape=[None, pd.max_sequence], name='input')
-		network = tflearn.embedding(network, 
+		network = tflearn.embedding(network,
 									input_dim=pd.vocab_size,
 								    output_dim=pd.emb_size,
 								    name="embedding")
