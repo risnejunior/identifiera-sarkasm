@@ -32,7 +32,7 @@ use_logger = True
 network_name = 'little_pony'
 run_count = 1
 epochs = 1
-batch_size = 512
+batch_size = 128
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 #For loading and saving models

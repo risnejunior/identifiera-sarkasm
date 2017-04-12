@@ -195,9 +195,9 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	print("Running prediction...\n")
 	cmt = Binary_confusion_matrix(name='Training')
 	cmv = Binary_confusion_matrix(name='Validation')
-	horiz_bar = "-" * (len(this_run_id) + 9 )
+	horiz_bar = "-" * (len(this_run_id) + 8 )
 	print(horiz_bar)
-	print("Run ID: " + this_run_id)
+	print("Run id: " + this_run_id)
 	print(horiz_bar)
 
 	predictions = model.predict(ps.train.xs)
@@ -210,15 +210,15 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	cmv.print_tables()
 
 	#cm.save(this_run_id + '.res', content='metrics')
-	# log_run.log(cm.metrics, logname="metrics", aslist = False)
-	# perflog.replace([
-	# 	this_run_id,
-	# 	network_name,
-	# 	os.path.basename(samples_path),
-	# 	cmt.metrics['validation-set']['accuracy'],
-	# 	cmv.metrics['validation-set']['f1_score']
-	# 	]
-	# )
+	log_run.log(cmv.metrics, logname="metrics", aslist = False)
+	perflog.replace([
+		this_run_id,
+		network_name,
+		os.path.basename(samples_path),
+		cmv.metrics['validation-set']['accuracy'],
+		cmv.metrics['validation-set']['f1_score']
+		]
+	)
 
 ################################################################################
 
@@ -236,7 +236,7 @@ debug_log = Logger()
 perflog = FileBackedCSVBuffer(
 	"training_performance.csv",
 	"logs",
-	header=['Run ID', 'Network name', 'data file', 'Val acc', 'Val f1', 'Status'])
+	header=['Run id', 'Network name', 'data file', 'Val acc', 'Val f1', 'Status'])
 
 # Load processed data from file
 with open(samples_path, 'rb') as handle:
@@ -247,8 +247,8 @@ ps = pd.dataset #processed samples
 if print_debug:
 	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):
 		ispos = np.array_equal(s_y, pos_label)
-		label = "Positive (Sarcastic)" if ispos else "Negative (Not Sarcastic)"
-		logstring = "Sample ID: {}, {}: {:<5}".format(s_id, label, "\n")
+		label = "Positive (Sarcastic)" if ispos else "Negative (Not sarcastic)"
+		logstring = "Sample id: {}, {}: {:<5}".format(s_id, label, "\n")
 		logstring += " ".join( reverse_lookup(s_x, pd.rev_vocab, ascii_console ))
 		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 10, step = 2500)
 	print("\nLogged sample values:\n")

@@ -455,7 +455,6 @@ class Binary_confusion_matrix:
 		self._compile_table(name)
 
 	def _compile_table(self, name):
-
 		# for readability
 		metrics = self.metrics[name]
 		fn = metrics['fn']; fp = metrics['fp']; tp = metrics['tp']; tn = metrics['tn']
@@ -464,39 +463,18 @@ class Binary_confusion_matrix:
 		self.t.add_row(['Actual YES',fn,tp,fn+tp])
 		self.t.add_row(['Total',tn+fn,fp+tp,''])
 		self.t.hrules = ALL
-		# print('Accuracy: ',self.metrics['accuracy'])
-		# print('Precision: ',self.metrics['precision'])
-		# print('Recall: ',self.metrics['recall'])
-		# print('F1-score: ',self.metrics['f1_score'])
 
-		# # format the table
-		# rows = ['' for i in range(16)]
-		# rows[0] = '{0:9}{1:^11}|{1:^11}'.format(' ', 'Predicted')
-		# rows[1] = '{0:12}{1:^8}|{2:^8}{3:^10}'.format('', 'No','Yes', 'total:')
-		# rows[2] = (' ' * 9) + ('-' * 20)
-		# rows[3] = '{:<20}{}'.format('Actual:','|')
-		# rows[4] = '{:^10}{:>9,}{:^3}{:<9,d}{:>,}'.format("No", tn,'|', fp, (tn + fp) )
-		# rows[5] = rows[2]
-		# rows[6] = rows[3]
-		# rows[7] = '{:^10}{:>9,}{:^3}{:<9,d}{:>,}'.format('Yes',fn , '|', tp, (fn + tp) )
-		# rows[8] = rows[2]
-		# rows[9] = '{:^12}{:^8,d} {:^9,d}'.format('Total:', (tn + fn), (fp + tp) )
-		#
-		# rows[10] = ""
-		# rows[11] = "accuracy: {:^1}{:<.2f}".format("", metrics['accuracy'])
-		# rows[12] = "precision: {:^}{:<.2f}".format("", metrics['precision'])
-		# rows[13] = "recall: {:^3}{:<.2f}".format("",   metrics['recall'])
-		# rows[14] = "f1_score: {:^1}{:<.2f}".format("", metrics['f1_score'])
-		# rows[15] = ""
-		#
-		# header = ["\n   {} Confusion Matrix: \n".format(name)]
-		#
-		# self.rows.extend(header + rows)
+		self.rows = ['' for i in range(5)]
+		self.rows[0] = "Accuracy: {:^1}{:<.2f}".format("", metrics['accuracy'])
+		self.rows[1] = "Precision: {:^}{:<.2f}".format("", metrics['precision'])
+		self.rows[2] = "Recall: {:^3}{:<.2f}".format("",   metrics['recall'])
+		self.rows[3] = "F1-score: {:^1}{:<.2f}".format("", metrics['f1_score'])
+		self.rows[4] = ""
 
 	def print_tables(self):
-		# for row in self.rows:
-		# 	print(row)
 		print(self.t)
+		for row in self.rows:
+			print(row)
 
 
 	def save(self,
