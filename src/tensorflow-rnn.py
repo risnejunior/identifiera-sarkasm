@@ -86,6 +86,10 @@ def train_neural_network(data):
 with open(samples_path, 'rb') as handle:
     pd = pickle.load( handle )
 
+ps = pd.dataset #Processed Samples
+print("Looking at the dataset:")
+print(ps.train.xs)
+
 if use_embeddings:
     emb = np.array(pd.embeddings[:pd.vocab_size], dtype=np.float32)
 else:
@@ -97,8 +101,11 @@ sess = tf.Session()
 with sess.as_default():
     W = create_embedding_tensor(pd.vocab_size,pd.emb_size,emb)
     print(W)
-    print("== IF This prints, then I made it")
-    print(W.eval())
+    print("== Testing out wordembedding ==")
+    #print(W.eval())
+    test = word_embedding_layer(ps.train.xs[2],W)
+    results = sess.run(test)
+    print (results)
 
 sess.close()
 print ("=== Code ran Successfully ===")
