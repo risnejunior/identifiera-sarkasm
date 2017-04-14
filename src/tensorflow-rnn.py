@@ -81,3 +81,7 @@ def train_neural_network(data):
         print("Hello")
 
     print("TODO: Finish this method")
+
+# Here starts the program
+with open(samples_path, 'rb') as handle:
+    pd = pickle.load( handle )
