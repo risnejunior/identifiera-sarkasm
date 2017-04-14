@@ -91,8 +91,8 @@ if use_embeddings:
 else:
     emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
 
-print("This is the numpy vector of the embedding: \n")
-print(emb)
+#print("This is the numpy vector of the embedding: \n")
+#print(emb)
 sess = tf.Session()
 with sess.as_default():
     W = create_embedding_tensor(pd.vocab_size,pd.emb_size,emb)
