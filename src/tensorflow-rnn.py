@@ -33,16 +33,15 @@ rnn_size = 128
 ## Create the embedding variable
 def create_embedding_tensor(vocabulary_size,embedding_size,embeddings):
     W = tf.Variable(tf.constant(0.0, shape = [vocabulary_size, embedding_size]),
-                    trainable = false,
+                    trainable = False,
                     name = "W")
     embedding_placeholder = tf.placeholder(dtype = tf.float32,
                                            shape = [vocabulary_size, embedding_size]
                                            )
     embedding_init = W.assign(embedding_placeholder)
-    with tf.Session() as sess:
-        sess.run(embedding_init, feed_dict={embedding_placeholder: embeddings})
-
+    tf.get_default_session().run(embedding_init, feed_dict={embedding_placeholder: embeddings})
     return W
+
 
 #Word embedding layer
 def word_embedding_layer(word,embedding_tensor):
@@ -86,3 +85,20 @@ def train_neural_network(data):
 # Here starts the program
 with open(samples_path, 'rb') as handle:
     pd = pickle.load( handle )
+
+if use_embeddings:
+    emb = np.array(pd.embeddings[:pd.vocab_size], dtype=np.float32)
+else:
+    emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
+
+print("This is the numpy vector of the embedding: \n")
+print(emb)
+sess = tf.Session()
+with sess.as_default():
+    W = create_embedding_tensor(pd.vocab_size,pd.emb_size,emb)
+    print(W)
+    print("== IF This prints, then I made it")
+    print(W.eval())
+
+sess.close()
+print ("=== Code ran Successfully ===")
