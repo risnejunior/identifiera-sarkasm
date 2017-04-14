@@ -35,8 +35,9 @@ def create_embedding_tensor(vocabulary_size,embedding_size,embeddings):
     W = tf.Variable(tf.constant(0.0, shape = [vocabulary_size, embedding_size]),
                     trainable = false,
                     name = "W")
-    embedding_placeholder = tf.placeholder(dtype=tf.float32,
-                                           [vocabulary_size, embedding_size])
+    embedding_placeholder = tf.placeholder(dtype = tf.float32,
+                                           shape = [vocabulary_size, embedding_size]
+                                           )
     embedding_init = W.assign(embedding_placeholder)
     with tf.Session() as sess:
         sess.run(embedding_init, feed_dict={embedding_placeholder: embeddings})
