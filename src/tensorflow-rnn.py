@@ -4,6 +4,15 @@
 * This is a Recurrent Neural Network for sarcasm detection
 * Author: DATX02-25
 '''
+# Importing dependencies for file handling
+import collections
+import math
+import random
+import os
+import json
+import pickle
+import csv
+import sys
 
 # Importing tensorflow
 import tensorflow as tf
