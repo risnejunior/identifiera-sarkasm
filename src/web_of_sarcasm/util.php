@@ -43,7 +43,6 @@ class DbAdapter {
 
 		// Check connection
 		if ($this->conn->connect_error) {
-		    //die("Connection failed: " . $conn->connect_error);
 		    $this->errors->add($conn->connect_error);
 		} 		
 
@@ -61,7 +60,8 @@ class DbAdapter {
 		if ($user && $user['nonce'] == $nonce) {
 			$validated = true;
 		} else {
-			$this->errors->add('User not validated');
+			echo($user['nonce'] . '=' . $nonce . $user_id . '=' . $user['user_id']);
+			$this->errors->add('nonce not matched');
 		}
 
 		return $validated;
@@ -81,6 +81,14 @@ class DbAdapter {
 		 $rows = $this->execQuery($sql);
 
 		 return $rows;
+	}
+
+	public function setAnswer($question_id, $user_id, $answer) {
+		$sql = "
+		INSERT INTO `answers`(`question_id`, `user_id`, `answer`) 
+		VALUES ({$question_id}, {$user_id}, {$answer})
+		 ";
+		 $this->execQuery($sql);
 	}
 
 	public function getUser($user_id) {

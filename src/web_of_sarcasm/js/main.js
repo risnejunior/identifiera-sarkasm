@@ -42,7 +42,8 @@ $( document ).ready(function() {
 
 	//user known
 	} else {
-		set_for_quiz();		
+		set_for_quiz();
+		get_quiz(5);
 	}
 	
 
@@ -52,54 +53,12 @@ $( document ).ready(function() {
 $("#name-form").submit(function(event) {
 	event.preventDefault();
 
-	var data = {
+	var message = {
 		'name': $( "input[name*='name']" ).first().val(),
 		'action': 'register_user'
 	};
 
-	var settings = {
-	     "url": ajaxurl,
-	     "timeout": 5000,
-	     "type": "post",
-	     "dataType": "json",
-	     "data": data,
-	     "complete": complete,
-	     "error": error,
-	     "success": success,
-	     "context": this
-	};
-	 
-	 //ajax call bound to deferred
-	jQuery.ajax( settings );
-
-	function error( jqXHR, textStatus, errorThrown ) {
-	    jQuery("#status").html( "An error occurred!" ).show();	    
-	}
-
-	function success( data, textStatus, jqXHR ) {
-		//serverside error 
-	    if ( !data.type || "error" === data.type ) {
-	        var err_message = "An error occurred!";
-	        if ( error in data ) {
-	            err_message = error[0];
-	        }
-	        jQuery("#status").html( err_message ).show();
-	    
-	    //server side success
-	    } else if (data.type === 'set_user') {
-	    	set_for_quiz();
-	    	localStorage['user_id'] = data.id;
-	    	localStorage['nonce'] = data.nonce;
-	    	localStorage['name'] = data.name;
-		}
-	}
-	
-	function complete( jqXHR, textStatus ) {
-	    jQuery( this )
-	        .parent()
-	        .siblings( ".animation-container" )
-	        .removeClass( "working-animation" );
-	}
+	get_ajax_data(message)
 });
 
 function set_for_quiz() {
@@ -109,20 +68,13 @@ function set_for_quiz() {
 	jQuery("#status").html("Welcome " + localStorage['name']).show();
 }
 
-function get_quiz(size, dataset) {
-	var data = {
-		'action': 'get_quiz',
-		'user_id': parseInt(localStorage['user_id']),
-		'nonce': localStorage['nonce'],
-		'size': size
-	};
-
+function get_ajax_data(message) {
 	var settings = {
 	     "url": ajaxurl,
 	     "timeout": 5000,
 	     "type": "post",
 	     "dataType": "json",
-	     "data": data,
+	     "data": message,
 	     "complete": complete,
 	     "error": error,
 	     "success": success,
@@ -145,16 +97,36 @@ function get_quiz(size, dataset) {
 	    } else if (data.type === 'set_quiz') {	    		    
 	    	localStorage['quiz'] = JSON.stringify(data.quiz);
 	    	add_quiz_html();
-		}
+	    } else if (data.type === 'set_user') {
+	    	set_for_quiz();
+	    	localStorage['user_id'] = data.id;
+	    	localStorage['nonce'] = data.nonce;
+	    	localStorage['name'] = data.name;
+		} 
 	}
 
 	function error( jqXHR, textStatus, errorThrown ) {
-		alert(errorThrown);
+		jQuery("#status").html( "An error occurred!" ).show();
 	}
 
 	function complete( jqXHR, textStatus ) {
-		//alert(textStatus);
+		jQuery( this )
+		    .parent()
+		    .siblings( ".animation-container" )
+		    .removeClass( "working-animation" );
 	}
+}
+
+function get_quiz(size, dataset) {
+	
+	var message = {
+		'action': 'get_quiz',
+		'user_id': parseInt(localStorage['user_id']),
+		'nonce': localStorage['nonce'],
+		'size': size
+	};
+
+	var data = get_ajax_data(message)
 }
 
 function add_quiz_html() {
@@ -195,5 +167,16 @@ function add_quiz_html() {
 }
 
 function set_answer(question_id, isPos) {
+	console.log("Set answer: " + question_id + " " + isPos);
+	user_id = localStorage.getItem('user_id')
+	nonce = localStorage.getItem('nonce')
+	var message = {
+		'action': 'save_answer',
+		'nonce': nonce,
+		'question_id': parseInt(question_id),
+		'user_id': parseInt(user_id),		
+		'answer': isPos
+	};
 
+	get_ajax_data(message)
 }

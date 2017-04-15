@@ -37,12 +37,22 @@
 				'name'=>$user['name']
 			);			
 
-		} elseif ($action == 'save_answers') {
-			//$user = $db->getUser($id);
-			//check nonce
-			$result_array = array(
-				'type'=>'saved'
-			);
+		} elseif ($action == 'save_answer') {            
+            $question_id = intval($_POST['question_id']);
+            $user_id = intval($_POST['user_id']);
+            $nonce = $_POST['nonce'];
+            $answer = $_POST['answer'];
+
+            if ($db->validate_user($user_id, $nonce)) {
+
+                $db->setAnswer($question_id, $user_id, $answer);  
+                
+                $result_array = array(
+                    'type'=>'saved'
+                );
+            } else {
+                $errors->add("user not validated");
+            }           
 		} else {
 			$errors->add("Request command not recognized");
 		}
