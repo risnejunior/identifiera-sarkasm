@@ -1,10 +1,5 @@
 <?php
 
-//get user
-//set user
-//get quiz
-//set answers
-
 class Errors {
 	protected $errors = array();
 

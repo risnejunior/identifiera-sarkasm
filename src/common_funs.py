@@ -143,7 +143,7 @@ class Arg_handler():
 			aliases = [k for k,v in items if k != flag]
 			print('Flag: [--' + flag + ']', end=" ")
 			print(',aliases: ' + str(aliases), end=" ")
-			print(', description: ' + helptext)
+			print(', description: ' + helptext, end="\n\n")
 		quit()
 
 class Stack(list):
@@ -767,3 +767,12 @@ def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
+
+def boxString(bare_string):
+	str_len = len(bare_string)
+	horiz_bar = "-" * (str_len + 4)
+	vert_bar = '|'
+	boxed_string = "{1:}{3:}{0:} {2:} {0:}{3:}{1:}".format(
+		vert_bar, horiz_bar, bare_string, "\n")
+
+	return boxed_string

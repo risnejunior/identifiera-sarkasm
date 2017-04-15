@@ -20,6 +20,7 @@ from common_funs import reverse_lookup
 from common_funs import Hyper
 from common_funs import Arg_handler
 from common_funs import FileBackedCSVBuffer
+from common_funs import boxString
 from settings import *
 from networks import Networks
 from networks import NetworkNotFoundError
@@ -204,12 +205,10 @@ def train_model(model, hyp, this_run_id, log_run):
 
 def do_prediction(model, hyp, this_run_id, log_run):
 	# print confusion matrix for the different sets
-	print("Running prediction...\n")
+	print("\nRunning prediction...")
+	print(boxString("Run id: " + this_run_id))
+
 	cm = Binary_confusion_matrix()
-	horiz_bar = "-" * (len(this_run_id) + 8 )
-	print(horiz_bar)
-	print("Run id: " + this_run_id)
-	print(horiz_bar)
 
 	predictions = model.predict(ps.train.xs)
 	cm.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
@@ -232,7 +231,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 
 ################################################################################
 
-# standard settings if not changed by command line arguments
+# affected by flags, need to be before consume_flags()
 snapshot_epoch = True
 print_debug = True
 

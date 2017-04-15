@@ -90,10 +90,10 @@ class Networks:
 		net = tflearn.embedding(net, input_dim=pd.vocab_size,
 								     output_dim=pd.emb_size,
 								     name="embedding")
-		net = tflearn.gru(net,
+		net = tflearn.lstm(net,
 						   pd.max_sequence,
 						   dynamic=True,
-						   name="GRU")
+						   name="lstm")
 		net = tflearn.fully_connected(net,
 									  2,
 									  activation='softmax',

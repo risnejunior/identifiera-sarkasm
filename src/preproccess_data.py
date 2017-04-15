@@ -299,7 +299,7 @@ scramble_samples = False
 reverse_samples = False
 
 arghandler = Arg_handler()
-arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run, with few samples")
+arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run, with few samples, small vocab, seq. length and few embeddings used.")
 arghandler.register_flag('of', _arg_callback_pf, ['out-file', 'out'], "name of output file. Args: <filename>")
 arghandler.register_flag('nltk', _arg_callback_nltk, [], "check for nltk, and download if missing")
 arghandler.register_flag('sd', _arg_callback_sd, ['save-debug'], "save .json debugging files")

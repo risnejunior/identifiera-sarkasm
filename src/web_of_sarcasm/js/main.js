@@ -173,16 +173,27 @@ function add_quiz_html() {
 
 		var buttonPart = $("<div></div>")
 			.addClass("button-part")
-			.append("<button class='pos'>Sarcastic</button>")
-			.append("<button class='neg'>Other</button>");
+			.append("<button class='pos button'>Sarcastic</button>")
+			.append("<button class='neg button'>Other</button>");
 
 		sectionElement.append(buttonPart);
 		$("#main-content").append(sectionElement);
 	}
 
 	$("button", ".button-part").click(function(event) {
-		var question_id = $(this).parents("section").first().attr("id");
-		alert(question_id);
+		var question_id = $(this).parents("section").first().attr("id");		
+		var isPos = $(this).hasClass("pos");
+		
+		if ( !$(this).hasClass('selected') ) {
+			$(this).addClass('selected');
+		}
+
+		$(this).siblings('.button:first').removeClass('selected');
+
+		set_answer(question_id, isPos);
 	});
 }
 
+function set_answer(question_id, isPos) {
+
+}
