@@ -30,6 +30,13 @@ chunk_size = embedding_size
 n_chunks = max_sequence
 rnn_size = 128
 
+layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
+          'biases': tf.Variable(tf.random_normal([n_classes]))}
+
+gru_cell = rnn.GRUCell(rnn_size)
+train_call = 1
+val_call = 2
+
 ## Create the embedding variable
 def init_embedding(vocabulary_size,embedding_size):
     W = tf.Variable(tf.constant(0.0, shape = [vocabulary_size, embedding_size]),
@@ -52,19 +59,15 @@ def word_embedding_layer(word,embedding_tensor):
     return embedding_layer #Not sure if this is done yet
 
 #Defining and building the Neural Network
-def recurrent_neural_network(data):
-    layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
-             'biases': tf.Variable(tf.random_normal([n_classes]))}
-
+def recurrent_neural_network(data,call):
     data = tf.transpose(data)
     data = tf.reshape(data,[-1,chunk_size])
     sequence = tf.split(data, n_chunks, 0)
 
-
-    gru_cell = rnn.GRUCell(rnn_size)
-
-    outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
-
+    with tf.variable_scope("Gru_cell") as scope:
+        if call != train_call:
+            scope.reuse_variables()
+        outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
     output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
 
     return output
@@ -72,19 +75,33 @@ def recurrent_neural_network(data):
 # The method for training the neural network
 # TODO: Finish this function
 
+# Method for validating network in training
+def validate_neural_network(prediction,targets):
+    correct = tf.equal(tf.argmax(prediction,1), tf.argmax(targets,1))
+    accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
+    return accuracy
+
 def train_neural_network(ps,emb_init,W,emb_placeholder):
     n_samples,words = ps.train.xs.shape
     n_batches = n_samples/batch_size
 
-    data_placeholder = tf.placeholder(dtype=tf.int32,shape=[max_sequence,batch_size])
+    data_placeholder = tf.placeholder(dtype=tf.int32,shape=[batch_size,max_sequence])
     labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size,n_classes])
     embeddings = word_embedding_layer(data_placeholder,W)
-    prediction = recurrent_neural_network(embeddings)
+    prediction = recurrent_neural_network(embeddings,train_call)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
                                                                   labels = labels_placeholder
                                                                   ))
-    optimizer = tf.train.AdamOptimizer().minimize(cost)
 
+    val_h,val_w = ps.valid.xs.shape
+
+    val_data_placeholder = tf.placeholder(dtype=tf.int32, shape=[val_h,val_w])
+    val_labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[val_h,n_classes])
+    val_embeddings = word_embedding_layer(val_data_placeholder,W)
+    val_predictions = recurrent_neural_network(val_embeddings,val_call)
+    validation = validate_neural_network(val_predictions,val_labels_placeholder)
+
+    optimizer = tf.train.AdamOptimizer().minimize(cost)
     sess = tf.Session()
     y_labels = np.array(ps.train.ys)
     print(y_labels.shape)
@@ -92,17 +109,18 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
     with sess.as_default():
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
-        print(results)
         for epoch in range(epochs):
             epoch_loss = 0
             for batch_i in range(int(n_batches)):
-                x = np.transpose(x_training_batches[batch_i])
+                x = x_training_batches[batch_i]
                 y = y_training_batches[batch_i]
                 _, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: x,
                                                                labels_placeholder: y})
                 epoch_loss += c
-
-            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss)
+            val_accuracy = sess.run(validation,
+                                    feed_dict = {val_data_placeholder: ps.valid.xs,
+                                                val_labels_placeholder: np.array(ps.valid.ys)})
+            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss, ' |  current accuracy:',val_accuracy)
 
     sess.close()
 # Here starts the program
