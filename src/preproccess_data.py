@@ -63,12 +63,12 @@ def _arg_callback_nltk():
 	nltk_dowload = True
 	print("<checking nltk...>")
 
-def _arg_callback_ms(s_count=5000):
+def _arg_callback_ms():
 	"""
 	Create a minisample for debugging; will run quickly
 	"""
 	global sample_count, embeddings_maxloop, vocabulary_size, embedding_size, max_sequence
-	sample_count = int(s_count)
+	sample_count = 1000
 	embeddings_maxloop = 10000
 	vocabulary_size = 5000
 	embedding_size = 25
@@ -76,13 +76,31 @@ def _arg_callback_ms(s_count=5000):
 
 	print("<using mini-sample>")
 
+def _arg_callback_re():
+	"""
+	Skip fitting embeddings, all will be set to random
+	"""
+	global embeddings_maxloop
+	embeddings_maxloop = 0
+
+	print("<using random-embeddings>")
+
+def _arg_callback_ls(s_count=5000):
+	"""
+	Limit the samples used (how many teewts to preprocess)
+	"""
+	global sample_count
+	sample_count = int(s_count)
+
+	print("<using limited sample count: {}>".format(s_count))
+
 def _arg_callback_pf(file_name):
 	"""
 	Save preprocessed samples under a different file name
 	"""
 	global samples_path
 	samples_path = os.path.join(rel_data_path, file_name)
-	print("Saving processed samples to: {}".format(samples_path))
+	print("<Saving processed samples as: {}>".format(file_name))
 
 def build_vocabulary( words, max_size ):	
 	vocab_instances = 0
@@ -240,8 +258,8 @@ def fit_embeddings(vocabulary, source_path):
 				wa.tick("Scanned: {:,}, matched to vocabulary: {:,}".format(i, found))
 			wa.done()
 			
-		minval = minmax.get('min')
-		maxval = minmax.get('max')
+		minval = minmax.get('min') if minmax.get('min') else -6.0
+		maxval = minmax.get('max') if minmax.get('max') else 6.0		
 		print("\nGenerating random word vectors for missing words...")
 		pb = Progress_bar(len(rs_embeddings) - 1)
 		for i, vector in enumerate(rs_embeddings):
@@ -266,7 +284,7 @@ def fit_embeddings(vocabulary, source_path):
 	print("Word vectors coverage of vocabulary: {:1.0%}"
 		.format((found - masks) / vocabulary_size))
 	print("Random word vectors written to embedding: {:,}".format(randvecs))
-	print("Range for random embedding (min/max): {}".format(minmax.get()))
+	print("Range for random embedding (min/max): {}".format((minval, maxval)))
 	print("Total written: {:,}".format(randvecs + found - masks))
 
 	return rs_embeddings
@@ -287,6 +305,8 @@ arghandler.register_flag('nltk', _arg_callback_nltk, [], "check for nltk, and do
 arghandler.register_flag('sd', _arg_callback_sd, ['save-debug'], "save .json debugging files")
 arghandler.register_flag('scramble', _arg_callback_scramble, [], "scramble the samples (tweets)")
 arghandler.register_flag('rev', _arg_callback_reverse, ['reverse'], "reverese the samples (tweets)")
+arghandler.register_flag('ls', _arg_callback_ls, ['limit', 'limit-samples'], "Limit how many samples to use (tweets) Args: <sample count>")
+arghandler.register_flag('re', _arg_callback_re, ['random-embeddings'], "Use random embeddings")
 arghandler.consume_flags()
 
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
@@ -307,6 +327,7 @@ samples = {}
 all_words = []
 sequence_lengths = []
 
+print()
 print("{} sample files found (positive + negative)\n".format(len(file_list_all)))
 
 tokenize_helper(path_name_neg, file_list_normal, samples, all_words, False)
@@ -458,7 +479,7 @@ for setpart in ds:
 pd = ProcessedData(
 	ds, embeddings, vocabulary, rev_vocabulary, embedding_size, vocabulary_size, max_sequence)
 
-print ("Saving to disk as: {}".format(samples_path))
+print ("Saving to disk at: {}".format(samples_path))
 with open(samples_path, 'wb') as handle:
     pickle.dump(pd, handle, protocol=pickle.HIGHEST_PROTOCOL)
 

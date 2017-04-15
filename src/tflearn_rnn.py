@@ -106,11 +106,22 @@ def _arg_callback_net(name):
 
 def _arg_callback_in(file_name):
 	"""
-		Save preprocessed samples under a different file name
+	Take preprocessed samples from the selected file
 	"""
 	global samples_path
 	samples_path = os.path.join(rel_data_path, file_name)
 	print("<Using processed samples from: {}>".format(samples_path))
+
+def _arg_callback_ss(s_step = None, s_epoch = 'False'):
+	"""
+	Set the snapshot step
+	"""
+	global snapshot_step, snapshot_epoch
+	if isinstance(s_step, str) and s_step.lower() == 'none':
+		s_step = None
+	snapshot_step = int(s_step) if s_step is not None else None
+	snapshot_epoch = True if s_epoch.lower() == 'true' else False
+	print("<Snapshot step: {}, Snaphot epoch end: {}>".format(s_step, s_epoch))
 
 def build_network(name, hyp, pd):
 
@@ -167,6 +178,7 @@ def train_model(model, hyp, this_run_id, log_run):
 		'Starting training...',
 		]
 	)
+
 	model.fit(X_inputs=ps.train.xs,
 			  Y_targets=ps.train.ys,
 			  validation_set=(ps.valid.xs, ps.valid.ys),
@@ -176,7 +188,7 @@ def train_model(model, hyp, this_run_id, log_run):
 	          shuffle=False,
 	          run_id=this_run_id,
 			  snapshot_step=snapshot_steps,
-			  snapshot_epoch=True,
+			  snapshot_epoch=snapshot_epoch,
 	          callbacks=monitorCallback)
 
 	# save model
@@ -193,36 +205,37 @@ def train_model(model, hyp, this_run_id, log_run):
 def do_prediction(model, hyp, this_run_id, log_run):
 	# print confusion matrix for the different sets
 	print("Running prediction...\n")
-	cmt = Binary_confusion_matrix(name='Training')
-	cmv = Binary_confusion_matrix(name='Validation')
+	cm = Binary_confusion_matrix()
 	horiz_bar = "-" * (len(this_run_id) + 8 )
 	print(horiz_bar)
 	print("Run id: " + this_run_id)
 	print(horiz_bar)
 
 	predictions = model.predict(ps.train.xs)
-	cmt.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
+	cm.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
 
 	predictions = model.predict(ps.valid.xs)
-	cmv.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
+	cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
 
-	cmt.print_tables()
-	cmv.print_tables()
+	cm.print_tables()
 
 	#cm.save(this_run_id + '.res', content='metrics')
-	log_run.log(cmv.metrics, logname="metrics", aslist = False)
+	log_run.log(cm.metrics, logname="metrics", aslist = False)
 	perflog.replace([
 		this_run_id,
 		network_name,
 		os.path.basename(samples_path),
-		cmv.metrics['validation-set']['accuracy'],
-		cmv.metrics['validation-set']['f1_score']
+		cm.metrics['validation-set']['accuracy'],
+		cm.metrics['validation-set']['f1_score']
 		]
 	)
 
 ################################################################################
 
+# standard settings if not changed by command line arguments
+snapshot_epoch = True
 print_debug = True
+
 # Handles command arguments, usefull for debugging
 # usage: tflearn_rnn.py --pf debug_processed.pickle
 #  will get samples from debug_processed.pickle
@@ -230,7 +243,10 @@ arghandler = Arg_handler()
 arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from. args: <filename>")
 arghandler.register_flag('net', _arg_callback_net, ['network'], "Which network to use. args: <network name>")
 arghandler.register_flag('train', _arg_callback_train, helptext = "Use settings for training. Args: <epochs> <run_count> <batch size>")
+arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set snapshots. No arguments means no snapshots. Args: <snapshot step> <epoch end>")
+print("\n")
 arghandler.consume_flags()
+
 
 debug_log = Logger()
 perflog = FileBackedCSVBuffer(

@@ -4,6 +4,7 @@ import math
 import pickle
 from pprint import pprint
 import random
+import os
 
 import numpy as np
 from scipy.stats import gmean
@@ -12,7 +13,8 @@ from numpy import mean
 
 import common_funs
 from common_funs import Binary_confusion_matrix
-import settings
+from common_funs import Arg_handler
+from settings import *
 
 class FubarException(Exception):
     pass
@@ -24,7 +26,7 @@ snitch = False # None = don't add
 
 pos_label = np.array([0., 1.], dtype="float32")
 neg_label = np.array([1., 0.], dtype="float32")
-logger = common_funs.Logger(enable=settings.use_logger)
+logger = common_funs.Logger(enable=use_logger)
 
 def predict(int_vectors, word_dicts, max_len=None):
 	predictions = []
@@ -101,9 +103,23 @@ def predict_helper(sentence, word_dicts, print_debug = False):
 	#return  common_funs.normalize([neg_mean, pos_mean])
 	return [neg_mean, pos_mean]
 
+def _arg_callback_in(file_name):
+	"""
+	Take preprocessed samples from the selected file
+	"""
+	global samples_path
+	samples_path = os.path.join(rel_data_path, file_name)
+	print("<Using processed samples from: {}>".format(samples_path))
+
+##################################################################################
+
+arghandler = Arg_handler()
+arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from. args: <filename>")
+arghandler.consume_flags()
+
 # load processed samples
-with open(settings.samples_path, 'rb') as handle:
-    ps = pickle.load( handle )
+with open(samples_path, 'rb') as handle:
+    ps = (pickle.load(handle)).dataset
 
 all_words = []
 pos_words = []
@@ -152,7 +168,7 @@ for i_dict, words in enumerate([all_words, neg_words, pos_words]):
 				   step=10000)
 	word_dicts[i_dict] = d
 
-print("running prediction...")
+print("running prediction...\n")
 cm = Binary_confusion_matrix()
 
 # print confusion matrix for the different sets

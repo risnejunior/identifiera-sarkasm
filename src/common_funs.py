@@ -408,10 +408,9 @@ class Binary_confusion_matrix:
 	# positive means sarcastic, negative means normal
 	# fn: false negative, fp: false positive,tp: true positive,tn: true negative
 
-	def __init__(self, ids = [], predictions = [], Ys = [], name=''):
+	def __init__(self):
 		self.metrics = {}
-		self.rows = []
-		self.t = PrettyTable([Fore.GREEN + name + Style.RESET_ALL,'Predicted NO','Predicted YES','Total'])
+		self.rows = []		
 
 	def calc(self, ids, predictions, Ys, name = None):
 
@@ -459,20 +458,23 @@ class Binary_confusion_matrix:
 		metrics = self.metrics[name]
 		fn = metrics['fn']; fp = metrics['fp']; tp = metrics['tp']; tn = metrics['tn']
 
-		self.t.add_row(['Actual NO',tn,fp,tn+fp])
-		self.t.add_row(['Actual YES',fn,tp,fn+tp])
-		self.t.add_row(['Total',tn+fn,fp+tp,''])
-		self.t.hrules = ALL
+		pt = PrettyTable([Fore.GREEN + name + Style.RESET_ALL,'Predicted NO','Predicted YES','Total'])
+		pt.add_row(['Actual NO',tn,fp,tn+fp])
+		pt.add_row(['Actual YES',fn,tp,fn+tp])
+		pt.add_row(['Total',tn+fn,fp+tp,''])
+		pt.hrules = ALL
 
-		self.rows = ['' for i in range(5)]
-		self.rows[0] = "Accuracy: {:^1}{:<.2f}".format("", metrics['accuracy'])
-		self.rows[1] = "Precision: {:^}{:<.2f}".format("", metrics['precision'])
-		self.rows[2] = "Recall: {:^3}{:<.2f}".format("",   metrics['recall'])
-		self.rows[3] = "F1-score: {:^1}{:<.2f}".format("", metrics['f1_score'])
-		self.rows[4] = ""
+		rows = ['' for i in range(6)]
+		rows[0] = pt.get_string(padding_width=5)
+		rows[1] = "Accuracy: {:^1}{:<.2f}".format("", metrics['accuracy'])
+		rows[2] = "Precision: {:^}{:<.2f}".format("", metrics['precision'])
+		rows[3] = "Recall: {:^3}{:<.2f}".format("",   metrics['recall'])
+		rows[4] = "F1-score: {:^1}{:<.2f}".format("", metrics['f1_score'])
+		rows[5] = ""
+
+		self.rows.extend(rows)
 
 	def print_tables(self):
-		print(self.t)
 		for row in self.rows:
 			print(row)
 
@@ -501,22 +503,6 @@ class Binary_confusion_matrix:
 
 		with open(file_path, 'w', encoding='utf8') as out_file:
 			out_file.write(text)
-
-
-		"""
-		file_path = os.path.join(directory, file_name)
-			with open(file_path, 'w', encoding='utf8') as out_file:
-				out_file.write(self.freetext)
-
-
-		logger.log(accuracy, logname="accuracy")
-		logger.log(recall, logname="recall")
-		logger.log(precision, logname="precision")
-		logger.log(f1_score, logname="f1_score")
-		logger.save(file_name="matrix.log")
-		"""
-
-
 
 class Progress_bar:
 	"""
