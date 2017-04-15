@@ -56,13 +56,14 @@ def recurrent_neural_network(data):
     layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
              'biases': tf.Variable(tf.random_normal([n_classes]))}
 
-    data = tf.transpose(data, [1,0,2])
-    data = tf.reshape(data ,[-1,chunk_size])
-    data = tf.split(data, n_chunks, 0)
+    data = tf.transpose(data)
+    data = tf.reshape(data,[-1,chunk_size])
+    sequence = tf.split(data, n_chunks, 0)
+
 
     gru_cell = rnn.GRUCell(rnn_size)
 
-    outputs, states = rnn.static_rnn(gru_cell, data, dtype=tf.float32)
+    outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
 
     output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
 
@@ -71,27 +72,30 @@ def recurrent_neural_network(data):
 # The method for training the neural network
 # TODO: Finish this function
 
-def train_neural_network(data):
-    prediction = recurrent_neural_network(data)
-    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels = y) )
+def train_neural_network(ps,emb_init,W,emb_placeholder):
+    n_samples,words = ps.train.xs.shape
+    n_batches = n_samples/batch_size
+
+    data_placeholder = tf.placeholder(dtype=tf.int32,shape=[max_sequence,batch_size])
+    labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size,n_classes])
+    embeddings = word_embedding_layer(data_placeholder,W)
+    prediction = recurrent_neural_network(embeddings)
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
+                                                                  labels = labels_placeholder
+                                                                  ))
     optimizer = tf.train.AdamOptimizer().minimize(cost)
 
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-
+    sess = tf.Session()
+    with sess.as_default():
         for epoch in range(epochs):
-            epoch_loss = 0
-        print("Hello")
+            print("Hello")
 
-    print("TODO: Finish this method")
 
 # Here starts the program
 with open(samples_path, 'rb') as handle:
     pd = pickle.load( handle )
 
 ps = pd.dataset #Processed Samples
-print("Looking at the dataset:")
-print(ps.train.xs)
 
 if use_embeddings:
     emb = np.array(pd.embeddings[:pd.vocab_size], dtype=np.float32)
@@ -99,9 +103,7 @@ else:
     emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
 
 emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
-
-print(emb_init)
-print(W)
-print(emb_placeholder)
+print(ps.valid.xs.shape)
+train_neural_network(ps,emb_init,W,emb_placeholder)
 
 print ("=== Code ran Successfully ===")
