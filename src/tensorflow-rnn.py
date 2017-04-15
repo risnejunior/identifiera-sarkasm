@@ -31,7 +31,7 @@ n_chunks = max_sequence
 rnn_size = 128
 
 ## Create the embedding variable
-def create_embedding_tensor(vocabulary_size,embedding_size,embeddings):
+def init_embedding(vocabulary_size,embedding_size):
     W = tf.Variable(tf.constant(0.0, shape = [vocabulary_size, embedding_size]),
                     trainable = False,
                     name = "W")
@@ -39,8 +39,7 @@ def create_embedding_tensor(vocabulary_size,embedding_size,embeddings):
                                            shape = [vocabulary_size, embedding_size]
                                            )
     embedding_init = W.assign(embedding_placeholder)
-    tf.get_default_session().run(embedding_init, feed_dict={embedding_placeholder: embeddings})
-    return W
+    return embedding_init, W, embedding_placeholder
 
 
 #Word embedding layer
@@ -95,17 +94,10 @@ if use_embeddings:
 else:
     emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
 
-#print("This is the numpy vector of the embedding: \n")
-#print(emb)
-sess = tf.Session()
-with sess.as_default():
-    W = create_embedding_tensor(pd.vocab_size,pd.emb_size,emb)
-    print(W)
-    print("== Testing out wordembedding ==")
-    #print(W.eval())
-    test = word_embedding_layer(ps.train.xs[2],W)
-    results = sess.run(test)
-    print (results)
+emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
 
-sess.close()
+print(emb_init)
+print(W)
+print(emb_placeholder)
+
 print ("=== Code ran Successfully ===")
