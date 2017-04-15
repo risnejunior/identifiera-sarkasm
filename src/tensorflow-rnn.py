@@ -87,6 +87,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
 
     sess = tf.Session()
     with sess.as_default():
+        set_embedding(sess,emb_init,emb_placeholder,emb)
         for epoch in range(epochs):
             print("Hello")
 
