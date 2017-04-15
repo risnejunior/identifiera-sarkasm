@@ -86,11 +86,24 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
     optimizer = tf.train.AdamOptimizer().minimize(cost)
 
     sess = tf.Session()
+    y_labels = np.array(ps.train.ys)
+    print(y_labels.shape)
+    x_training_batches, y_training_batches= np.split(ps.train.xs,n_batches),np.split(y_labels,n_batches)
     with sess.as_default():
+        sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
+        print("=== Printing the embeddings ===")
+        print(W.eval())
         for epoch in range(epochs):
-            print("Hello")
+            epoch_loss = 0
+            for batch_i in range(int(n_batches)):
+                x = np.transpose(x_training_batches[batch_i])
+                y = y_training_batches[batch_i]
+                _, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: x,
+                                                               labels_placeholder: y})
+                epoch_loss += c
 
+            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss)
 
 # Here starts the program
 with open(samples_path, 'rb') as handle:
@@ -104,7 +117,8 @@ else:
     emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
 
 emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
-print(ps.valid.xs.shape)
 train_neural_network(ps,emb_init,W,emb_placeholder)
+
+
 
 print ("=== Code ran Successfully ===")
