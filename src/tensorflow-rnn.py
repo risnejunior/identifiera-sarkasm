@@ -92,8 +92,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
     with sess.as_default():
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
-        print("=== Printing the embeddings ===")
-        print(W.eval())
+        print(results)
         for epoch in range(epochs):
             epoch_loss = 0
             for batch_i in range(int(n_batches)):
@@ -105,6 +104,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
 
             print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss)
 
+    sess.close()
 # Here starts the program
 with open(samples_path, 'rb') as handle:
     pd = pickle.load( handle )
