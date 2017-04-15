@@ -42,6 +42,10 @@ def init_embedding(vocabulary_size,embedding_size):
     return embedding_init, W, embedding_placeholder
 
 
+# Setting the word embeddings
+def set_embedding(sess,init,placeholder,embeddings):
+    sess.run(init, feed_dict={placeholder: embeddings})
+
 #Word embedding layer
 def word_embedding_layer(word,embedding_tensor):
     embedding_layer = tf.nn.embedding_lookup(embedding_tensor,word)
