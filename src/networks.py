@@ -1,6 +1,10 @@
 import tensorflow as tf
 import tflearn
 from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell
+from tflearn.layers.core import input_data, dropout, fully_connected
+from tflearn.layers.conv import conv_1d, global_max_pool
+from tflearn.layers.merge_ops import merge
+from tflearn.layers.estimator import regression
 
 class NetworkNotFoundError(ValueError):
 	pass
@@ -16,7 +20,7 @@ class Networks:
 
 		callables = [method for method in dir(self) if callable(getattr(self, method))]
 		self.callables = [method for method in callables if method[0] != '_' and method[:2] != "get"]
-	
+
 	def get_network(self, name, params):
 			if name in self.callables:
 				return getattr(self, name)(**params)
@@ -61,7 +65,7 @@ class Networks:
 		                         loss='categorical_crossentropy')
 		return net
 
-	def little_pony(self, hyp, pd):
+	def basic_pony(self, hyp, pd):
 		net = tflearn.input_data([None, pd.max_sequence], dtype=tf.float32)
 		net = tflearn.embedding(net, input_dim=pd.vocab_size,
 								     output_dim=pd.emb_size,
@@ -69,6 +73,26 @@ class Networks:
 		net = tflearn.lstm(net,
 						   32,
 						   dynamic=False,
+						   name="lstm")
+		net = tflearn.fully_connected(net,
+									  2,
+									  activation='softmax',
+									  name="output",
+									  restore=True)
+		net = tflearn.regression(net,
+			                     optimizer='adam',
+			                     learning_rate=hyp.regression.learning_rate,
+		                         loss='categorical_crossentropy')
+		return net
+
+	def little_pony(self, hyp, pd):
+		net = tflearn.input_data([None, pd.max_sequence], dtype=tf.float32)
+		net = tflearn.embedding(net, input_dim=pd.vocab_size,
+								     output_dim=pd.emb_size,
+								     name="embedding")
+		net = tflearn.lstm(net,
+						   pd.max_sequence,
+						   dynamic=True,
 						   name="lstm")
 		net = tflearn.fully_connected(net,
 									  2,
@@ -115,3 +139,21 @@ class Networks:
 				                     learning_rate=hyp.regression.learning_rate,
 			                         loss='categorical_crossentropy')
 			return net
+
+	def convolve_me(self, hyp, pd):
+		network = input_data(shape=[None, pd.max_sequence], name='input')
+		network = tflearn.embedding(network,
+									input_dim=pd.vocab_size,
+								    output_dim=pd.emb_size,
+								    name="embedding")
+		branch1 = conv_1d(network, 128, 3, padding='valid', activation='relu', regularizer="L2")
+		branch2 = conv_1d(network, 128, 4, padding='valid', activation='relu', regularizer="L2")
+		branch3 = conv_1d(network, 128, 5, padding='valid', activation='relu', regularizer="L2")
+		network = merge([branch1, branch2, branch3], mode='concat', axis=1)
+		network = tf.expand_dims(network, 2)
+		network = global_max_pool(network)
+		network = dropout(network, 0.5)
+		network = fully_connected(network, 2, activation='softmax')
+		network = regression(network, optimizer='adam', learning_rate=0.001,
+		                     loss='categorical_crossentropy', name='target')
+		return network
