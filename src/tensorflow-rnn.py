@@ -30,11 +30,10 @@ chunk_size = embedding_size
 n_chunks = max_sequence
 rnn_size = 128
 
-with tf.device("/gpu:0"):
-    layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
-            'biases': tf.Variable(tf.random_normal([n_classes]))}
 
-    gru_cell = rnn.GRUCell(rnn_size)
+layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
+        'biases': tf.Variable(tf.random_normal([n_classes]))}
+gru_cell = rnn.GRUCell(rnn_size)
 train_call = 1
 val_call = 2
 
@@ -66,13 +65,12 @@ def recurrent_neural_network(data,call):
     data = tf.transpose(data,[1,0,2])
     data = tf.reshape(data,[-1,chunk_size])
     sequence = tf.split(data, n_chunks, 0)
-    with tf.device("/gpu:0"):
-        with tf.variable_scope("Gru_cell") as scope:
-            if call != train_call:
-                scope.reuse_variables()
-            outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
-        output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
-        return output
+    with tf.variable_scope("Gru_cell") as scope:
+        if call != train_call:
+            scope.reuse_variables()
+        outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
+    output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
+    return output
 
 # The method for training the neural network
 # TODO: Finish this function
@@ -111,6 +109,10 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
     with sess.as_default():
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
+        test = sess.run(embeddings, feed_dict={data_placeholder: x_training_batches[1]})
+        #print(test.shape)
+        #print(test)
+        #print(np.transpose(test,[0,2,1]).shape)
         for epoch in range(epochs):
             epoch_loss = 0
             for batch_i in range(int(n_batches)):
