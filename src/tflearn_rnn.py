@@ -234,10 +234,6 @@ def do_prediction(model, hyp, this_run_id, log_run):
 # affected by flags, need to be before consume_flags()
 snapshot_epoch = True
 print_debug = True
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/master
 # Handles command arguments, usefull for debugging
 # usage: tflearn_rnn.py --pf debug_processed.pickle
 #  will get samples from debug_processed.pickle
@@ -304,15 +300,6 @@ for hyp in hypers:
 			model = create_model(net, hyp, this_run_id, log_run)
 			if training:
 				model = train_model(model, hyp, this_run_id, log_run)
-<<<<<<< HEAD
-		except EarlyStoppingError as e:
-			print(e)
-			stop_reason = ["Stopping due to early stopping"]
-		else:
-			stop_reason = ["Stopping due to epoch limit"]
-		finally:
-			do_prediction(model, hyp, this_run_id, log_run)
-=======
 		except NetworkNotFoundError as e:
 			print("The network name provided din't match any defined network")
 		except EarlyStoppingError as e:
@@ -323,7 +310,6 @@ for hyp in hypers:
 			do_prediction(model, hyp, this_run_id, log_run)
 		finally:
 			#do_prediction(model, hyp, this_run_id, log_run)
->>>>>>> origin/master
 			perflog.append(stop_reason)
 			perflog.flush()
 
