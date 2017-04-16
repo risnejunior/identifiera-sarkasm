@@ -57,12 +57,12 @@ class EarlyStoppingMonitor():
 		self.avgLimitPercent = avgLimitPercent
 		self._buff = FileBackedCSVBuffer(
 			filename='earlystopping.csv',
-			directory='logs', 
+			directory='logs',
 			header=['epoch', 'val loss', 'avg val loss', 'loss limit', 'status'],
 			clearFile=True)
 
 	def send(self, state):
-		
+
 		self.epoch += 1
 
 		if state['val_loss']:
@@ -80,7 +80,7 @@ class EarlyStoppingMonitor():
 		avg_limit = self.avgLimitPercent * avg_loss
 
 		self._buff.write([self.epoch, val_loss, avg_loss, avg_limit])
-		
+
 		if val_loss > avg_limit:
 			self._buff.append(["Stopped due to loss average"])
 			raise EarlyStoppingError("Early stopping due to loss average")
@@ -88,7 +88,7 @@ class EarlyStoppingMonitor():
 			m = "Loss delta to limit: {}, continuing...".format(round(avg_limit-val_loss,3))
 			self._buff.append([m])
 			self.losses.append(val_loss)
-		
+
 		self._buff.flush()
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
@@ -139,7 +139,7 @@ def create_model(net, hyp, this_run_id, log_run):
 		model.load(pretrained_path)
 		print("Successfully loaded model")
 		return model
-	
+
 	#set embeddings
 	if use_embeddings:
 		emb = np.array(pd.embeddings[:pd.vocab_size], dtype=np.float32)
@@ -220,7 +220,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 ################################################################################
 
 print_debug = True
-# Handles command arguments, usefull for debugging 
+# Handles command arguments, usefull for debugging
 # usage: tflearn_rnn.py --pf debug_processed.pickle
 #  will get samples from debug_processed.pickle
 arghandler = Arg_handler()
@@ -241,8 +241,8 @@ with open(samples_path, 'rb') as handle:
 ps = pd.dataset #processed samples
 
 # debug print tweets
-if print_debug:	
-	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):		
+if print_debug:
+	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):
 		ispos = np.array_equal(s_y, pos_label)
 		label = "Positive (Sarcastic)" if ispos else "Negative (not sarcastic)"
 		logstring = "Sample id: {}, {}: {:<5}".format(s_id, label, "\n")
@@ -274,7 +274,7 @@ for hyp in hypers:
 
 	tf.reset_default_graph()
 	with tf.Graph().as_default(), tf.Session() as sess:
-		sess.run(tf.initialize_all_variables())
+		sess.run(tf.global_variables_initializer())
 		tflearn.config.init_training_mode()
 		stop_reason = ["Other error"]
 
@@ -282,17 +282,17 @@ for hyp in hypers:
 			net = build_network(network_name, hyp, pd)
 			model = create_model(net, hyp, this_run_id, log_run)
 			if training:
-				model = train_model(model, hyp, this_run_id, log_run)		
+				model = train_model(model, hyp, this_run_id, log_run)
 		except EarlyStoppingError as e:
 			print(e)
-			stop_reason = ["Stopping due to early stopping"]	
+			stop_reason = ["Stopping due to early stopping"]
 		else:
-			stop_reason = ["Stopping due to epoch limit"]			
+			stop_reason = ["Stopping due to epoch limit"]
 		finally:
 			do_prediction(model, hyp, this_run_id, log_run)
-			perflog.append(stop_reason)			
+			perflog.append(stop_reason)
 			perflog.flush()
-		
+
 	log_run.save(this_run_id + '.log')
-	
+
 debug_log.save("training_debug.log")
