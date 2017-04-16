@@ -30,23 +30,25 @@ chunk_size = embedding_size
 n_chunks = max_sequence
 rnn_size = 128
 
-layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
-          'biases': tf.Variable(tf.random_normal([n_classes]))}
+with tf.device("/gpu:0"):
+    layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
+            'biases': tf.Variable(tf.random_normal([n_classes]))}
 
-gru_cell = rnn.GRUCell(rnn_size)
+    gru_cell = rnn.GRUCell(rnn_size)
 train_call = 1
 val_call = 2
 
 ## Create the embedding variable
 def init_embedding(vocabulary_size,embedding_size):
-    W = tf.Variable(tf.constant(0.0, shape = [vocabulary_size, embedding_size]),
-                    trainable = False,
-                    name = "W")
-    embedding_placeholder = tf.placeholder(dtype = tf.float32,
-                                           shape = [vocabulary_size, embedding_size]
-                                           )
-    embedding_init = W.assign(embedding_placeholder)
-    return embedding_init, W, embedding_placeholder
+    with tf.device("/cpu:0"):
+        W = tf.Variable(tf.constant(0.0, shape = [vocabulary_size, embedding_size]),
+                        trainable = False,
+                        name = "W")
+        embedding_placeholder = tf.placeholder(dtype = tf.float32,
+                                               shape = [vocabulary_size, embedding_size]
+                                               )
+        embedding_init = W.assign(embedding_placeholder)
+        return embedding_init, W, embedding_placeholder
 
 
 # Setting the word embeddings
@@ -60,18 +62,17 @@ def word_embedding_layer(word,embedding_tensor):
 
 #Defining and building the Neural Network
 def recurrent_neural_network(data,call):
-    print()
+
     data = tf.transpose(data,[1,0,2])
     data = tf.reshape(data,[-1,chunk_size])
     sequence = tf.split(data, n_chunks, 0)
-
-    with tf.variable_scope("Gru_cell") as scope:
-        if call != train_call:
-            scope.reuse_variables()
-        outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
-    output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
-
-    return output
+    with tf.device("/gpu:0"):
+        with tf.variable_scope("Gru_cell") as scope:
+            if call != train_call:
+                scope.reuse_variables()
+            outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
+        output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
+        return output
 
 # The method for training the neural network
 # TODO: Finish this function

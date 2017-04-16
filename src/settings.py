@@ -32,7 +32,7 @@ use_logger = True
 #used in training
 network_name = 'little_pony'
 run_count = 1
-epochs = 3
+epochs = 5
 batch_size = 187
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
