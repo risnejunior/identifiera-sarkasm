@@ -60,7 +60,8 @@ def word_embedding_layer(word,embedding_tensor):
 
 #Defining and building the Neural Network
 def recurrent_neural_network(data,call):
-    data = tf.transpose(data)
+    print()
+    data = tf.transpose(data,[1,0,2])
     data = tf.reshape(data,[-1,chunk_size])
     sequence = tf.split(data, n_chunks, 0)
 
