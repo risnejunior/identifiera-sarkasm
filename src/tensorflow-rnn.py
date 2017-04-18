@@ -95,14 +95,6 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
                                                                   labels = labels_placeholder
                                                                   ))
 
-    #val_h,val_w = ps.valid.xs.shape
-    #
-    #val_data_placeholder = tf.placeholder(dtype=tf.int32, shape=[val_h,val_w])
-    #val_labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[val_h,n_classes])
-    #val_embeddings = word_embedding_layer(val_data_placeholder,W)
-    #val_predictions = recurrent_neural_network(val_embeddings,val_call)
-    #validation = validate_neural_network(val_predictions,val_labels_placeholder)
-
     optimizer = tf.train.AdamOptimizer().minimize(cost)
     sess = tf.Session()
     y_labels = np.array(ps.train.ys)
@@ -124,7 +116,10 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
             #val_accuracy = sess.run(validation,
             #                        feed_dict = {val_data_placeholder: ps.valid.xs,
             #                                    val_labels_placeholder: np.array(ps.valid.ys)})
+            saver = tf.train.Saver()
+            save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
             print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss)
+            print("Checkpoint file saved in %s" % save_path )
 
     sess.close()
 # Here starts the program
