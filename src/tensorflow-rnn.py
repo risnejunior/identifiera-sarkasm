@@ -78,10 +78,8 @@ def recurrent_neural_network(data,call):
 # TODO: Finish this function
 
 # Method for validating network in training
-def validate_neural_network(prediction,targets):
-    correct = tf.equal(tf.argmax(prediction,1), tf.argmax(targets,1))
-    accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
-    return accuracy
+def validate_neural_network():
+    return 0
 
 def train_neural_network(ps,emb_init,W,emb_placeholder):
     n_samples,words = ps.train.xs.shape
@@ -118,8 +116,9 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
             #                                    val_labels_placeholder: np.array(ps.valid.ys)})
             saver = tf.train.Saver()
             save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
-            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss)
+            validate_training()
             print("Checkpoint file saved in %s" % save_path )
+            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss)
 
     sess.close()
 # Here starts the program
