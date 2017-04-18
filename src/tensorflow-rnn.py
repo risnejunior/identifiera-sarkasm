@@ -78,10 +78,9 @@ def recurrent_neural_network(data,call):
 # TODO: Finish this function
 
 # Method for validating network in training
-def validate_neural_network(prediction,targets):
-    correct = tf.equal(tf.argmax(prediction,1), tf.argmax(targets,1))
-    accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
-    return accuracy
+def validate_training(ps):
+    return 0
+
 
 def train_neural_network(ps,emb_init,W,emb_placeholder):
     n_samples,words = ps.train.xs.shape
@@ -94,14 +93,6 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
                                                                   labels = labels_placeholder
                                                                   ))
-
-    #val_h,val_w = ps.valid.xs.shape
-    #
-    #val_data_placeholder = tf.placeholder(dtype=tf.int32, shape=[val_h,val_w])
-    #val_labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[val_h,n_classes])
-    #val_embeddings = word_embedding_layer(val_data_placeholder,W)
-    #val_predictions = recurrent_neural_network(val_embeddings,val_call)
-    #validation = validate_neural_network(val_predictions,val_labels_placeholder)
 
     optimizer = tf.train.AdamOptimizer().minimize(cost)
     sess = tf.Session()
@@ -124,7 +115,11 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
             #val_accuracy = sess.run(validation,
             #                        feed_dict = {val_data_placeholder: ps.valid.xs,
             #                                    val_labels_placeholder: np.array(ps.valid.ys)})
+            saver = tf.train.Saver()
+            save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
+            validate_training()
             print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss)
+            print("Checkpoint file saved in %s" % save_path )
 
     sess.close()
 # Here starts the program
