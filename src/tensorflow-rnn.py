@@ -31,9 +31,6 @@ n_chunks = max_sequence
 rnn_size = 128
 
 
-layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
-        'biases': tf.Variable(tf.random_normal([n_classes]))}
-gru_cell = rnn.GRUCell(rnn_size)
 train_call = 1
 val_call = 2
 
@@ -61,15 +58,20 @@ def word_embedding_layer(word,embedding_tensor):
 
 #Defining and building the Neural Network
 def recurrent_neural_network(data,call):
+    layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
+    'biases': tf.Variable(tf.random_normal([n_classes]))}
+    gru_cell = rnn.GRUCell(rnn_size)
 
     data = tf.transpose(data,[1,0,2])
     data = tf.reshape(data,[-1,chunk_size])
     sequence = tf.split(data, n_chunks, 0)
-    with tf.variable_scope("Gru_cell") as scope:
-        if call != train_call:
-            scope.reuse_variables()
-        outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
+    #with tf.variable_scope("Gru_cell") as scope:
+    if call != train_call:
+        scope.reuse_variables()
+    outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
+
     output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
+
     return output
 
 # The method for training the neural network
@@ -93,13 +95,13 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
                                                                   labels = labels_placeholder
                                                                   ))
 
-    val_h,val_w = ps.valid.xs.shape
-
-    val_data_placeholder = tf.placeholder(dtype=tf.int32, shape=[val_h,val_w])
-    val_labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[val_h,n_classes])
-    val_embeddings = word_embedding_layer(val_data_placeholder,W)
-    val_predictions = recurrent_neural_network(val_embeddings,val_call)
-    validation = validate_neural_network(val_predictions,val_labels_placeholder)
+    #val_h,val_w = ps.valid.xs.shape
+    #
+    #val_data_placeholder = tf.placeholder(dtype=tf.int32, shape=[val_h,val_w])
+    #val_labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[val_h,n_classes])
+    #val_embeddings = word_embedding_layer(val_data_placeholder,W)
+    #val_predictions = recurrent_neural_network(val_embeddings,val_call)
+    #validation = validate_neural_network(val_predictions,val_labels_placeholder)
 
     optimizer = tf.train.AdamOptimizer().minimize(cost)
     sess = tf.Session()
@@ -110,9 +112,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
         test = sess.run(embeddings, feed_dict={data_placeholder: x_training_batches[1]})
-        #print(test.shape)
-        #print(test)
-        #print(np.transpose(test,[0,2,1]).shape)
+
         for epoch in range(epochs):
             epoch_loss = 0
             for batch_i in range(int(n_batches)):
@@ -121,10 +121,10 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
                 _, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: x,
                                                                labels_placeholder: y})
                 epoch_loss += c
-            val_accuracy = sess.run(validation,
-                                    feed_dict = {val_data_placeholder: ps.valid.xs,
-                                                val_labels_placeholder: np.array(ps.valid.ys)})
-            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss, ' |  current accuracy:',val_accuracy)
+            #val_accuracy = sess.run(validation,
+            #                        feed_dict = {val_data_placeholder: ps.valid.xs,
+            #                                    val_labels_placeholder: np.array(ps.valid.ys)})
+            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss)
 
     sess.close()
 # Here starts the program
@@ -138,8 +138,9 @@ if use_embeddings:
 else:
     emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
 
-emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
-train_neural_network(ps,emb_init,W,emb_placeholder)
+with tf.Graph().as_default():
+    emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
+    train_neural_network(ps,emb_init,W,emb_placeholder)
 
 
 
