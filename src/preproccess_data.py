@@ -26,10 +26,23 @@ from common_funs import Working_animation
 from common_funs import Progress_bar
 from common_funs import DebugLoop
 from common_funs import Arg_handler
+#from common_funs import ProcessedData
+#from common_funs import Dataset
+#from common_funs import Setpart
+#from common_funs import pos_label
+#from common_funs import neg_label
 import settings
 from settings import *
 
 #### functions ###############################################################################
+
+def _arg_callback_ds(ds_name):
+	"""
+	Select dataset
+	"""
+	global dataset_proto
+	dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
+	print("<Using dataset: {}>".format(ds_name))
 
 def _arg_callback_reverse():
 	"""
@@ -98,8 +111,8 @@ def _arg_callback_pf(file_name):
 	"""
 	Save preprocessed samples under a different file name
 	"""
-	global samples_path
-	samples_path = os.path.join(rel_data_path, file_name)
+	global dataset_proto
+	dataset_proto['ps_file_name'] = file_name
 	print("<Saving processed samples as: {}>".format(file_name))
 
 def build_vocabulary( words, max_size ):	
@@ -297,6 +310,7 @@ nltk_dowload = False
 save_debug = False
 scramble_samples = False
 reverse_samples = False
+dataset_proto = datasets[dataset_name]
 
 arghandler = Arg_handler()
 arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run, with few samples, small vocab, seq. length and few embeddings used.")
@@ -307,7 +321,13 @@ arghandler.register_flag('scramble', _arg_callback_scramble, [], "scramble the s
 arghandler.register_flag('rev', _arg_callback_reverse, ['reverse'], "reverese the samples (tweets)")
 arghandler.register_flag('ls', _arg_callback_ls, ['limit', 'limit-samples'], "Limit how many samples to use (tweets) Args: <sample count>")
 arghandler.register_flag('re', _arg_callback_re, ['random-embeddings'], "Use random embeddings")
+arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.consume_flags()
+
+dataset = settings.set_rel_paths(dataset_proto)
+path_name_neg = dataset["path_name_neg"]
+path_name_pos = dataset["path_name_pos"]
+samples_path = dataset["samples_path"]
 
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
 tknzr = TweetTokenizer(reduce_len=True, preserve_case=False)

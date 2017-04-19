@@ -19,7 +19,8 @@ with open(out_path, 'w', encoding='utf8') as out_file:
 			with open(in_path, 'r', encoding='utf8') as in_file:
 				text = in_file.read()
 				file_id = file_name.split('.')[0]
-				row = [dataset_name, file_id, file_class, text]
+				class_mark = 1 if file_class == 'positive' else 0
+				row = [dataset_name, file_id, class_mark, text]
 				row_text = '\t'.join(row)
 				shuffle_buffer.append(row_text)
 

@@ -167,7 +167,9 @@ nav a:hover {
     border-radius: 5px;
     cursor: pointer;
     border-style: inherit;
+    width: 120px;
 }
+
 .button.selected {
     background-color: #9c4d4d;
     border-style: inset;

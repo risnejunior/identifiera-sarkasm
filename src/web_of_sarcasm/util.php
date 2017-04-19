@@ -60,11 +60,37 @@ class DbAdapter {
 		if ($user && $user['nonce'] == $nonce) {
 			$validated = true;
 		} else {
-			echo($user['nonce'] . '=' . $nonce . $user_id . '=' . $user['user_id']);
+			//echo($user['nonce'] . '=' . $nonce . $user_id . '=' . $user['user_id']);
 			$this->errors->add('nonce not matched');
 		}
 
 		return $validated;
+	}
+
+	public function getScore($user_id) {		
+		$sql = "
+		SELECT 
+		u.user_id,
+		COUNT(*) answer_count,
+		SUM(CASE WHEN a.answer = 1 AND s.class = 1 THEN 1 ELSE 0 END) tp,
+		SUM(CASE WHEN a.answer = 0 AND s.class = 0 THEN 1 ELSE 0 END) tn,
+		SUM(CASE WHEN a.answer = 1 AND s.class = 0 THEN 1 ELSE 0 END) fp,
+		SUM(CASE WHEN a.answer = 0 AND s.class = 1 THEN 1 ELSE 0 END) fn
+		FROM users u
+
+
+		LEFT JOIN answers a
+		ON u.user_id = a.user_id
+
+		LEFT JOIN samples s
+		ON a.question_id = s.id
+
+		WHERE u.user_id = {$user_id}
+		GROUP BY u.user_id
+		";
+
+		$rows = $this->execQuery($sql);
+		return $rows;		
 	}
 
 	public function getQuiz($size, $dataset) {
@@ -85,7 +111,7 @@ class DbAdapter {
 
 	public function setAnswer($question_id, $user_id, $answer) {
 		$sql = "
-		INSERT INTO `answers`(`question_id`, `user_id`, `answer`) 
+		REPLACE INTO `answers`(`question_id`, `user_id`, `answer`) 
 		VALUES ({$question_id}, {$user_id}, {$answer})
 		 ";
 		 $this->execQuery($sql);
@@ -167,5 +193,7 @@ class DbAdapter {
 	    return $randomString;
 	}
 }
+
+
 
 ?>

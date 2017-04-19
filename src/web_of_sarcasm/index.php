@@ -8,52 +8,69 @@
 		$db = new DbAdapter();
 		$action = $_POST['action'];
 
-		if ($action == 'get_quiz') {
-			//isset($_POST['user_id'])
-			//isset($_POST['nonce'])
+		if ($action == 'get_quiz') {			
 			$user_id = intval($_POST['user_id']);
 			$nonce = $_POST['nonce'];
-			$size = $_POST['size'];
+            $size = intval($_POST['size']);
+			$dataset = $_POST['dataset'];
 
 			if ($db->validate_user($user_id, $nonce)) {
-				$quiz = $db->getQuiz($size, 'poria-balanced');	
-				
+				$quiz = $db->getQuiz($size, $dataset);	
 				$result_array = array(
-					'type'=>'set_quiz',
+                    'type'=>'set_quiz',
+					'dataset'=>$dataset,
 					'quiz' =>$quiz
 				);
-				//$result_array = array('type'=>'set_quiz');
+                if (count($quiz) < 1) {
+                    $errors->add("No quiz found");
+                }
 			} else {
 				$errors->add("user not validated");
 			}			
 
 		} elseif ($action == 'register_user') {
-			$name = $_POST['name'];
-			$user = $db->createUser($name);
-			$result_array = array(
-				'type'=>'set_user',
-				'id'=>$user['id'],
-				'nonce'=>$user['nonce'],
-				'name'=>$user['name']
-			);			
+			$name = trim($_POST['name']);
+						
+            if (strlen($name) > 30) {
+                $errors->add("username too long, should be < 30 charachters.");
+            } else if (strlen($name) < 2) {
+                $errors->add("username too short, should be at least 1 charachter.");
+            } else {
+                $user = $db->createUser($name);
+                $result_array = array(
+                    'type'=>'set_user',
+                    'id'=>$user['id'],
+                    'nonce'=>$user['nonce'],
+                    'name'=>$user['name']
+                );
+            }            	
 
 		} elseif ($action == 'save_answer') {            
             $question_id = intval($_POST['question_id']);
             $user_id = intval($_POST['user_id']);
             $nonce = $_POST['nonce'];
-            $answer = $_POST['answer'];
+            $answer = intval($_POST['answer']);
 
             if ($db->validate_user($user_id, $nonce)) {
 
                 $db->setAnswer($question_id, $user_id, $answer);  
                 
                 $result_array = array(
-                    'type'=>'saved'
+                    'type'=>'saved',
+                    'question_id'=>$question_id,
+                    'answer'=>$answer
                 );
             } else {
                 $errors->add("user not validated");
             }           
-		} else {
+		} else if ($action == 'tally_score') {
+            $user_id = intval($_POST['user_id']);
+            $score = getScore($user_id);
+            $result_array = array(
+                'type'=>'score_tally',
+                'tally'=>$score
+            );            
+        } else {
 			$errors->add("Request command not recognized");
 		}
 
@@ -63,10 +80,12 @@
 				'type'=>'error',
 				'errors'=>$all_errors
 			);
-		} 
+            error_log( implode(', ', $all_errors) . "\n", 3, "errors.log");
+		} else {
+            //
+        }
 
 		echo json_encode( $result_array );
-
 		die();
 	} 
 ?>
@@ -99,18 +118,18 @@
                 <h1 class="title">Sarcasm quiz!</h1>
                 <nav id='navbar' hidden=true>
                     <ul>
-                        <li><a href="#">Hard quiz</a></li>
-                        <li><a href="#">Easy quiz</a></li>
+                        <li class='hard-link'><a href="#">Hard quiz</a></li>
+                        <li class='easy-link'><a href="#">Easy quiz</a></li>
                     </ul>
                 </nav>
             </header>
         </div>
 
         <div class="main-container">
-            <div class="main wrapper clearfix">
+            <div id="main-content" class="main wrapper clearfix">
 
-            	<article id='main-content'>
-            	    <header id='content-header' hidden=true>
+            	<article id='intro' hidden=true>
+            	    <header id='content-header'>
             	        <h3>Please provide your name</h3>
             	        <form id='name-form'>
             	        	<input type='text' name='name'><br>
@@ -119,6 +138,13 @@
             	    </header>        	    
             	</article>
 
+
+                <article id='easy-quiz' class='quiz-container'>    
+                </article>
+
+
+                <article id='hard-quiz' class='quiz-container'>   
+                </article>                
             	<!--
                 <article>
                     <header>
@@ -142,7 +168,7 @@
                 <aside id='aside' hidden=true>
                 	<div id='status' hidden=true></div>
                 	<div id='score' hidden=true>
-	                    <h3>Your score:</h3>
+	                    <h3></h3>
 	                    <p>Accuracy:</p>
 	                    <p>F1 score:</p>
 	                </div>
