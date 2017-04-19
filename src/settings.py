@@ -7,7 +7,7 @@ import numpy as np
 ##########################################################################
 
 #used in preprocess
-dataset_name = "poria-balanced" #"poria-ratio" # "poria-balanced", "imdb"
+dataset_name = "detector" #"poria-ratio" # "poria-balanced", "imdb"
 remove_punctuation = True
 remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
@@ -72,6 +72,11 @@ datsets = {
 		"rel_path": os.path.join(".","..", "datasets","imdb"),
 		"neg_source": "",
 		"pos_source": ""
+	},
+	"detector" : {
+		"rel_path": os.path.join(".","..", "datasets","detector"),
+		"neg_source": "normal_tweets.csv",
+		"pos_source": "sarcastic_tweets.csv"
 	}
 }
 
