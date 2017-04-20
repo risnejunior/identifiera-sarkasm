@@ -62,8 +62,8 @@ def word_embedding_layer(word,embedding_tensor):
 
 #Defining and building the Neural Network
 def recurrent_neural_network(data):
-    layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
-    'biases': tf.Variable(tf.random_normal([n_classes]))}
+    layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes]), name="Weights"),
+    'biases': tf.Variable(tf.random_normal([n_classes], name="Biases"))}
     gru_cell = rnn.GRUCell(rnn_size)
 
     data = tf.transpose(data,[1,0,2])
@@ -91,7 +91,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
                                                                   labels = labels_placeholder
                                                                   ))
 
-    optimizer = tf.train.AdamOptimizer().minimize(cost)
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.0004).minimize(cost)
     sess = tf.Session()
     y_labels = np.array(ps.train.ys)
     print(y_labels.shape)
