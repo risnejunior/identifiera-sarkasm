@@ -156,7 +156,7 @@ nav a:hover {
 
 .button {
     background-color: #9e9e9e;
-    border: none;
+    border: lightgrey;
     color: white;
     padding: 10px 14px;
     text-align: center;
@@ -168,6 +168,9 @@ nav a:hover {
     cursor: pointer;
     border-style: inherit;
     width: 120px;
+    border-width: 3.4px;
+    outline: none;
+    border-style: outset;
 }
 
 .button.selected {
@@ -226,10 +229,28 @@ ul#score {
     text-shadow: 2px 2px #558ABB;
 }
 
+section.working-animation.question {
+    /*position:absolute; */
+    /* width:100%; */
+    /* height:100%; */
+    background:#FFFFFF url(../img/working_animation.gif) 50% 50% no-repeat;
+    /* left:0px; */
+    /* top:0px; */
+    opacity:0.8;
+    filter:alpha(opacity=60);
+}
 
+section.question {
+    background: rgb(248, 237, 232);
+    margin: 5px;
+    padding: 5px;
+    border-radius: 6px;
+}
 
-
-
+h2#score-header {
+    margin: 5px;
+    padding: 0px;
+}
 
 /* ==========================================================================
    Media Queries

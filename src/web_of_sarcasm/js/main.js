@@ -55,12 +55,13 @@ function getScore(dataset, callback) {
 	};
 
 	send_ajax(message, success);
+	$("#score").parent().fadeTo(10, 0)
 
 	function success(data) {
 		var tally = data.tally[0];		
 		localStorage[data.dataset + '_tally'] = JSON.stringify(tally);
 		var metrics = calculate_metrics(tally);
-		callback(metrics);
+		$("#score").parent().fadeTo(300, 1, callback(metrics));
 	}
 }
 
@@ -69,6 +70,7 @@ function update_metrics(dataset) {
 
 	function callback(metrics) {
 		debug ? console.log("metrics callback") : null
+		$("#score-header").text(dataset + " quiz score:");		
 		$("#count").html(metrics.count);		
 		$("#accuracy").html(metrics.accuracy);
 		$("#precision").html(metrics.precision);
@@ -165,6 +167,7 @@ function get_quiz(dataset, size, callback) {
 		};
 
 		send_ajax(message, success);
+		$("#quiz").fadeTo(300, 0);
 
 	} else {
 		debug ? console.log(dataset + " IS in localstore") : null
@@ -174,6 +177,8 @@ function get_quiz(dataset, size, callback) {
 
 
 	function success(data) {
+		$("#quiz").fadeTo(300, 1);
+
 		if (data.quiz.length < 1) {
 			debug ? console.log("Empty quiz returned!") : null
 			location.reload();
@@ -188,7 +193,7 @@ function get_quiz(dataset, size, callback) {
 
 function add_quiz_html(quiz, container, quiz_name) {
 	debug ? console.log("add quiz html: " + quiz_name) : null
-	
+		
 	container.empty();
 	if (quiz_name == "hard") {
 		container.removeClass("easy")
@@ -207,10 +212,7 @@ function add_quiz_html(quiz, container, quiz_name) {
 		var sectionElement = $("<section></section>")
 			.attr("id", question.id)
 			.text(question.sample_text)
-			.css("background", "#f8ede8")
-			.css("margin", "5px")
-			.css("padding", "5px")
-			.css("border-radius", "6px");
+			.addClass("question");
 
 		var buttonPart = $("<div></div>")
 			.addClass("button-part")
@@ -225,6 +227,7 @@ function add_quiz_html(quiz, container, quiz_name) {
 
 		sectionElement.append(buttonPart);
 		$(container).append(sectionElement);
+
 	}
 
 	$("button", ".button-part").click(function(event) {
@@ -237,7 +240,7 @@ function add_quiz_html(quiz, container, quiz_name) {
 
 		$(this).siblings('.button:first').removeClass('selected');
 
-		set_answer(question_id, isPos);
+		set_answer(question_id, isPos, this);		
 	});
 
 	jQuery("#aside, #navbar").show();	
@@ -245,7 +248,7 @@ function add_quiz_html(quiz, container, quiz_name) {
 	jQuery("container").show();	
 }
 
-function set_answer(question_id, isPos) {
+function set_answer(question_id, isPos, that) {
 	debug ? console.log("Set answer: " + question_id + " " + isPos) : null
 	user_id = localStorage.getItem('user_id')
 	nonce = localStorage.getItem('nonce')
@@ -258,8 +261,10 @@ function set_answer(question_id, isPos) {
 	};
 
 	send_ajax(message, success)
+	$(that).parents("section:first").addClass("working-animation");
 
 	function success(data) {
+		$(that).parents("section:first").removeClass("working-animation");
 		answers = get_answers()
 		answers[question_id] = isPos;		
     	localStorage['answers'] = JSON.stringify(answers);
@@ -318,11 +323,11 @@ function update_quiz(quiz_name, size) {
 		dataset = 'poria-balanced';
 	}
 
-	 get_quiz(dataset, size, callback);
+	 get_quiz(dataset, size, callback);	 
 
 	function callback(quiz) {
 		debug ? console.log("update quiz callback") : null
-		add_quiz_html(quiz, container, quiz_name);
+		add_quiz_html(quiz, container, quiz_name);		
 	}
 	
 }
@@ -335,6 +340,7 @@ function calculate_metrics(tally) {
 		'f1_score': 0, 
 		'count': 0
 	};
+
 	if (tally && tally.answer_count > 0) {
 		var count = parseInt(tally.answer_count);
 		var tp = parseInt(tally.tp); 
@@ -351,8 +357,6 @@ function calculate_metrics(tally) {
 		metrics.precision = Math.round(precision * 100) / 100;
 		metrics.recall = Math.round(recall * 100) / 100;
 	}
-	//answer_string = 'Accuracy: ' + accuracy + ', F1 Score: ' + f1_score + " "
-	//answer_string += ' ,Correct: ' + (tp + tn) + ' out of: ' + count
-
+	
 	return metrics;
 }

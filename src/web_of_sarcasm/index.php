@@ -146,20 +146,20 @@
             	    </header>        	    
             	</article>
 
-
-                <article id='quiz' class='quiz-container easy'>    
+                <article id='quiz' class='quiz-container easy'> <!-- style="opacity: 0;">   -->
                 </article>        
 
                 <aside id='aside' hidden='true'>
                 	<div id='status'></div>
                     <div class='tooltip'>
-                    <ul id='score'>
-                        <li>Answered: <div id='count' class='metric'>0</div></li>
-                        <li>Accuracy: <div id='accuracy' class='metric'>0</div></li>
-                        <li>Precision: <div id='precision' class='metric'>0</div></li>
-                        <li>Recall: <div id='recall' class='metric'>0</div></li>
-                        <li>F1-score: <div id='f1_score' class='metric'>0</div></li>
-                    </ul>                                                    
+                        <h2 id="score-header"></h2>
+                        <ul id='score'>
+                            <li>Answered: <div id='count' class='metric'>0</div></li>
+                            <li>Accuracy: <div id='accuracy' class='metric'>0</div></li>
+                            <li>Precision: <div id='precision' class='metric'>0</div></li>
+                            <li>Recall: <div id='recall' class='metric'>0</div></li>
+                            <li>F1-score: <div id='f1_score' class='metric'>0</div></li>
+                        </ul>                                                    
                         <span class="tooltiptext">Your score is updated when you've answered all visable questions
                         </span>                        
                     </div>
