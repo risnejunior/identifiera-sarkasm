@@ -31,10 +31,11 @@ from settings import *
 n_classes = 2
 chunk_size = embedding_size
 n_chunks = max_sequence
-rnn_size = 128
+rnn_size = batch_size
 
 data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,max_sequence])
 labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
+keep_prob_placeholder = tf.placeholder(dtype=tf.float32, shape=[None])
 
 train_call = 1
 val_call = 2
