@@ -37,11 +37,12 @@ batch_size = 128
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 #For loading and saving models
-save_the_model = False # If true, save the model to path specified in tflearn_rnn
+save_the_model = True # If true, save the model to path specified in tflearn_rnn
 pretrained_model = False # If true, create_model will initialize the model specified in pretrained_path
 training = True # If false, the modeled will not be trained. Useful for testing pretrained model
 
 # debug commands, will mess up the training: ##########################
+print_test = False
 random_labels = False # Used for debugging. If true will assign ranom labels (Ys) to samples.
 add_snitch = False # adds a word to all positive and another to all negative samples
 random_data = False # sets random training data
