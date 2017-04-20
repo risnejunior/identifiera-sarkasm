@@ -93,6 +93,19 @@ class EarlyStoppingMonitor():
 
 		self._buff.flush()
 		
+def _arg_callback_sp(train, cross, test):
+	global partition_training, partition_validation, partition_test
+	partition_training = float(train)
+	partition_validation = float(cross)
+	partition_test = float(test)
+	
+	if (partition_training + partition_validation + partition_test > 1):
+		print("Sum of partitions cannot exceed 1.")
+		sys.exit(0)
+		
+	#print("Train partition = {}, Evaluation partition = {:%}, Test partition = {}."
+	#	.format(partition_training, partition_validation, partition_test))
+		
 def _arg_callback_pt():
 	global print_test
 	print_test = True
@@ -115,6 +128,8 @@ def _arg_callback_pretrained(path):
 	if not (os.path.isdir(models_path)):
 		os.makedirs(models_path)
 	pretrained_path = os.path.join(models_path, path + ".tfl")
+	
+	print("<Using pretrained model " + path + " for results only.")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
 	global epochs, run_count, batch_size, training
@@ -281,6 +296,7 @@ arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set s
 arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
+arghandler.register_flag('sp', _arg_callback_sp, ['set-partition'], "Set the partition sizes.")
 print("\n")
 arghandler.consume_flags()
 
