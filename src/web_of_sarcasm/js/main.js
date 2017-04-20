@@ -31,16 +31,53 @@ $("#name-form").submit(function(event) {
 	register_user();
 });
 
-$("li.hard-link").click(function(e){
+$("#hard-link").click(function(e){
+	$("li", "#navbar").removeClass("selected");
+	$(this).addClass("selected");
 	update_quiz('hard', 10);
 });
 
-$("li.easy-link").click(function(e){
+$("#easy-link").click(function(e){
+	$("li", "#navbar").removeClass("selected");
+	$(this).addClass("selected");
 	update_quiz('easy', 10);
 });
 
 /* funs #############################################################
 ####################################################################*/
+
+function getScore(dataset, callback) {
+	debug ? console.log("get score") : null
+	var message = {
+		'user_id': localStorage['user_id'],
+		'action': 'tally_score',
+		'dataset': dataset
+	};
+
+	send_ajax(message, success);
+
+	function success(data) {
+		var tally = data.tally[0];
+		localStorage[data.dataset + '_tally'] = JSON.stringify(tally);
+		var metrics = calculate_metrics(tally);
+		callback(metrics);
+	}
+}
+
+function update_metrics(dataset) {
+	getScore(dataset, callback)
+
+	function callback(metrics) {
+		debug ? console.log("metrics callback") : null
+		$("#count").html(metrics.count);		
+		$("#accuracy").html(metrics.accuracy);
+		$("#precision").html(metrics.precision);
+		$("#recall").html(metrics.recall);
+		$("#f1_score").html(metrics.f1_score);
+		$("#aside").show();
+		$("#score").show();
+	}
+}
 
 function send_ajax(message, success_fun) {
 	debug ? console.log("send ajax") : null
@@ -132,7 +169,7 @@ function get_quiz(dataset, size, callback) {
 	} else {
 		debug ? console.log(dataset + " IS in localstore") : null
 		quiz = JSON.parse(localStorage[dataset]);		
-		callback(quiz);
+		callback(quiz);		
 	}
 
 
@@ -145,11 +182,22 @@ function get_quiz(dataset, size, callback) {
 		localStorage[data.dataset] = JSON.stringify(data.quiz);
 		callback(data.quiz);
 	}
+
+	update_metrics(dataset);
 }
 
-function add_quiz_html(quiz, container) {
-	debug ? console.log("add quiz html to " + container.id) : null
-	$(".quiz-container").empty();
+function add_quiz_html(quiz, container, quiz_name) {
+	debug ? console.log("add quiz html: " + quiz_name) : null
+	
+	container.empty();
+	if (quiz_name == "hard") {
+		container.removeClass("easy")
+		container.addClass("hard")
+	} else {
+		container.removeClass("hard")
+		container.addClass("easy")
+	}
+
 	var answers = get_answers();
 
 	for (var i = 0; i < quiz.length; i++) {		
@@ -194,8 +242,7 @@ function add_quiz_html(quiz, container) {
 
 	jQuery("#aside, #navbar").show();	
 	jQuery("#intro").hide();
-	jQuery("container").show();
-	jQuery("#score, h3:first").html(localStorage['name'] + "'s score: ").show();	
+	jQuery("container").show();	
 }
 
 function set_answer(question_id, isPos) {
@@ -207,16 +254,46 @@ function set_answer(question_id, isPos) {
 		'nonce': nonce,
 		'question_id': parseInt(question_id),
 		'user_id': parseInt(user_id),		
-		'answer': isPos
+		'answer': isPos ? 1 : 0
 	};
 
 	send_ajax(message, success)
 
 	function success(data) {
 		answers = get_answers()
-		answers[question_id] = isPos;
+		answers[question_id] = isPos;		
     	localStorage['answers'] = JSON.stringify(answers);
+    	var done = check_if_done(answers);
+    	if (done) {
+    		replace_quiz();
+
+    	}
 	}
+}
+
+function replace_quiz() {
+	debug ? console.log("replace quiz") : null
+	container = $("#quiz");
+	if (container.hasClass("easy")) {
+		delete localStorage['poria-balanced'];
+		update_quiz("easy", 10);
+	} else {
+		delete localStorage['poria-ratio'];
+		update_quiz("hard", 10);
+	}
+}
+
+function check_if_done(answers) {
+	var ids = [];
+	var allIn = true;
+	$("section", "#quiz").each(function(){
+		//ids.push(this.id);
+		if (!(this.id in answers)) {
+			allIn = false;
+		}
+	});
+
+	return allIn;
 }
 
 function get_answers() {
@@ -233,54 +310,42 @@ function update_quiz(quiz_name, size) {
 	size = 3;
 
 	var dataset = null;
-	var container = null;
+	var container = $("#quiz");
 
 	if (quiz_name == 'hard') {		
-		dataset = 'poria-ratio';
-		container = $("#hard-quiz");
+		dataset = 'poria-ratio';		
 	} else {
 		dataset = 'poria-balanced';
-		container = $("#easy-quiz");
 	}
 
 	 get_quiz(dataset, size, callback);
 
 	function callback(quiz) {
-		debug ? console.log("get quiz callback") : null
-		add_quiz_html(quiz, container);
+		debug ? console.log("update quiz callback") : null
+		add_quiz_html(quiz, container, quiz_name);
 	}
 	
 }
 
-function tally_score() {
-	var total = 0
-	var tp = 0, tn = 0, fp = 0, fn = 0
-
-	for (var key in results) { 
-		var actual = quiz_key[key]
-		var answer = results[key]
-		total += 1
-		if ( actual == answer && actual) {
-			tp += 1;
-		} else if (actual == answer && !actual ) {
-			tn += 1;
-		} else if (actual != answer && actual) {
-			fp += 1;
-		} else if (actual != answer && !actual) {
-			fn += 1;
-		} else {
-			throw "Should not fall through!";
-		}
-	}
-	var accuracy = total > 0 ? ((tp + tn) / total) : 0
+function calculate_metrics(tally) {	
+	var metrics = {'accuracy': 0, 'precision': 0, 'recall': 0, 'f1_score': 0};
+	var count = tally.answer_count;
+	var tp = parseInt(tally.tp); 
+	var tn = parseInt(tally.tn); 
+	var fp = parseInt(tally.fp); 
+	var fn = parseInt(tally.fn);
+	var accuracy = count > 0 ? ((tp + tn) / count) : 0
 	var precision = (tp + fp) > 0 ? (tp / (tp + fp)) : 0
 	var recall = (tp + fn) > 0 ? (tp / (tp + fn)) : 0
-	var f1_score =  (precision + recall) > 0 ? 2*((precision * recall) / (precision + recall )) : 0 				
-	accuracy = Math.round(accuracy * 100) / 100;
-	f1_score = Math.round(f1_score * 100) / 100;
+	var f1_score =  (precision + recall) > 0 ? 2*((precision * recall) / (precision + recall )) : 0
+	metrics.count = count;
+	metrics.accuracy = Math.round(accuracy * 100) / 100;
+	metrics.f1_score = Math.round(f1_score * 100) / 100;
+	metrics.precision = Math.round(precision * 100) / 100;
+	metrics.recall = Math.round(recall * 100) / 100;
 
-	answer_string = 'Accuracy: ' + accuracy + ', F1 Score: ' + f1_score + " "
-	answer_string += ' ,Correct: ' + (tp + tn) + ' out of: ' + total
+	//answer_string = 'Accuracy: ' + accuracy + ', F1 Score: ' + f1_score + " "
+	//answer_string += ' ,Correct: ' + (tp + tn) + ' out of: ' + count
 
-	console.log('total: '+ total)
+	return metrics;
 }

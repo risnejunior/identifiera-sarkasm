@@ -65,10 +65,12 @@
             }           
 		} else if ($action == 'tally_score') {
             $user_id = intval($_POST['user_id']);
-            $score = getScore($user_id);
+            $dataset = $_POST['dataset'];
+            $score = $db->getScore($user_id, $dataset);
             $result_array = array(
                 'type'=>'score_tally',
-                'tally'=>$score
+                'tally'=>$score,
+                'dataset'=>$dataset
             );            
         } else {
 			$errors->add("Request command not recognized");
@@ -80,7 +82,13 @@
 				'type'=>'error',
 				'errors'=>$all_errors
 			);
-            error_log( implode(', ', $all_errors) . "\n", 3, "errors.log");
+
+            $date = date('Y-m-d H:i:s');
+            error_log( $date . 
+                        ': ' . 
+                        implode(', ', $all_errors) . 
+                        "\n", 3, "errors.log"
+            );
 		} else {
             //
         }
@@ -118,8 +126,8 @@
                 <h1 class="title">Sarcasm quiz!</h1>
                 <nav id='navbar' hidden=true>
                     <ul>
-                        <li class='hard-link'><a href="#">Hard quiz</a></li>
-                        <li class='easy-link'><a href="#">Easy quiz</a></li>
+                        <li id='hard-link'><a href="#">Hard quiz</a></li>
+                        <li id='easy-link' class='selected'><a href="#">Easy quiz</a></li>
                     </ul>
                 </nav>
             </header>
@@ -139,39 +147,22 @@
             	</article>
 
 
-                <article id='easy-quiz' class='quiz-container'>    
-                </article>
+                <article id='quiz' class='quiz-container easy'>    
+                </article>        
 
-
-                <article id='hard-quiz' class='quiz-container'>   
-                </article>                
-            	<!--
-                <article>
-                    <header>
-                        <h1>Sarcasm quiz!</h1>
-                        <p>Below you will be presented with a random selection of tweets. Please guess if you think thay were tagged with #sarcasm or not!</p>
-                    </header>
-                    
-                    <section>
-                        <h2>1.</h2>
-                        <p>Omg sarcastic sarcastic sarcastic</p>
-                    </section>
-
-                  
-                    <footer>
-                        <h3>Quiz info</h3>
-                        <p>The easy quiz contains an even amount of sarcastic and none-sarcastic tweets. The hard quiz has a ratio of 1 to 3 betwean sarcastic and none-sarcastic tweets</p>
-                    </footer>
-                    
-                </article>
-				-->
-                <aside id='aside' hidden=true>
-                	<div id='status' hidden=true></div>
-                	<div id='score' hidden=true>
-	                    <h3></h3>
-	                    <p>Accuracy:</p>
-	                    <p>F1 score:</p>
-	                </div>
+                <aside id='aside'>
+                	<div id='status'></div>
+                    <div class='tooltip'>
+                    <ul id='score'>
+                        <li>Answered: <div id='count' class='metric'>0</div></li>
+                        <li>Accuracy: <div id='accuracy' class='metric'>0</div></li>
+                        <li>Precision: <div id='precision' class='metric'>0</div></li>
+                        <li>Recall: <div id='recall' class='metric'>0</div></li>
+                        <li>F1-score: <div id='f1_score' class='metric'>0</div></li>
+                    </ul>                                                    
+                        <span class="tooltiptext">Your score is updated when you've answered all visable questions
+                        </span>                        
+                    </div>
                 </aside>
 
             </div> <!-- #main -->

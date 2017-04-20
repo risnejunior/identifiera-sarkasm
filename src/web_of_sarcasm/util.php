@@ -67,7 +67,7 @@ class DbAdapter {
 		return $validated;
 	}
 
-	public function getScore($user_id) {		
+	public function getScore($user_id, $dataset) {		
 		$sql = "
 		SELECT 
 		u.user_id,
@@ -86,6 +86,7 @@ class DbAdapter {
 		ON a.question_id = s.id
 
 		WHERE u.user_id = {$user_id}
+		AND s.dataset = '{$dataset}'
 		GROUP BY u.user_id
 		";
 
@@ -98,9 +99,9 @@ class DbAdapter {
 		SELECT id, sample_text
 		FROM samples AS r1 
 		JOIN (SELECT CEIL(RAND() * (SELECT MAX(id)
-			FROM samples)) AS ids) AS r2
-		 WHERE r1.id >= r2.ids
-		 AND dataset = '{$dataset}'
+			  FROM samples 
+			  WHERE dataset = '{$dataset}')) AS ids) AS r2
+		 WHERE r1.id >= r2.ids		 
 		 ORDER BY r1.id ASC
 		 LIMIT {$size}
 		 ";

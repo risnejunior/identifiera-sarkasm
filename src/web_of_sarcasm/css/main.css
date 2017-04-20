@@ -175,13 +175,56 @@ nav a:hover {
     border-style: inset;
 }
 
+li a {
+    background-color: rgba(255, 97, 40, 0.57);
+}
 
+li.selected a {
+    background-color: #e44d26;
+}
 
+div.metric {
+    display: inline-block;
+}
 
+.tooltip {
+    position: relative;
+    display: inline-block;
+    /*border-bottom: 1px dotted black;*/ /* If you want dots under the hoverable text */
+}
 
+/* Tooltip text */
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 140px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    padding: 5px;
+    border-radius: 6px;
+ 
+    /* Position the tooltip text - see examples below! */
+    position: absolute;
+    z-index: 1;
+}
 
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
 
+ul#score {
+    list-style-type: none;
+    display: initial;
+}
 
+#score li {
+    text-shadow: 0px 1px #558ABB;
+}
+
+.title {
+    text-shadow: 2px 2px #558ABB;
+}
 
 
 
