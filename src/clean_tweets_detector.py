@@ -18,24 +18,23 @@ def clean_tweets_detector(target_folder, source_name, index):
     sarcasmtag = re.compile(re.escape('sarcasm'),re.IGNORECASE)
     sarcastictag = re.compile(re.escape('sarcastic'),re.IGNORECASE)   
     url = re.compile(r'\bhttp\b\S+')   
+    url2 = re.compile(r'\bhttps\b\S+')   
+
     csv_file_object = csv.reader(open(source_name, 'rU'),delimiter='\n')
 
     for row in csv_file_object:
-        out_file_name = os.path.join(target_folder, str(i) + ".txt")
-
-        if i == 2 or i == 100002:
-            print (out_file_name)
-            break            
+        out_file_name = os.path.join(target_folder, str(i) + ".txt")      
 
         if len(row[0:])==1:
             temp=row[0:][0]
             temp=hashtags.sub('<hashtag>',temp)
 
-            if len(temp)>0 and temp[0]!='@': 
+            if len(temp)>0 and temp[0]!='@' and r'\u' not in temp: 
                 temp=friendtag.sub('<user>', temp)
-                temp=sarcasmtag.sub('<hashtag>', temp)
-                temp=sarcastictag.sub('<hashtag>', temp)
+                temp=sarcasmtag.sub('', temp)
+                temp=sarcastictag.sub('', temp)
                 temp = url.sub('<url>', temp)
+                temp = url2.sub('<url>', temp)
                 temp=' '.join(temp.split()) #remove useless space
 
                 #if len(temp)>0:
@@ -55,7 +54,7 @@ clean_tweets_detector(target_folder, settings.dataset["neg_source"], nindex)
 
 #sarcastic
 target_folder = os.path.join(settings.rel_data_path, "pos") 
-sindex = 100000
+sindex = 1000000
 if not (os.path.isdir(target_folder)):
     os.makedirs(target_folder)
 print( "Cleaning: " + settings.dataset["pos_source"])
