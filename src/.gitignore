@@ -9,3 +9,4 @@ __pycache__/
 models/
 checkpoints/
 logs/
+.DS_Store
