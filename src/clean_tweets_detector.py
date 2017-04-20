@@ -10,8 +10,8 @@ import csv
 import re
 import settings
 
-def clean_tweets_detector(target_folder, source_name, index):
-    i = index
+def clean_tweets_detector(source_name):
+    data=[]
 
     hashtags = re.compile(r'#\w+\s?')
     friendtag = re.compile(r'@\w+\s?')
@@ -22,8 +22,7 @@ def clean_tweets_detector(target_folder, source_name, index):
 
     csv_file_object = csv.reader(open(source_name, 'rU'),delimiter='\n')
 
-    for row in csv_file_object:
-        out_file_name = os.path.join(target_folder, str(i) + ".txt")      
+    for row in csv_file_object:  
 
         if len(row[0:])==1:
             temp=row[0:][0]
@@ -37,12 +36,23 @@ def clean_tweets_detector(target_folder, source_name, index):
                 temp = url2.sub('<url>', temp)
                 temp=' '.join(temp.split()) #remove useless space
 
-                #if len(temp)>0:
-                out_file = open(out_file_name, 'w')
-                out_file.write(temp)  # python will convert \n to os.linesep
-                out_file.close()  # you can omit in most cases as the destructor will call it 
-                i += 1
+                # Check that tweet contains more than 3 words
+                if len(temp.split())>2:
+                    data.append(temp)
 
+    data=list(set(data))
+
+    return data
+
+def create_tweets(data, target_folder, index):
+    i = index
+
+    for row in data:
+        out_file_name = os.path.join(target_folder, str(i) + ".txt")  
+        out_file = open(out_file_name, 'w')
+        out_file.write(row)  
+        out_file.close() 
+        i += 1
 
 #normal
 target_folder = os.path.join(settings.rel_data_path, "neg") 
@@ -50,7 +60,9 @@ nindex = 0
 if not (os.path.isdir(target_folder)):
     os.makedirs(target_folder)
 print( "Cleaning:" + settings.dataset["neg_source"])
-clean_tweets_detector(target_folder, settings.dataset["neg_source"], nindex)
+negdata = clean_tweets_detector(settings.dataset["neg_source"])
+print ("Normal tweets: " + str(len(negdata)))
+create_tweets(negdata, target_folder, nindex)
 
 #sarcastic
 target_folder = os.path.join(settings.rel_data_path, "pos") 
@@ -58,7 +70,9 @@ sindex = 1000000
 if not (os.path.isdir(target_folder)):
     os.makedirs(target_folder)
 print( "Cleaning: " + settings.dataset["pos_source"])
-clean_tweets_detector(target_folder, settings.dataset["pos_source"], sindex)
+posdata = clean_tweets_detector(settings.dataset["pos_source"])
+print ("Sarcastic tweets: " + str(len(posdata)))
+create_tweets(posdata, target_folder, sindex)
 
 #   return data, length
 
