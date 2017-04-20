@@ -14,6 +14,8 @@ import pickle
 import csv
 import sys
 
+import time
+
 # Importing tensorflow
 import tensorflow as tf
 # Importing rnn framework
@@ -116,13 +118,19 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
             print("Checkpoint file saved in %s" % save_path )
             print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss, ' | Accuracy: ', accuracy)
 
+        saver = tf.train.Saver()
+        date = time.strftime("%m%d%y-%H%M%S")
+        saver_path = saver.save(sess, "../models/tfrnn_model-%s.ckpt" % date)
+        print("Model saved at %s" % saver_path )
+
     sess.close()
 
 # Method for validating network in training
 def validate_training(ps,network_op):
     labels = np.array(ps.valid.ys)
     data = ps.valid.xs
-    correct = tf.equal(tf.argmax(network_op,1), tf.argmax(labels_placeholder,1))
+    prediction = tf.nn.log_softmax(network_op)
+    correct = tf.equal(tf.argmax(prediction,1), tf.argmax(labels_placeholder,1))
     accuracy = tf.reduce_mean(tf.cast(correct,'float'))
     return accuracy.eval(feed_dict={data_placeholder: data, labels_placeholder: labels})
 
