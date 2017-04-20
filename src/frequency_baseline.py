@@ -37,19 +37,19 @@ def predict(int_vectors, word_dicts, max_len=None):
 		if 0 in prediction:
 			sure_thing += 1
 		predictions.append(prediction)
-	logger.log(sure_thing, 'sure_things')		
+	logger.log(sure_thing, 'sure_things')
 	return predictions
-		
+
 # sentence vector -> score
 def predict_helper(sentence, word_dicts, print_debug = False):
 	pos_freqs = []
 	neg_freqs = []
 	all_freqs = []
 
-	for word in sentence:		
+	for word in sentence:
 
 		# skip padding and placeholders
-		if word == 0 or word == 1:			
+		if word == 0 or word == 1:
 			continue
 
 		# if the word wasn't in the training samples, skip it
@@ -64,7 +64,7 @@ def predict_helper(sentence, word_dicts, print_debug = False):
 		pos_freqs.append(freq_pos) #- freq_all)
 		neg_freqs.append(freq_neg) #- freq_all)
 
-	
+
 	#logger.log(neg_loss, 'neg_loss', 30)
 	#logger.log(pos_loss, 'pos_loss', 30)
 
@@ -79,7 +79,7 @@ def predict_helper(sentence, word_dicts, print_debug = False):
 		neg_freqs.append(0)
 	elif len (pos_freqs) == 0:
 		pos_freqs.append(0)
-		
+
 	#rand = random.choice([[0, 1], [1, 0]])
 	if 0 in pos_freqs:
 		pos_mean = 0
@@ -88,7 +88,7 @@ def predict_helper(sentence, word_dicts, print_debug = False):
 		#pos_mean = rand[1]
 		#pos_mean = common_funs.squared_error(neg_freqs, pos_freqs)
 		#pos_mean = ((np.array(freq_all) - np.array(pos_freqs)) ** 2).mean(axis=None)
-	
+
 	if 0 in neg_freqs:
 		neg_mean = 0
 	else:
@@ -125,13 +125,13 @@ all_words = []
 pos_words = []
 neg_words = []
 
-print('grouping words...')
+print('Grouping words...')
 training_samples = zip(ps.train.xs, ps.train.ys)
 logger.log("Training set length: {:d}".format(len(ps.train.xs)))
 pb = common_funs.Progress_bar(ps.train.xs.shape[0] - 1)
 pos = neg = 0
 for sentence, label in training_samples:
-	all_words.extend(sentence)	
+	all_words.extend(sentence)
 	is_pos = np.array_equal(label,pos_label)
 
 	if (is_pos):
@@ -143,7 +143,7 @@ for sentence, label in training_samples:
 		neg_words.extend(sentence)
 		neg += 1
 	pb.tick()
-	#logger.log(np.array_str(sentence, max_line_width = 1000), 
+	#logger.log(np.array_str(sentence, max_line_width = 1000),
 	#	       logname="sentences", step=10000, maxlogs=5)
 
 logger.log ("pos samples {:d}".format(pos))
@@ -164,11 +164,11 @@ for i_dict, words in enumerate([all_words, neg_words, pos_words]):
 		#d[word] = count/largest #normalization
 
 		logger.log("word: {}, freq: {}".format(word, d[word]), 
-				   logname="freqs", 
+				   logname="freqs",
 				   step=10000)
 	word_dicts[i_dict] = d
 
-print("running prediction...\n")
+print("Running prediction...\n")
 cm = Binary_confusion_matrix()
 
 # print confusion matrix for the different sets
