@@ -13,6 +13,7 @@ import json
 import pickle
 import csv
 import sys
+from common_funs import *
 
 import time
 
@@ -82,8 +83,6 @@ def recurrent_neural_network(data):
 
 
 def train_neural_network(ps,emb_init,W,emb_placeholder):
-    n_samples,words = ps.train.xs.shape
-    n_batches = n_samples/batch_size
 
     embeddings = word_embedding_layer(data_placeholder,W)
     prediction = recurrent_neural_network(embeddings)
@@ -91,23 +90,23 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
                                                                   labels = labels_placeholder
                                                                   ))
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.0004).minimize(cost)
+
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.005).minimize(cost)
     sess = tf.Session()
-    y_labels = np.array(ps.train.ys)
-    print(y_labels.shape)
-    x_training_batches, y_training_batches= np.split(ps.train.xs,n_batches),np.split(y_labels,n_batches)
+    xs_split,ys_split = split_chunks(ps.train.xs, np.array(ps.train.ys),batch_size)
     with sess.as_default():
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
-        test = sess.run(embeddings, feed_dict={data_placeholder: x_training_batches[1]})
 
         for epoch in range(epochs):
             epoch_loss = 0
-            for batch_i in range(int(n_batches)):
-                x = x_training_batches[batch_i]
-                y = y_training_batches[batch_i]
-                _, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: x,
-                                                               labels_placeholder: y})
+            for batch_i in range(len(xs_split)):
+
+                batch_x = xs_split[batch_i]
+                batch_y = ys_split[batch_i]
+
+                _, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: batch_x,
+                                                               labels_placeholder: batch_y})
                 epoch_loss += c
             #val_accuracy = sess.run(validation,
             #                        feed_dict = {val_data_placeholder: ps.valid.xs,
@@ -124,6 +123,29 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
         print("Model saved at %s" % saver_path )
 
     sess.close()
+
+def split_chunks(xs,ys,size):
+    xh,xw = xs.shape
+    yh,yw = ys.shape
+    if xh != yh :
+        raise ValueError("Sizes don't match")
+    print(xh)
+    n_batches = xh//size
+    print(n_batches)
+    overflow = xh % n_batches
+    print(overflow)
+    xs_overflow = xs[-overflow:]
+    print(xs_overflow.shape)
+    xs_notoverflow = xs[:xh - overflow]
+    print(xs_notoverflow.shape)
+    ys_overflow = ys[-overflow:]
+    ys_notoverflow = ys[:yh - overflow]
+    xs_split = np.split(xs_notoverflow,n_batches)
+    ys_split = np.split(ys_notoverflow,n_batches)
+    xs_split.append(np.array(xs_overflow))
+    ys_split.append(np.array(ys_overflow))
+    return xs_split,ys_split
+
 
 # Method for validating network in training
 def validate_training(ps,network_op):
