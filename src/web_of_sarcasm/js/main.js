@@ -57,7 +57,7 @@ function getScore(dataset, callback) {
 	send_ajax(message, success);
 
 	function success(data) {
-		var tally = data.tally[0];
+		var tally = data.tally[0];		
 		localStorage[data.dataset + '_tally'] = JSON.stringify(tally);
 		var metrics = calculate_metrics(tally);
 		callback(metrics);
@@ -328,22 +328,29 @@ function update_quiz(quiz_name, size) {
 }
 
 function calculate_metrics(tally) {	
-	var metrics = {'accuracy': 0, 'precision': 0, 'recall': 0, 'f1_score': 0};
-	var count = tally.answer_count;
-	var tp = parseInt(tally.tp); 
-	var tn = parseInt(tally.tn); 
-	var fp = parseInt(tally.fp); 
-	var fn = parseInt(tally.fn);
-	var accuracy = count > 0 ? ((tp + tn) / count) : 0
-	var precision = (tp + fp) > 0 ? (tp / (tp + fp)) : 0
-	var recall = (tp + fn) > 0 ? (tp / (tp + fn)) : 0
-	var f1_score =  (precision + recall) > 0 ? 2*((precision * recall) / (precision + recall )) : 0
-	metrics.count = count;
-	metrics.accuracy = Math.round(accuracy * 100) / 100;
-	metrics.f1_score = Math.round(f1_score * 100) / 100;
-	metrics.precision = Math.round(precision * 100) / 100;
-	metrics.recall = Math.round(recall * 100) / 100;
-
+	var metrics = {
+		'accuracy': 0, 
+		'precision': 0, 
+		'recall': 0, 
+		'f1_score': 0, 
+		'count': 0
+	};
+	if (tally && tally.answer_count > 0) {
+		var count = parseInt(tally.answer_count);
+		var tp = parseInt(tally.tp); 
+		var tn = parseInt(tally.tn); 
+		var fp = parseInt(tally.fp); 
+		var fn = parseInt(tally.fn);
+		var accuracy = count > 0 ? ((tp + tn) / count) : 0
+		var precision = (tp + fp) > 0 ? (tp / (tp + fp)) : 0
+		var recall = (tp + fn) > 0 ? (tp / (tp + fn)) : 0
+		var f1_score =  (precision + recall) > 0 ? 2*((precision * recall) / (precision + recall )) : 0
+		metrics.count = count;
+		metrics.accuracy = Math.round(accuracy * 100) / 100;
+		metrics.f1_score = Math.round(f1_score * 100) / 100;
+		metrics.precision = Math.round(precision * 100) / 100;
+		metrics.recall = Math.round(recall * 100) / 100;
+	}
 	//answer_string = 'Accuracy: ' + accuracy + ', F1 Score: ' + f1_score + " "
 	//answer_string += ' ,Correct: ' + (tp + tn) + ' out of: ' + count
 

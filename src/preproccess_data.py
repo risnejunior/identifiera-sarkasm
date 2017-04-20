@@ -395,17 +395,18 @@ sample_count = len(samples)
 # assign category labels
 print("Assigning category labels...")
 positive_count = negative_count = 0
+set_balance = set_balance if set_balance else 0
 positive_max = math.ceil(set_balance * sample_count)
 negative_max = sample_count - positive_max
 for key, val in samples.items():
 	pos = val['sarcastic']
 	if pos:
-		if positive_count > positive_max: 
+		if positive_count > positive_max and sample_count:
 			continue 
 		else: 
 			positive_count += 1
 	else:
-		if negative_count > negative_max: 
+		if negative_count > negative_max and sample_count:
 			continue 
 		else:
 		 	negative_count += 1
@@ -494,6 +495,9 @@ for setpart in ds:
 		name, _, ids, xs, ys = setpart
 		line = "name: {} id:{} x:{} y:{}".format(name, ids[i], xs[i], ys[i])
 		logger.log("processed", line, 1000, 5)
+
+print ("Samples partitioning; training: {}, validation: {}, test: {}"
+	.format(ds.train.length, ds.valid.length, ds.test.length))
 
 # All processed data in one named touple
 pd = ProcessedData(

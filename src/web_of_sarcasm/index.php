@@ -150,7 +150,7 @@
                 <article id='quiz' class='quiz-container easy'>    
                 </article>        
 
-                <aside id='aside'>
+                <aside id='aside' hidden='true'>
                 	<div id='status'></div>
                     <div class='tooltip'>
                     <ul id='score'>
