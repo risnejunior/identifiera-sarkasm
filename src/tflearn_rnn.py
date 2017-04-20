@@ -93,6 +93,10 @@ class EarlyStoppingMonitor():
 
 		self._buff.flush()
 		
+def _arg_callback_pt():
+	global print_test
+	print_test = True
+		
 def _arg_callback_ds(ds_name):
 	"""
 	Select dataset
@@ -235,19 +239,27 @@ def do_prediction(model, hyp, this_run_id, log_run):
 
 	predictions = model.predict(ps.valid.xs)
 	cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
+	
+	if print_test:
+		predictions = model.predict(ps.test.xs)
+		cm.calc(ps.test.ids , predictions, ps.test.ys, 'test-set')
 
 	cm.print_tables()
 
 	#cm.save(this_run_id + '.res', content='metrics')
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
-	perflog.replace([
+	the_list = [
 		this_run_id,
 		network_name,
 		os.path.basename(samples_path),
 		cm.metrics['validation-set']['accuracy'],
 		cm.metrics['validation-set']['f1_score']
 		]
-	)
+	if print_test:
+		the_list.append(cm.metrics['test-set']['accuracy'])
+		the_list.append(cm.metrics['test-set']['f1_score'])
+		
+	perflog.replace(the_list)
 
 ################################################################################
 
@@ -268,6 +280,7 @@ arghandler.register_flag('train', _arg_callback_train, helptext = "Use settings 
 arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set snapshots. No arguments means no snapshots. Args: <snapshot step> <epoch end>")
 arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
+arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
 print("\n")
 arghandler.consume_flags()
 

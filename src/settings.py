@@ -42,6 +42,7 @@ pretrained_model = False # If true, create_model will initialize the model speci
 training = True # If false, the modeled will not be trained. Useful for testing pretrained model
 
 # debug commands, will mess up the training: ##########################
+print_test = False
 random_labels = False # Used for debugging. If true will assign ranom labels (Ys) to samples.
 add_snitch = False # adds a word to all positive and another to all negative samples
 random_data = False # sets random training data
