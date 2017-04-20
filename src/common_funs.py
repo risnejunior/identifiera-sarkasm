@@ -9,6 +9,7 @@ from prettytable import PrettyTable, ALL
 from colorama import Fore, Back, Style
 import atexit
 import sys
+from collections import namedtuple
 
 import numpy as np
 

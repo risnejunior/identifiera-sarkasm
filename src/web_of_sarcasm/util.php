@@ -43,7 +43,6 @@ class DbAdapter {
 
 		// Check connection
 		if ($this->conn->connect_error) {
-		    //die("Connection failed: " . $conn->connect_error);
 		    $this->errors->add($conn->connect_error);
 		} 		
 
@@ -61,10 +60,38 @@ class DbAdapter {
 		if ($user && $user['nonce'] == $nonce) {
 			$validated = true;
 		} else {
-			$this->errors->add('User not validated');
+			//echo($user['nonce'] . '=' . $nonce . $user_id . '=' . $user['user_id']);
+			$this->errors->add('nonce not matched');
 		}
 
 		return $validated;
+	}
+
+	public function getScore($user_id, $dataset) {		
+		$sql = "
+		SELECT 
+		u.user_id,
+		COUNT(*) answer_count,
+		SUM(CASE WHEN a.answer = 1 AND s.class = 1 THEN 1 ELSE 0 END) tp,
+		SUM(CASE WHEN a.answer = 0 AND s.class = 0 THEN 1 ELSE 0 END) tn,
+		SUM(CASE WHEN a.answer = 1 AND s.class = 0 THEN 1 ELSE 0 END) fp,
+		SUM(CASE WHEN a.answer = 0 AND s.class = 1 THEN 1 ELSE 0 END) fn
+		FROM users u
+
+
+		LEFT JOIN answers a
+		ON u.user_id = a.user_id
+
+		LEFT JOIN samples s
+		ON a.question_id = s.id
+
+		WHERE u.user_id = {$user_id}
+		AND s.dataset = '{$dataset}'
+		GROUP BY u.user_id
+		";
+
+		$rows = $this->execQuery($sql);
+		return $rows;		
 	}
 
 	public function getQuiz($size, $dataset) {
@@ -72,15 +99,23 @@ class DbAdapter {
 		SELECT id, sample_text
 		FROM samples AS r1 
 		JOIN (SELECT CEIL(RAND() * (SELECT MAX(id)
-			FROM samples)) AS ids) AS r2
-		 WHERE r1.id >= r2.ids
-		 AND dataset = '{$dataset}'
+			  FROM samples 
+			  WHERE dataset = '{$dataset}')) AS ids) AS r2
+		 WHERE r1.id >= r2.ids		 
 		 ORDER BY r1.id ASC
 		 LIMIT {$size}
 		 ";
 		 $rows = $this->execQuery($sql);
 
 		 return $rows;
+	}
+
+	public function setAnswer($question_id, $user_id, $answer) {
+		$sql = "
+		REPLACE INTO `answers`(`question_id`, `user_id`, `answer`) 
+		VALUES ({$question_id}, {$user_id}, {$answer})
+		 ";
+		 $this->execQuery($sql);
 	}
 
 	public function getUser($user_id) {
@@ -159,5 +194,7 @@ class DbAdapter {
 	    return $randomString;
 	}
 }
+
+
 
 ?>

@@ -8,42 +8,71 @@
 		$db = new DbAdapter();
 		$action = $_POST['action'];
 
-		if ($action == 'get_quiz') {
-			//isset($_POST['user_id'])
-			//isset($_POST['nonce'])
+		if ($action == 'get_quiz') {			
 			$user_id = intval($_POST['user_id']);
 			$nonce = $_POST['nonce'];
-			$size = $_POST['size'];
+            $size = intval($_POST['size']);
+			$dataset = $_POST['dataset'];
 
 			if ($db->validate_user($user_id, $nonce)) {
-				$quiz = $db->getQuiz($size, 'poria-balanced');	
-				
+				$quiz = $db->getQuiz($size, $dataset);	
 				$result_array = array(
-					'type'=>'set_quiz',
+                    'type'=>'set_quiz',
+					'dataset'=>$dataset,
 					'quiz' =>$quiz
 				);
-				//$result_array = array('type'=>'set_quiz');
+                if (count($quiz) < 1) {
+                    $errors->add("No quiz found");
+                }
 			} else {
 				$errors->add("user not validated");
 			}			
 
 		} elseif ($action == 'register_user') {
-			$name = $_POST['name'];
-			$user = $db->createUser($name);
-			$result_array = array(
-				'type'=>'set_user',
-				'id'=>$user['id'],
-				'nonce'=>$user['nonce'],
-				'name'=>$user['name']
-			);			
+			$name = trim($_POST['name']);
+						
+            if (strlen($name) > 30) {
+                $errors->add("username too long, should be < 30 charachters.");
+            } else if (strlen($name) < 2) {
+                $errors->add("username too short, should be at least 1 charachter.");
+            } else {
+                $user = $db->createUser($name);
+                $result_array = array(
+                    'type'=>'set_user',
+                    'id'=>$user['id'],
+                    'nonce'=>$user['nonce'],
+                    'name'=>$user['name']
+                );
+            }            	
 
-		} elseif ($action == 'save_answers') {
-			//$user = $db->getUser($id);
-			//check nonce
-			$result_array = array(
-				'type'=>'saved'
-			);
-		} else {
+		} elseif ($action == 'save_answer') {            
+            $question_id = intval($_POST['question_id']);
+            $user_id = intval($_POST['user_id']);
+            $nonce = $_POST['nonce'];
+            $answer = intval($_POST['answer']);
+
+            if ($db->validate_user($user_id, $nonce)) {
+
+                $db->setAnswer($question_id, $user_id, $answer);  
+                
+                $result_array = array(
+                    'type'=>'saved',
+                    'question_id'=>$question_id,
+                    'answer'=>$answer
+                );
+            } else {
+                $errors->add("user not validated");
+            }           
+		} else if ($action == 'tally_score') {
+            $user_id = intval($_POST['user_id']);
+            $dataset = $_POST['dataset'];
+            $score = $db->getScore($user_id, $dataset);
+            $result_array = array(
+                'type'=>'score_tally',
+                'tally'=>$score,
+                'dataset'=>$dataset
+            );            
+        } else {
 			$errors->add("Request command not recognized");
 		}
 
@@ -53,10 +82,18 @@
 				'type'=>'error',
 				'errors'=>$all_errors
 			);
-		} 
+
+            $date = date('Y-m-d H:i:s');
+            error_log( $date . 
+                        ': ' . 
+                        implode(', ', $all_errors) . 
+                        "\n", 3, "errors.log"
+            );
+		} else {
+            //
+        }
 
 		echo json_encode( $result_array );
-
 		die();
 	} 
 ?>
@@ -89,18 +126,18 @@
                 <h1 class="title">Sarcasm quiz!</h1>
                 <nav id='navbar' hidden=true>
                     <ul>
-                        <li><a href="#">Hard quiz</a></li>
-                        <li><a href="#">Easy quiz</a></li>
+                        <li id='hard-link'><a href="#">Hard quiz</a></li>
+                        <li id='easy-link' class='selected'><a href="#">Easy quiz</a></li>
                     </ul>
                 </nav>
             </header>
         </div>
 
         <div class="main-container">
-            <div class="main wrapper clearfix">
+            <div id="main-content" class="main wrapper clearfix">
 
-            	<article id='main-content'>
-            	    <header id='content-header' hidden=true>
+            	<article id='intro' hidden=true>
+            	    <header id='content-header'>
             	        <h3>Please provide your name</h3>
             	        <form id='name-form'>
             	        	<input type='text' name='name'><br>
@@ -109,33 +146,23 @@
             	    </header>        	    
             	</article>
 
-            	<!--
-                <article>
-                    <header>
-                        <h1>Sarcasm quiz!</h1>
-                        <p>Below you will be presented with a random selection of tweets. Please guess if you think thay were tagged with #sarcasm or not!</p>
-                    </header>
-                    
-                    <section>
-                        <h2>1.</h2>
-                        <p>Omg sarcastic sarcastic sarcastic</p>
-                    </section>
 
-                  
-                    <footer>
-                        <h3>Quiz info</h3>
-                        <p>The easy quiz contains an even amount of sarcastic and none-sarcastic tweets. The hard quiz has a ratio of 1 to 3 betwean sarcastic and none-sarcastic tweets</p>
-                    </footer>
-                    
-                </article>
-				-->
-                <aside id='aside' hidden=true>
-                	<div id='status' hidden=true></div>
-                	<div id='score' hidden=true>
-	                    <h3>Your score:</h3>
-	                    <p>Accuracy:</p>
-	                    <p>F1 score:</p>
-	                </div>
+                <article id='quiz' class='quiz-container easy'>    
+                </article>        
+
+                <aside id='aside'>
+                	<div id='status'></div>
+                    <div class='tooltip'>
+                    <ul id='score'>
+                        <li>Answered: <div id='count' class='metric'>0</div></li>
+                        <li>Accuracy: <div id='accuracy' class='metric'>0</div></li>
+                        <li>Precision: <div id='precision' class='metric'>0</div></li>
+                        <li>Recall: <div id='recall' class='metric'>0</div></li>
+                        <li>F1-score: <div id='f1_score' class='metric'>0</div></li>
+                    </ul>                                                    
+                        <span class="tooltiptext">Your score is updated when you've answered all visable questions
+                        </span>                        
+                    </div>
                 </aside>
 
             </div> <!-- #main -->
