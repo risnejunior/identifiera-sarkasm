@@ -1,8 +1,4 @@
-"""  This functions cleans all the tweets.
-It first removes all the #tags, then make sure the tweets
-does not contain http links, non ASCII charaters or that the
-first letter of the tweet is @ (to ensure that the tweet is not out of context).
-Then it removes any @tagging and any mention of the word sarcasm or sarcastic."""
+"""  This functions cleans all the tweets """
 
 import numpy as np
 import os
@@ -12,6 +8,7 @@ import settings
 
 def clean_tweets_detector(source_name):
     data=[]
+
 
     hashtags = re.compile(r'#\w+\s?')
     friendtag = re.compile(r'@\w+\s?')
@@ -23,22 +20,21 @@ def clean_tweets_detector(source_name):
     csv_file_object = csv.reader(open(source_name, 'rU'),delimiter='\n')
 
     for row in csv_file_object:  
+            if len(row[0:])==1:
+                temp=row[0:][0]
+                temp=hashtags.sub(settings.tags[2],temp)
 
-        if len(row[0:])==1:
-            temp=row[0:][0]
-            temp=hashtags.sub('<hashtag>',temp)
+                if len(temp)>0 and temp[0]!='@' and r'\u' not in temp: 
+                    temp=friendtag.sub(settings.tags[0], temp)
+                    temp=sarcasmtag.sub('', temp)
+                    temp=sarcastictag.sub('', temp)
+                    temp = url.sub(settings.tags[1], temp)
+                    temp = url2.sub(settings.tags[1], temp)
+                    temp=' '.join(temp.split()) #remove useless space
 
-            if len(temp)>0 and temp[0]!='@' and r'\u' not in temp: 
-                temp=friendtag.sub('<user>', temp)
-                temp=sarcasmtag.sub('', temp)
-                temp=sarcastictag.sub('', temp)
-                temp = url.sub('<url>', temp)
-                temp = url2.sub('<url>', temp)
-                temp=' '.join(temp.split()) #remove useless space
-
-                # Check that tweet contains more than 3 words
-                if len(temp.split())>2:
-                    data.append(temp)
+                    # Check that tweet contains more than 3 words
+                    if len(temp.split())>2:
+                        data.append(temp)
 
     data=list(set(data))
 
