@@ -14,6 +14,7 @@ import tensorflow as tf
 from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell
 
 import common_funs
+import settings
 from common_funs import Binary_confusion_matrix
 from common_funs import Logger
 from common_funs import reverse_lookup
@@ -91,6 +92,25 @@ class EarlyStoppingMonitor():
 			self.losses.append(val_loss)
 
 		self._buff.flush()
+		
+def _arg_callback_ds(ds_name):
+	"""
+	Select dataset
+	"""
+	global dataset_proto
+	dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
+	print("<Using dataset: {}>".format(ds_name))
+		
+def _arg_callback_pretrained(path):
+	global save_the_model, pretrained_model, training, pretrained_path
+	save_the_model = False
+	pretrained_model = True
+	training = False
+	
+	models_path = os.path.join("models")
+	if not (os.path.isdir(models_path)):
+		os.makedirs(models_path)
+	pretrained_path = os.path.join(models_path, path + ".tfl")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
 	global epochs, run_count, batch_size, training
@@ -235,6 +255,9 @@ def do_prediction(model, hyp, this_run_id, log_run):
 snapshot_epoch = True
 print_debug = True
 
+# sdasd
+dataset_proto = datasets[dataset_name]
+
 # Handles command arguments, usefull for debugging
 # usage: tflearn_rnn.py --pf debug_processed.pickle
 #  will get samples from debug_processed.pickle
@@ -243,8 +266,15 @@ arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which fi
 arghandler.register_flag('net', _arg_callback_net, ['network'], "Which network to use. args: <network name>")
 arghandler.register_flag('train', _arg_callback_train, helptext = "Use settings for training. Args: <epochs> <run_count> <batch size>")
 arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set snapshots. No arguments means no snapshots. Args: <snapshot step> <epoch end>")
+arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
+arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 print("\n")
 arghandler.consume_flags()
+
+#ashdiudh
+dataset = settings.set_rel_paths(dataset_proto)
+samples_path = dataset["samples_path"]
+
 
 
 debug_log = Logger()

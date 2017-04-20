@@ -37,7 +37,7 @@ batch_size = 128
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 #For loading and saving models
-save_the_model = False # If true, save the model to path specified in tflearn_rnn
+save_the_model = True # If true, save the model to path specified in tflearn_rnn
 pretrained_model = False # If true, create_model will initialize the model specified in pretrained_path
 training = True # If false, the modeled will not be trained. Useful for testing pretrained model
 
