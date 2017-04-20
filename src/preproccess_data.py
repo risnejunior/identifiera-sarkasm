@@ -35,6 +35,19 @@ import settings
 from settings import *
 
 #### functions ###############################################################################
+def _arg_callback_sp(train, cross, test):
+	global partition_training, partition_validation, partition_test
+	partition_training = float(train)
+	partition_validation = float(cross)
+	partition_test = float(test)
+	
+	if (partition_training + partition_validation + partition_test > 1):
+		print("Sum of partitions cannot exceed 1.")
+		sys.exit(0)
+		
+	#print("Train partition = {}, Evaluation partition = {:%}, Test partition = {}."
+	#	.format(partition_training, partition_validation, partition_test))
+
 
 def _arg_callback_ds(ds_name):
 	"""
@@ -322,6 +335,7 @@ arghandler.register_flag('rev', _arg_callback_reverse, ['reverse'], "reverese th
 arghandler.register_flag('ls', _arg_callback_ls, ['limit', 'limit-samples'], "Limit how many samples to use (tweets) Args: <sample count>")
 arghandler.register_flag('re', _arg_callback_re, ['random-embeddings'], "Use random embeddings")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
+arghandler.register_flag('sp', _arg_callback_sp, ['set-partition'], "Set the partition sizes.")
 arghandler.consume_flags()
 
 dataset = settings.set_rel_paths(dataset_proto)

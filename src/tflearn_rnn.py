@@ -93,18 +93,6 @@ class EarlyStoppingMonitor():
 
 		self._buff.flush()
 		
-def _arg_callback_sp(train, cross, test):
-	global partition_training, partition_validation, partition_test
-	partition_training = float(train)
-	partition_validation = float(cross)
-	partition_test = float(test)
-	
-	if (partition_training + partition_validation + partition_test > 1):
-		print("Sum of partitions cannot exceed 1.")
-		sys.exit(0)
-		
-	#print("Train partition = {}, Evaluation partition = {:%}, Test partition = {}."
-	#	.format(partition_training, partition_validation, partition_test))
 		
 def _arg_callback_pt():
 	global print_test
@@ -296,7 +284,6 @@ arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set s
 arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
-arghandler.register_flag('sp', _arg_callback_sp, ['set-partition'], "Set the partition sizes.")
 print("\n")
 arghandler.consume_flags()
 
