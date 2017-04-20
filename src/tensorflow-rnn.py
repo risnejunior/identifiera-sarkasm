@@ -30,6 +30,8 @@ chunk_size = embedding_size
 n_chunks = max_sequence
 rnn_size = 128
 
+data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,max_sequence])
+labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
 
 train_call = 1
 val_call = 2
@@ -57,7 +59,7 @@ def word_embedding_layer(word,embedding_tensor):
     return embedding_layer #Not sure if this is done yet
 
 #Defining and building the Neural Network
-def recurrent_neural_network(data,call):
+def recurrent_neural_network(data):
     layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes])),
     'biases': tf.Variable(tf.random_normal([n_classes]))}
     gru_cell = rnn.GRUCell(rnn_size)
@@ -66,8 +68,6 @@ def recurrent_neural_network(data,call):
     data = tf.reshape(data,[-1,chunk_size])
     sequence = tf.split(data, n_chunks, 0)
     #with tf.variable_scope("Gru_cell") as scope:
-    if call != train_call:
-        scope.reuse_variables()
     outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
 
     output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
@@ -77,19 +77,14 @@ def recurrent_neural_network(data,call):
 # The method for training the neural network
 # TODO: Finish this function
 
-# Method for validating network in training
 
-def validate_training(ps):
-    return 0
 
 def train_neural_network(ps,emb_init,W,emb_placeholder):
     n_samples,words = ps.train.xs.shape
     n_batches = n_samples/batch_size
 
-    data_placeholder = tf.placeholder(dtype=tf.int32,shape=[batch_size,max_sequence])
-    labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size,n_classes])
     embeddings = word_embedding_layer(data_placeholder,W)
-    prediction = recurrent_neural_network(embeddings,train_call)
+    prediction = recurrent_neural_network(embeddings)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
                                                                   labels = labels_placeholder
                                                                   ))
@@ -117,11 +112,20 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
             #                                    val_labels_placeholder: np.array(ps.valid.ys)})
             saver = tf.train.Saver()
             save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
-            validate_training(ps)
+            accuracy = validate_training(ps,prediction)
             print("Checkpoint file saved in %s" % save_path )
-            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss)
+            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss, ' | Accuracy: ', accuracy)
 
     sess.close()
+
+# Method for validating network in training
+def validate_training(ps,network_op):
+    labels = np.array(ps.valid.ys)
+    data = ps.valid.xs
+    correct = tf.equal(tf.argmax(network_op,1), tf.argmax(labels_placeholder,1))
+    accuracy = tf.reduce_mean(tf.cast(correct,'float'))
+    return accuracy.eval(feed_dict={data_placeholder: data, labels_placeholder: labels})
+
 # Here starts the program
 with open(samples_path, 'rb') as handle:
     pd = pickle.load( handle )
@@ -133,9 +137,9 @@ if use_embeddings:
 else:
     emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
 
-with tf.Graph().as_default():
-    emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
-    train_neural_network(ps,emb_init,W,emb_placeholder)
+
+emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
+train_neural_network(ps,emb_init,W,emb_placeholder)
 
 
 
