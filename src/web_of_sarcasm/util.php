@@ -57,7 +57,6 @@ class DbAdapter {
 		if ($user && $user['nonce'] == $nonce) {
 			$validated = true;
 		} else {
-			//echo($user['nonce'] . '=' . $nonce . $user_id . '=' . $user['user_id']);
 			$this->errors->add('nonce not matched');
 		}
 
@@ -92,7 +91,7 @@ class DbAdapter {
 
 	public function getQuiz($size, $dataset) {
 		$sql = "
-		SELECT id, sample_text, dataset
+		SELECT id, sample_text
 		FROM samples AS s
 		JOIN ( 
 			SELECT (

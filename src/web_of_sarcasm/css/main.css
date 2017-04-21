@@ -252,6 +252,51 @@ h2#score-header {
     padding: 0px;
 }
 
+div#error {
+    display: block;
+    color: red;
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    top: 50%;
+    left: 25%;
+    font-family: monospace;
+    /* font-size: xx-large; */
+}
+
+#error p {
+    cursor: pointer;
+}
+
+.footer-container {
+    position: relative;
+}
+
+#submit-name {
+    height: 40px;
+    width: 80px;
+    border-radius: 10px;
+    border: 1px solid #000;
+    margin-top: 15px;
+}
+
+#name-form input[type="text"] {
+    padding: 10px;
+    border: none;
+    border-bottom: solid 2px #c9c9c9;
+    transition: border 0.3s;
+}
+
+#name-form input[type="text"]:focus,
+#name-form input[type="text"].focus {
+    border-bottom: solid 2px #969696;
+}
+
+#logout a{
+    text-decoration: none;
+    color: dimgrey;
+}
+
 /* ==========================================================================
    Media Queries
    ========================================================================== */

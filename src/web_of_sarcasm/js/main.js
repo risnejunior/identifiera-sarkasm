@@ -1,95 +1,62 @@
-var ajaxurl = "index.php"
-var debug = true
+var ajaxurl = "index.php";
+var debug = true;
+var model = null;
+var quiz_size = 3;
+var datasetNames = {
+	'easy': 'poria-balanced',
+	'hard': 'poria-ratio'
+}
+var def_quiz = datasetNames['easy'];
 
-/* event handlers ####################################################
+/* data structs and util funs ########################################
 ####################################################################*/
-$( document ).ready(function() {
-	debug ? console.log("document load") : null
-	var user_id = null 
-
-	//user unknown
-	if (localStorage.getItem('user_id') === null ||
-		localStorage.getItem('nonce') === null ) {
-		
-		$("#intro").show();
-
-	//user known
-	} else {
-		update_quiz('easy', 10);
-	}
-});
-
-// register user
-$("#name-form").keypress(function(e) {
-	if(e.which == 13){
-		$("#name-form").submit();
-	}
-});
-
-$("#name-form").submit(function(event) {
-	event.preventDefault();
-	register_user();
-});
-
-$("#hard-link").click(function(e){
-	$("li", "#navbar").removeClass("selected");
-	$(this).addClass("selected");
-	update_quiz('hard', 10);
-});
-
-$("#easy-link").click(function(e){
-	$("li", "#navbar").removeClass("selected");
-	$(this).addClass("selected");
-	update_quiz('easy', 10);
-});
-
-/* funs #############################################################
-####################################################################*/
-
-function getScore(dataset, callback) {
-	debug ? console.log("get score") : null
-	var message = {
-		'user_id': localStorage['user_id'],
-		'action': 'tally_score',
-		'dataset': dataset
+var objectStore = new function() {
+	this.set = function(store, obj) {
+		localStorage[store] = JSON.stringify(obj);
 	};
-
-	send_ajax(message, success);
-	$("#score").parent().fadeTo(10, 0)
-
-	function success(data) {
-		var tally = data.tally[0];		
-		localStorage[data.dataset + '_tally'] = JSON.stringify(tally);
-		var metrics = calculate_metrics(tally);
-		$("#score").parent().fadeTo(300, 1, callback(metrics));
-	}
+	this.get = function(store) {
+		var item = null;
+		if (store in localStorage) {
+			item = JSON.parse(localStorage[store]);
+		}
+		
+		return item;
+	};
+	this.update = function(store, key, val) {
+		var obj = this.get(store);
+		if (obj != null) {
+			obj.key = val;
+			this.set(store, obj);	
+		}
+		
+		return obj;
+	};
 }
 
-function update_metrics(dataset) {
-	getScore(dataset, callback)
-
-	function callback(metrics) {
-		debug ? console.log("metrics callback") : null
-		$("#score-header").text(dataset + " quiz score:");		
-		$("#count").html(metrics.count);		
-		$("#accuracy").html(metrics.accuracy);
-		$("#precision").html(metrics.precision);
-		$("#recall").html(metrics.recall);
-		$("#f1_score").html(metrics.f1_score);
-		$("#aside").show();
-		$("#score").show();
-	}
+function Quiz (quiz) {
+	this.questions = quiz.questions;
+	this.metrics = quiz.metrics;
+	this.answers = {};
 }
 
-function send_ajax(message, success_fun) {
+function Model () {	
+	this.user = {
+		id: null,
+		name: null,
+		nonce: null
+	};
+	this.quizes = {};
+}
+
+function send_ajax(message, cb_success, cb_error, cb_complete) {
 	debug ? console.log("send ajax") : null
 	var settings = {
 	     "url": ajaxurl,
-	     "timeout": 5000,
+	     "timeout": 3000,
 	     "type": "post",
 	     "dataType": "json",
 	     "data": message,
-	     "complete": complete,
+	     "complete": cb_complete,
 	     "error": error,
 	     "success": success,
 	     "context": this
@@ -102,117 +69,172 @@ function send_ajax(message, success_fun) {
 		
 		//serverside error 
 	    if ( !data.type || "error" === data.type ) {
-	        var err_message = "An error occurred!";
+	        var err_message = "Server message not recognized!";
 	        if ( 'errors' in data ) {
-	            err_message = "Error: " + data.errors.join(',');
+	            err_message = data.errors.join(', ');
 	        }
-	        jQuery("#status").html( err_message ).show();
 
-	        /*
-	    	if (err_message.indexOf("User not found") == -1) {
-	    		localstore.clear();
-	    		location.reload();
-	    	}
-	    	*/
-	    
-	    //server side success: set quiz
+	        cb_error(err_message);	        
+	    //server side success: return data
 	    } else {
-	    	success_fun(data);
+	    	cb_success(data);
 	    }
 	}
 
 	function error( jqXHR, textStatus, errorThrown ) {
-		jQuery("#status").html( "Server error!" ).show();
-	}
+		var err_message = null;
+		if (jqXHR.readyState == 4) {
+            err_message = "Http Error";
+        } else if (jqXHR.readyState == 0) {
+            err_message = "Network error";            
+        } else {
+            err_message = "Unhandled error, " + textStatus;
+        }
 
-	function complete( jqXHR, textStatus ) {
-		jQuery( this )
-		    .parent()
-		    .siblings( ".animation-container" )
-		    .removeClass( "working-animation" );
-	}
-}
-
-function register_user() {
-	debug ? console.log("register user") : null
-	var message = {
-		'name': $( "input[name*='name']" ).first().val(),
-		'action': 'register_user'
-	};
-
-	send_ajax(message, success);
-
-	function success(data) {
-		localStorage['user_id'] = data.id;
-		localStorage['nonce'] = data.nonce;
-		localStorage['name'] = data.name;
-
-		update_quiz('easy', 10);
+		cb_error(err_message);
 	}
 }
+/* controller #######################################################
+####################################################################*/
+var quiz_container = $("#quiz");
+var metrics_container = $("#metrics");
+var intro_container = $("#intro");
+var navbar = $('#navbar');
+var aside = $('#aside');
 
-function get_quiz(dataset, size, callback) {
-	debug ? console.log("get quiz") : null
-
-	// check if quiz stored
-	if (!(dataset in localStorage)) {
-		debug ? console.log(dataset + " NOT in localstore") : null
+$( document ).ready(function() {
+	is_new_user = model_init();
 	
-		var message = {
-			'action': 'get_quiz',
-			'dataset': dataset,
-			'user_id': parseInt(localStorage['user_id']),
-			'nonce': localStorage['nonce'],
-			'size': size
-		};
-
-		send_ajax(message, success);
-		$("#quiz").fadeTo(300, 0);
-
+	if (is_new_user) {
+		quiz_container.hide()
+		intro_container.show()
 	} else {
-		debug ? console.log(dataset + " IS in localstore") : null
-		quiz = JSON.parse(localStorage[dataset]);		
-		callback(quiz);		
+		ctrl_refresh_quiz(def_quiz, false);
 	}
+});
+
+// register user keypress submit
+$("#name-form").keypress(function(e) {
+	if(e.which == 13){
+		$(this).submit();
+	}
+});
+
+// register user
+$("#name-form").submit(function(event) {
+	event.preventDefault();
+	var name = $( "input[name*='name']" ).first().val();
+	model_register_user(name, cb_view_success, cb_view_error);
+
+	function cb_view_success() {		
+		ctrl_refresh_quiz(def_quiz, false);
+	} 
+
+	function cb_view_error(err_message) {
+		view_display_error(err_message);
+	}
+});
+
+$("#hard-link").click(function(e){
+	var dataset = datasetNames['hard'];
+	$("li", "#navbar").removeClass("selected");
+	$(this).addClass("selected");
+		
+	ctrl_refresh_quiz(dataset, false);
+});
+
+$("#easy-link").click(function(e){
+	var dataset = datasetNames['easy'];	
+	$("li", "#navbar").removeClass("selected");
+	$(this).addClass("selected");
+	
+	ctrl_refresh_quiz(dataset, false);
+});
 
 
-	function success(data) {
-		$("#quiz").fadeTo(300, 1);
+$("#quiz").on("click", "button", function(event) {
+	var section = $(this).parents("section").first();
+	var question_id = section.attr("id");		
+	var answer = $(this).hasClass("pos") ? 1 : 0;
+	var button = $(this);
+	var dataset = section.attr("dataset");
 
-		if (data.quiz.length < 1) {
-			debug ? console.log("Empty quiz returned!") : null
-			location.reload();
+	if ( !$(this).hasClass('selected') ) {
+		$(this).addClass('selected');
+	}
+	$(this).siblings('.button:first').removeClass('selected');
+
+	section.addClass("working-animation");
+	model_set_answer(dataset, question_id, answer, cb_error, cb_complete);
+
+	function cb_complete(allAnswered) {		
+		section.removeClass("working-animation");
+
+		if (allAnswered) {
+			ctrl_refresh_quiz(dataset, true, quiz_container, metrics_container)
 		}
-
-		localStorage[data.dataset] = JSON.stringify(data.quiz);
-		callback(data.quiz);
 	}
 
-	update_metrics(dataset);
+	function cb_error(err_message) {
+		debug ? console.log(err_message) : null
+		button.removeClass('selected');
+		view_display_error(err_message);
+	}
+});
+
+$("#error").on('click', 'p', function(e) {
+	$("#error").hide();
+	$("#main-content").slideDown();
+});
+
+$("#logout a").click(function(e) {
+	e.preventDefault();
+	localStorage.clear();
+	document.location.reload();
+});
+
+function ctrl_refresh_quiz(dataset, replace) {
+	intro_container.hide();
+	navbar.show();
+	aside.show();
+	quiz_container.fadeTo(10, 0);
+	metrics_container.fadeTo(10, 0);
+
+	model_get_quiz(dataset, quiz_size, replace, cb_success, cb_error, cb_complete)
+
+	function cb_success(quiz) {
+		view_update_quiz(dataset, quiz.questions, quiz.answers);
+		metrics = model_calculate_metrics(quiz.metrics);
+		view_update_metrics(metrics, dataset);
+	}
+
+	function cb_error(err_message) {
+		debug ? console.log("refresh quiz, error getting quiz") : null
+		view_display_error(err_message);
+	}
+
+	function cb_complete() {
+		quiz_container.fadeTo(300, 1);
+		metrics_container.fadeTo(300, 1);
+	}
+	
 }
 
-function add_quiz_html(quiz, container, quiz_name) {
-	debug ? console.log("add quiz html: " + quiz_name) : null
-		
-	container.empty();
-	if (quiz_name == "hard") {
-		container.removeClass("easy")
-		container.addClass("hard")
-	} else {
-		container.removeClass("hard")
-		container.addClass("easy")
-	}
+/* view funs #############################################################
+####################################################################*/
 
-	var answers = get_answers();
+function view_update_quiz(dataset, questions, answers) {
+	quiz_container.empty();
 
-	for (var i = 0; i < quiz.length; i++) {		
-		question = quiz[i];
+	for (var i = 0; i < questions.length; i++) {				
+		question = questions[i];
 		//console.log(question.sample_text);
 
 		var sectionElement = $("<section></section>")
 			.attr("id", question.id)
 			.text(question.sample_text)
-			.addClass("question");
+			.addClass("question")
+			.attr("dataset", dataset);
 
 		var buttonPart = $("<div></div>")
 			.addClass("button-part")
@@ -226,113 +248,123 @@ function add_quiz_html(quiz, container, quiz_name) {
 		}
 
 		sectionElement.append(buttonPart);
-		$(container).append(sectionElement);
+		quiz_container.append(sectionElement);
 
 	}
-
-	$("button", ".button-part").click(function(event) {
-		var question_id = $(this).parents("section").first().attr("id");		
-		var isPos = $(this).hasClass("pos");
-		
-		if ( !$(this).hasClass('selected') ) {
-			$(this).addClass('selected');
-		}
-
-		$(this).siblings('.button:first').removeClass('selected');
-
-		set_answer(question_id, isPos, this);		
-	});
-
-	jQuery("#aside, #navbar").show();	
-	jQuery("#intro").hide();
-	jQuery("container").show();	
 }
 
-function set_answer(question_id, isPos, that) {
-	debug ? console.log("Set answer: " + question_id + " " + isPos) : null
-	user_id = localStorage.getItem('user_id')
-	nonce = localStorage.getItem('nonce')
+function view_update_metrics(metrics, dataset) {
+	$("#score-header").text(dataset + " quiz score:");	
+	$("#count").html(metrics.count);		
+	$("#accuracy").html(metrics.accuracy);
+	$("#precision").html(metrics.precision);
+	$("#recall").html(metrics.recall);
+	$("#f1_score").html(metrics.f1_score);
+	$("#aside").show();
+	$("#score").show();
+}
+
+function view_display_error(err_message) {
+	$("#main-content").slideUp();
+	$("#error h2:first").html("ERROR: " + err_message);
+	$("#error p").html("(CLICK TO CLEAR)");
+	$("#error").show();
+
+}
+
+
+/* model funs #############################################################
+####################################################################*/
+function model_init() {
+	new_user = false 
+	model = objectStore.get("model");
+
+	//new user
+	if (model === null || model.user.id === null) {
+		model = new Model();
+		new_user = true;
+		objectStore.set("model", model);		
+	//known user
+	} 
+	return new_user;
+}
+
+function model_register_user(name, cb_view_success, cb_view_error, cb_view_complete) {
+	debug ? console.log("register user") : null
 	var message = {
-		'action': 'save_answer',
-		'nonce': nonce,
-		'question_id': parseInt(question_id),
-		'user_id': parseInt(user_id),		
-		'answer': isPos ? 1 : 0
+		'name': name,
+		'action': 'register_user'
 	};
 
-	send_ajax(message, success)
-	$(that).parents("section:first").addClass("working-animation");
+	send_ajax(message, cb_success, cb_view_error, cb_view_complete);
 
-	function success(data) {
-		$(that).parents("section:first").removeClass("working-animation");
-		answers = get_answers()
-		answers[question_id] = isPos;		
-    	localStorage['answers'] = JSON.stringify(answers);
-    	var done = check_if_done(answers);
-    	if (done) {
-    		replace_quiz();
+	function cb_success(data) {
+		model.user.id = data.id
+		model.user.nonce = data.nonce;
+		model.user.name = data.name;
+		objectStore.set("model", model);
 
-    	}
+		cb_view_success();
 	}
 }
 
-function replace_quiz() {
-	debug ? console.log("replace quiz") : null
-	container = $("#quiz");
-	if (container.hasClass("easy")) {
-		delete localStorage['poria-balanced'];
-		update_quiz("easy", 10);
-	} else {
-		delete localStorage['poria-ratio'];
-		update_quiz("hard", 10);
-	}
-}
-
-function check_if_done(answers) {
-	var ids = [];
-	var allIn = true;
-	$("section", "#quiz").each(function(){
-		//ids.push(this.id);
-		if (!(this.id in answers)) {
-			allIn = false;
-		}
-	});
-
-	return allIn;
-}
-
-function get_answers() {
-	var answers = {};
-	if ('answers' in localStorage) {
-		answers = JSON.parse(localStorage['answers']);
-	} 
-	return answers;
-}
-
-function update_quiz(quiz_name, size) {
-	debug ? console.log("update_quiz") : null
-	//debug!
-	size = 3;
-
-	var dataset = null;
-	var container = $("#quiz");
-
-	if (quiz_name == 'hard') {		
-		dataset = 'poria-ratio';		
-	} else {
-		dataset = 'poria-balanced';
-	}
-
-	 get_quiz(dataset, size, callback);	 
-
-	function callback(quiz) {
-		debug ? console.log("update quiz callback") : null
-		add_quiz_html(quiz, container, quiz_name);		
-	}
+function model_get_quiz(dataset, size, replace, cb_view_success, cb_view_error, cb_view_complete) {
+	var quiz = model.quizes[dataset];
 	
+	if (quiz && !replace) {
+		// quiz in localstore
+		cb_view_success(quiz);
+		cb_view_complete();
+
+	} else {
+		//not in localstore
+		var message = {
+			'action': 'get_quiz',
+			'dataset': dataset,
+			'user_id': model.user.id,
+			'nonce': model.user.nonce,
+			'size': size
+		};
+
+		send_ajax(message, cb_success, cb_view_error, cb_view_complete);
+	}
+
+	function cb_success(data) {		
+		quiz = new Quiz(data.quiz);
+		model.quizes[dataset] = quiz;
+		objectStore.set("model", model);
+
+		cb_view_success(quiz);
+	}
 }
 
-function calculate_metrics(tally) {	
+function model_set_answer(dataset, question_id, answer, cb_view_error, cb_view_complete) {
+	var message = {
+		'action': 'save_answer',
+		'nonce': model.user.nonce,
+		'question_id': question_id,
+		'user_id': model.user.id,		
+		'answer': answer
+	};
+	send_ajax(message, cb_success, cb_view_error, cb_complete)
+
+	function cb_success(data) {
+		model.quizes[dataset].answers[question_id] = answer;
+		objectStore.set("model", model);
+	}
+
+	function cb_complete() {
+		var allAnswered = false;
+		var quiz = model.quizes[dataset];
+		if (Object.keys(quiz.answers).length >= quiz.questions.length) {
+			allAnswered = true;
+		}
+		cb_view_complete(allAnswered);
+	}
+}
+
+
+function model_calculate_metrics(tally) {	
 	var metrics = {
 		'accuracy': 0, 
 		'precision': 0, 
