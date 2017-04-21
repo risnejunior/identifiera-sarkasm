@@ -64,7 +64,7 @@ def word_embedding_layer(word,embedding_tensor):
 
 #Defining and building the Neural Network
 def recurrent_neural_network(data,keep_prob):
-    layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes]), name="Weights"),
+    layer = {'weights': tf.Variable(tf.random_uniform([rnn_size,n_classes]), name="Weights"),
     'biases': tf.Variable(tf.random_normal([n_classes], name="Biases"))}
     gru_cell = rnn.GRUCell(rnn_size)
     weight_dropout = tf.nn.dropout(layer['weights'], keep_prob=keep_prob)
