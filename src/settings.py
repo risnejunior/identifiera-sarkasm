@@ -6,12 +6,17 @@ import numpy as np
 ################# settings ###############################################
 ##########################################################################
 
+<<<<<<< Updated upstream
 #mixed use
 dataset_name = "poria-balanced" #"poria-ratio" # "poria-balanced", "imdb"
 use_embeddings = True
 ascii_console = False #set to true if your console doesn't handle unicode
 use_logger = True
 allowed_emb_sizes = [25,50,100,200]
+=======
+#used in preprocess
+dataset_name = "poria-ratio" #"poria-ratio" # "poria-balanced", "imdb"
+>>>>>>> Stashed changes
 remove_punctuation = True
 remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
