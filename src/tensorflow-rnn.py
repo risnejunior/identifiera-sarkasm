@@ -31,11 +31,11 @@ from settings import *
 n_classes = 2
 chunk_size = embedding_size
 n_chunks = max_sequence
-rnn_size = 256
+rnn_size = 64
 
 data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,max_sequence])
 labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
-keep_prob_placeholder = tf.placeholder(dtype=tf.float32, shape=[None])
+keep_prob_placeholder = tf.placeholder('float')
 
 train_call = 1
 val_call = 2
@@ -63,18 +63,19 @@ def word_embedding_layer(word,embedding_tensor):
     return embedding_layer #Not sure if this is done yet
 
 #Defining and building the Neural Network
-def recurrent_neural_network(data):
+def recurrent_neural_network(data,keep_prob):
     layer = {'weights': tf.Variable(tf.random_normal([rnn_size,n_classes]), name="Weights"),
     'biases': tf.Variable(tf.random_normal([n_classes], name="Biases"))}
     gru_cell = rnn.GRUCell(rnn_size)
-
+    weight_dropout = tf.nn.dropout(layer['weights'], keep_prob=keep_prob)
     data = tf.transpose(data,[1,0,2])
     data = tf.reshape(data,[-1,chunk_size])
     sequence = tf.split(data, n_chunks, 0)
     #with tf.variable_scope("Gru_cell") as scope:
     outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
-    output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
-    return output, states
+    output = tf.add(tf.matmul(outputs[-1],weight_dropout), layer['biases'])
+    l2_weights = tf.nn.l2_loss(layer['weights'])
+    return output, l2_weights
 
 # The method for training the neural network
 # TODO: Finish this function
@@ -84,13 +85,13 @@ def recurrent_neural_network(data):
 def train_neural_network(ps,emb_init,W,emb_placeholder):
 
     embeddings = word_embedding_layer(data_placeholder,W)
-    prediction, states = recurrent_neural_network(embeddings)
+    prediction, l2_loss = recurrent_neural_network(embeddings,keep_prob_placeholder)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
                                                                   labels = labels_placeholder
                                                                   ))
 
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost)
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost + 0.01 * l2_loss)
     sess = tf.Session()
     xs_split,ys_split = split_chunks(ps.train.xs, np.array(ps.train.ys),batch_size)
     with sess.as_default():
@@ -104,8 +105,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
                 batch_x = xs_split[batch_i]
                 batch_y = ys_split[batch_i]
 
-                _, c , s= sess.run([optimizer,cost,states], feed_dict = {data_placeholder: batch_x,
-                                                               labels_placeholder: batch_y})
+                _, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
                 epoch_loss += c
             #val_accuracy = sess.run(validation,
             #                        feed_dict = {val_data_placeholder: ps.valid.xs,
@@ -114,7 +114,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
             save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
             accuracy = validate_training(ps,prediction)
             print("Checkpoint file saved in %s" % save_path )
-            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss, ' | Accuracy: ', accuracy)
+            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss, '| Accuracy:', accuracy)
 
         saver = tf.train.Saver()
         date = time.strftime("%m%d%y-%H%M%S")
@@ -128,15 +128,14 @@ def split_chunks(xs,ys,size):
     yh,yw = ys.shape
     if xh != yh :
         raise ValueError("Sizes don't match")
-    print(xh)
+    #print(xh)
     n_batches = xh//size
-    print(n_batches)
-    overflow = xh % n_batches
-    print(overflow)
+    #print(n_batches)
+    overflow = xh - (n_batches * size)
+    #print(overflow)
     xs_overflow = xs[-overflow:]
-    print(xs_overflow.shape)
+    #print(xs_overflow.shape)
     xs_notoverflow = xs[:xh - overflow]
-    print(xs_notoverflow.shape)
     ys_overflow = ys[-overflow:]
     ys_notoverflow = ys[:yh - overflow]
     xs_split = np.split(xs_notoverflow,n_batches)
@@ -153,7 +152,7 @@ def validate_training(ps,network_op):
     prediction = tf.nn.log_softmax(network_op)
     correct = tf.equal(tf.argmax(prediction,1), tf.argmax(labels_placeholder,1))
     accuracy = tf.reduce_mean(tf.cast(correct,'float'))
-    return accuracy.eval(feed_dict={data_placeholder: data, labels_placeholder: labels})
+    return accuracy.eval(feed_dict={data_placeholder: data, labels_placeholder: labels, keep_prob_placeholder: 1.0})
 
 # Here starts the program
 with open(samples_path, 'rb') as handle:
