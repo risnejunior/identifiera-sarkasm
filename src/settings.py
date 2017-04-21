@@ -12,8 +12,6 @@ use_embeddings = True
 ascii_console = False #set to true if your console doesn't handle unicode
 use_logger = True
 allowed_emb_sizes = [25,50,100,200]
-
-#used in preprocess
 remove_punctuation = True
 remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
@@ -33,8 +31,8 @@ max_sequence = 45 # words to include from sample, smaller samples will be padded
 #used in training
 network_name = 'basic_pony'
 run_count = 1
-epochs = 5
-batch_size = 187
+epochs = 10
+batch_size = 90
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 #For loading and saving models
@@ -82,12 +80,12 @@ datasets = {
 }
 
 ProcessedData = namedtuple('ProcessedData',[
-	'dataset', 
-	'embeddings', 
-	'vocab', 
-	'rev_vocab', 
-	'emb_size', 
-	'vocab_size', 
+	'dataset',
+	'embeddings',
+	'vocab',
+	'rev_vocab',
+	'emb_size',
+	'vocab_size',
 	'max_sequence'])
 Dataset = namedtuple('Dataset', ['train', 'valid', 'test'])
 Setpart = namedtuple('Setpart', ['names', 'length', 'ids', 'xs','ys'])
@@ -103,7 +101,7 @@ def set_rel_paths(dataset_proto):
 	dataset["path_name_neg"] = os.path.join(dataset["rel_path"], "neg")
 	dataset["path_name_pos"] = os.path.join(dataset["rel_path"], "pos")
 	dataset["samples_path"] = os.path.join(dataset["rel_path"], dataset_proto['ps_file_name'])
-	
+
 	return dataset
 
 

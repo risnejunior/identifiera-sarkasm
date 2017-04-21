@@ -31,7 +31,7 @@ from settings import *
 n_classes = 2
 chunk_size = embedding_size
 n_chunks = max_sequence
-rnn_size = batch_size
+rnn_size = 256
 
 data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,max_sequence])
 labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
@@ -73,10 +73,8 @@ def recurrent_neural_network(data):
     sequence = tf.split(data, n_chunks, 0)
     #with tf.variable_scope("Gru_cell") as scope:
     outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
-
     output = tf.add(tf.matmul(outputs[-1],layer['weights']), layer['biases'])
-
-    return output
+    return output, states
 
 # The method for training the neural network
 # TODO: Finish this function
@@ -86,13 +84,13 @@ def recurrent_neural_network(data):
 def train_neural_network(ps,emb_init,W,emb_placeholder):
 
     embeddings = word_embedding_layer(data_placeholder,W)
-    prediction = recurrent_neural_network(embeddings)
+    prediction, states = recurrent_neural_network(embeddings)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
                                                                   labels = labels_placeholder
                                                                   ))
 
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.005).minimize(cost)
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost)
     sess = tf.Session()
     xs_split,ys_split = split_chunks(ps.train.xs, np.array(ps.train.ys),batch_size)
     with sess.as_default():
@@ -106,7 +104,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
                 batch_x = xs_split[batch_i]
                 batch_y = ys_split[batch_i]
 
-                _, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: batch_x,
+                _, c , s= sess.run([optimizer,cost,states], feed_dict = {data_placeholder: batch_x,
                                                                labels_placeholder: batch_y})
                 epoch_loss += c
             #val_accuracy = sess.run(validation,
