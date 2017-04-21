@@ -68,19 +68,6 @@ def word_embedding_layer(word,embedding_tensor):
     return embedding_layer #Not sure if this is done yet
 
 #Defining and building the Neural Network
-def recurrent_neural_network(data,keep_prob):
-    layer = {'weights': tf.Variable(tf.random_uniform([rnn_size,n_classes]), name="Weights"),
-    'biases': tf.Variable(tf.random_normal([n_classes], name="Biases"))}
-    gru_cell = rnn.GRUCell(rnn_size)
-    weight_dropout = tf.nn.dropout(layer['weights'], keep_prob=keep_prob)
-    data = tf.transpose(data,[1,0,2])
-    data = tf.reshape(data,[-1,chunk_size])
-    sequence = tf.split(data, n_chunks, 0)
-    #with tf.variable_scope("Gru_cell") as scope:
-    outputs, states = rnn.static_rnn(gru_cell, sequence, dtype=tf.float32)
-    output = tf.add(tf.matmul(outputs[-1],weight_dropout), layer['biases'])
-    l2_weights = tf.nn.l2_loss(layer['weights'])
-    return output, l2_weights
 
 # The method for training the neural network
 # TODO: Finish this function
@@ -90,12 +77,13 @@ def recurrent_neural_network(data,keep_prob):
 def train_neural_network(ps,emb_init,W,emb_placeholder):
 
     embeddings = word_embedding_layer(data_placeholder,W)
-    prediction, l2_loss = recurrent_neural_network(embeddings,keep_prob_placeholder)
+    network = tfnetworks.fetch_network("little pony",n_classes,params = {'rnn_size': rnn_size})
+    prediction = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
                                                                   labels = labels_placeholder
                                                                   ))
 
-
+    l2_loss = network.calc_l2_loss()
     optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost + 0.01 * l2_loss)
     sess = tf.Session()
     xs_split,ys_split = split_chunks(ps.train.xs, np.array(ps.train.ys),batch_size)
