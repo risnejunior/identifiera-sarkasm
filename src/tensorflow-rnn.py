@@ -15,6 +15,11 @@ import csv
 import sys
 from common_funs import *
 
+sys.path.append("../identifiera-sarkasm/")
+sys.path.append("../identifiera-sarkasm/tfnetworks/")
+
+import tfnetworks
+
 import time
 
 # Importing tensorflow
