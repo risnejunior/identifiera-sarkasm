@@ -10,6 +10,3 @@ class abstract_network(object):
 
     def calc_l2_loss():
         raise NotImplementedError("This method is not implemented")
-
-def fetch_network(name=None):
-    return None
