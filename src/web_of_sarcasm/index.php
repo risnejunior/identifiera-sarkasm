@@ -118,7 +118,7 @@
         <link rel="shortcut icon" href="/favicon_s.png" type="image/x-icon">
         
         <link rel="stylesheet" href="css/normalize.min.css">
-        <link rel="stylesheet" href="css/main.css">
+        <link rel="stylesheet" href="css/main-1.0.css">
 
         <script src="js/vendor/modernizr-2.8.3-respond-1.4.2.min.js"></script>
     </head>
@@ -185,7 +185,7 @@
         </div>
 
         <script src="js/vendor/jquery-1.11.2.js"></script>
-        <script src="js/main.js"></script>
+        <script src="js/main-1.0.js"></script>
 
         <!--
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.js"></script>
