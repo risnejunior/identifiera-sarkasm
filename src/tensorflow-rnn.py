@@ -69,11 +69,6 @@ def word_embedding_layer(word,embedding_tensor):
 
 #Defining and building the Neural Network
 
-# The method for training the neural network
-# TODO: Finish this function
-
-
-
 def train_neural_network(ps,emb_init,W,emb_placeholder):
 
     embeddings = word_embedding_layer(data_placeholder,W)
@@ -105,7 +100,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
             #                                    val_labels_placeholder: np.array(ps.valid.ys)})
             saver = tf.train.Saver()
             save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
-            accuracy = validate_training(ps,prediction)
+            accuracy = test_network_run(ps.valid.xs,np.array(ps.valid.ys),prediction)
             print("Checkpoint file saved in %s" % save_path )
             print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss, '| Accuracy:', accuracy)
 
@@ -113,7 +108,8 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
         date = time.strftime("%m%d%y-%H%M%S")
         saver_path = saver.save(sess, "../models/tfrnn_model-%s.ckpt" % date)
         print("Model saved at %s" % saver_path )
-
+        accuracy = test_network_run(ps.test.xs,np.array(ps.test.ys),prediction)
+        print("Test accuracy of this network is: ", accuracy)
     sess.close()
 
 def split_chunks(xs,ys,size):
@@ -139,13 +135,33 @@ def split_chunks(xs,ys,size):
 
 
 # Method for validating network in training
-def validate_training(ps,network_op):
-    labels = np.array(ps.valid.ys)
-    data = ps.valid.xs
+def test_network_run(data,labels,network_op):
     prediction = tf.nn.log_softmax(network_op)
     correct = tf.equal(tf.argmax(prediction,1), tf.argmax(labels_placeholder,1))
     accuracy = tf.reduce_mean(tf.cast(correct,'float'))
     return accuracy.eval(feed_dict={data_placeholder: data, labels_placeholder: labels, keep_prob_placeholder: 1.0})
+
+def test_network(ps,network_name,path=None):
+    if path == None :
+        print("No model selected")
+    else:
+        run_test(ps,path,network_name)
+
+def run_test(ps,path,network_name):
+    network = tfnetworks.fetch_network(network_name,n_classes,params={'rnn_size': rnn_size})
+    test_data = ps.test.xs
+    test_labels = np.array(ps.test.ys)
+    emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
+    embeddings = word_embedding_layer(data_placeholder,W)
+    output = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
+    with tf.Session() as sess:
+        saver = tf.train.Saver()
+        saver.restore(sess, path)
+        accuracy = test_network_run(ps.train.xs,np.array(ps.train.ys),output)
+        print("Test accuracy of this network is: ", accuracy)
+
+
+
 
 # Here starts the program
 with open(samples_path, 'rb') as handle:
