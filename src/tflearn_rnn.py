@@ -14,12 +14,14 @@ import tensorflow as tf
 from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell
 
 import common_funs
+import settings
 from common_funs import Binary_confusion_matrix
 from common_funs import Logger
 from common_funs import reverse_lookup
 from common_funs import Hyper
 from common_funs import Arg_handler
 from common_funs import FileBackedCSVBuffer
+from common_funs import boxString
 from settings import *
 from networks import Networks
 from networks import NetworkNotFoundError
@@ -57,12 +59,12 @@ class EarlyStoppingMonitor():
 		self.avgLimitPercent = avgLimitPercent
 		self._buff = FileBackedCSVBuffer(
 			filename='earlystopping.csv',
-			directory='logs', 
+			directory='logs',
 			header=['epoch', 'val loss', 'avg val loss', 'loss limit', 'status'],
 			clearFile=True)
 
 	def send(self, state):
-		
+
 		self.epoch += 1
 
 		if state['val_loss']:
@@ -80,7 +82,7 @@ class EarlyStoppingMonitor():
 		avg_limit = self.avgLimitPercent * avg_loss
 
 		self._buff.write([self.epoch, val_loss, avg_loss, avg_limit])
-		
+
 		if val_loss > avg_limit:
 			self._buff.append(["Stopped due to loss average"])
 			raise EarlyStoppingError("Early stopping due to loss average")
@@ -88,8 +90,34 @@ class EarlyStoppingMonitor():
 			m = "Loss delta to limit: {}, continuing...".format(round(avg_limit-val_loss,3))
 			self._buff.append([m])
 			self.losses.append(val_loss)
-		
+
 		self._buff.flush()
+		
+		
+def _arg_callback_pt():
+	global print_test
+	print_test = True
+		
+def _arg_callback_ds(ds_name):
+	"""
+	Select dataset
+	"""
+	global dataset_proto
+	dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
+	print("<Using dataset: {}>".format(ds_name))
+		
+def _arg_callback_pretrained(path):
+	global save_the_model, pretrained_model, training, pretrained_path
+	save_the_model = False
+	pretrained_model = True
+	training = False
+	
+	models_path = os.path.join("models")
+	if not (os.path.isdir(models_path)):
+		os.makedirs(models_path)
+	pretrained_path = os.path.join(models_path, path + ".tfl")
+	
+	print("<Using pretrained model " + path + " for results only.")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
 	global epochs, run_count, batch_size, training
@@ -106,11 +134,22 @@ def _arg_callback_net(name):
 
 def _arg_callback_in(file_name):
 	"""
-		Save preprocessed samples under a different file name
+	Take preprocessed samples from the selected file
 	"""
 	global samples_path
 	samples_path = os.path.join(rel_data_path, file_name)
 	print("<Using processed samples from: {}>".format(samples_path))
+
+def _arg_callback_ss(s_step = None, s_epoch = 'False'):
+	"""
+	Set the snapshot step
+	"""
+	global snapshot_step, snapshot_epoch
+	if isinstance(s_step, str) and s_step.lower() == 'none':
+		s_step = None
+	snapshot_step = int(s_step) if s_step is not None else None
+	snapshot_epoch = True if s_epoch.lower() == 'true' else False
+	print("<Snapshot step: {}, Snaphot epoch end: {}>".format(s_step, s_epoch))
 
 def build_network(name, hyp, pd):
 
@@ -139,7 +178,7 @@ def create_model(net, hyp, this_run_id, log_run):
 		model.load(pretrained_path)
 		print("Successfully loaded model")
 		return model
-	
+
 	#set embeddings
 	if use_embeddings:
 		emb = np.array(pd.embeddings[:pd.vocab_size], dtype=np.float32)
@@ -167,6 +206,7 @@ def train_model(model, hyp, this_run_id, log_run):
 		'Starting training...',
 		]
 	)
+
 	model.fit(X_inputs=ps.train.xs,
 			  Y_targets=ps.train.ys,
 			  validation_set=(ps.valid.xs, ps.valid.ys),
@@ -176,7 +216,7 @@ def train_model(model, hyp, this_run_id, log_run):
 	          shuffle=False,
 	          run_id=this_run_id,
 			  snapshot_step=snapshot_steps,
-			  snapshot_epoch=True,
+			  snapshot_epoch=snapshot_epoch,
 	          callbacks=monitorCallback)
 
 	# save model
@@ -192,42 +232,66 @@ def train_model(model, hyp, this_run_id, log_run):
 
 def do_prediction(model, hyp, this_run_id, log_run):
 	# print confusion matrix for the different sets
-	print("running prediction...\n")
+	print("\nRunning prediction...")
+	print(boxString("Run id: " + this_run_id))
+
 	cm = Binary_confusion_matrix()
-	horiz_bar = "-" * (len(this_run_id) + 9 )
-	print(horiz_bar)
-	print("runid: " + this_run_id + ' |')
-	print(horiz_bar)
 
 	predictions = model.predict(ps.train.xs)
 	cm.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
 
 	predictions = model.predict(ps.valid.xs)
 	cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
+	
+	if print_test:
+		predictions = model.predict(ps.test.xs)
+		cm.calc(ps.test.ids , predictions, ps.test.ys, 'test-set')
 
 	cm.print_tables()
+
 	#cm.save(this_run_id + '.res', content='metrics')
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
-	perflog.replace([
+	the_list = [
 		this_run_id,
 		network_name,
 		os.path.basename(samples_path),
 		cm.metrics['validation-set']['accuracy'],
 		cm.metrics['validation-set']['f1_score']
 		]
-	)
+	if print_test:
+		the_list.append(cm.metrics['test-set']['accuracy'])
+		the_list.append(cm.metrics['test-set']['f1_score'])
+		
+	perflog.replace(the_list)
 
 ################################################################################
 
+# affected by flags, need to be before consume_flags()
+snapshot_epoch = True
 print_debug = True
-# Handles command arguments, usefull for debugging 
+
+# sdasd
+dataset_proto = datasets[dataset_name]
+
+# Handles command arguments, usefull for debugging
 # usage: tflearn_rnn.py --pf debug_processed.pickle
 #  will get samples from debug_processed.pickle
 arghandler = Arg_handler()
 arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from. args: <filename>")
 arghandler.register_flag('net', _arg_callback_net, ['network'], "Which network to use. args: <network name>")
 arghandler.register_flag('train', _arg_callback_train, helptext = "Use settings for training. Args: <epochs> <run_count> <batch size>")
+arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set snapshots. No arguments means no snapshots. Args: <snapshot step> <epoch end>")
+arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
+arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
+arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
+print("\n")
 arghandler.consume_flags()
+
+#ashdiudh
+dataset = settings.set_rel_paths(dataset_proto)
+samples_path = dataset["samples_path"]
+
+
 
 debug_log = Logger()
 perflog = FileBackedCSVBuffer(
@@ -241,10 +305,10 @@ with open(samples_path, 'rb') as handle:
 ps = pd.dataset #processed samples
 
 # debug print tweets
-if print_debug:	
-	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):		
+if print_debug:
+	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):
 		ispos = np.array_equal(s_y, pos_label)
-		label = "Positive (Sarcastic)" if ispos else "Negative (not sarcastic)"
+		label = "Positive (Sarcastic)" if ispos else "Negative (Not sarcastic)"
 		logstring = "Sample id: {}, {}: {:<5}".format(s_id, label, "\n")
 		logstring += " ".join( reverse_lookup(s_x, pd.rev_vocab, ascii_console ))
 		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 10, step = 2500)
@@ -274,7 +338,7 @@ for hyp in hypers:
 
 	tf.reset_default_graph()
 	with tf.Graph().as_default(), tf.Session() as sess:
-		sess.run(tf.initialize_all_variables())
+		sess.run(tf.global_variables_initializer())
 		tflearn.config.init_training_mode()
 		stop_reason = ["Other error"]
 
@@ -282,20 +346,20 @@ for hyp in hypers:
 			net = build_network(network_name, hyp, pd)
 			model = create_model(net, hyp, this_run_id, log_run)
 			if training:
-				model = train_model(model, hyp, this_run_id, log_run)		
+				model = train_model(model, hyp, this_run_id, log_run)
 		except NetworkNotFoundError as e:
 			print("The network name provided din't match any defined network")
-		except EarlyStoppingError as e:			
+		except EarlyStoppingError as e:
 			stop_reason = ["Stopping due to early stopping"]
 			do_prediction(model, hyp, this_run_id, log_run)
 		else:
 			stop_reason = ["Stopping due to epoch limit"]
-			do_prediction(model, hyp, this_run_id, log_run)		
+			do_prediction(model, hyp, this_run_id, log_run)
 		finally:
 			#do_prediction(model, hyp, this_run_id, log_run)
-			perflog.append(stop_reason)			
+			perflog.append(stop_reason)
 			perflog.flush()
-		
+
 	log_run.save(this_run_id + '.log')
-	
+
 debug_log.save("training_debug.log")

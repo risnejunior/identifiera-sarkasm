@@ -1,0 +1,20 @@
+quizzes
+-------
+tweet_id (auto_increment unsigned Int 6)
+type enum('P_BALANCED', 'P_RATIO')
+text (text)
+label (unsigned tinyint 1)
+
+answers
+-------
+id (auto_increment unsigned Int 6)
+user_id (unsigned Int 6)
+answer (unsigned tinyint 1)
+time (timestamp on update CURRENT_TIMESTAMP)
+
+users
+-----
+id (auto_increment unsigned Int 6)
+name (varchar 100)
+ip 
+time (timestamp on update CURRENT_TIMESTAMP)

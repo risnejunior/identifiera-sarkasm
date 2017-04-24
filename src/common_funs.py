@@ -1,18 +1,93 @@
 import math
 import time
-import os 
+import os
 import json
 import inspect
 import random
+import pickle
+
 from random import triangular as rt
+from prettytable import PrettyTable, ALL
+from colorama import Fore, Back, Style
 import atexit
 import sys
+from collections import namedtuple
 
 import numpy as np
 
-class FileBackedCSVBuffer: 
+class TroubleMakers:
+	def __init__(self, ids= None, ys = None):
+		self.datapoints = {}
 
-	def __init__(self, filename, directory = "", header = [], delimiter='\t', clearFile=False):		
+		if ids and ys:
+			self.datapoints = {sid: Datapoint(sid, y[0] < y[1]) for sid, y in zip(ids, ys)}
+
+	def increment(self, sid, isTrue):
+		if sid in self.datapoints:
+			if isTrue:
+				self.datapoints[sid].correct += 1
+			self.datapoints[sid].total += 1
+		else:
+			raise ValueError("Can't increment none existant key")
+
+	def addNew(self, sid, label, correct, total):		
+		newPoint = Datapoint(sid, label, correct, total)
+		self.datapoints[sid] = newPoint
+
+	def update(self, sid, correct, total):
+		self.datapoints[sid].correct += correct		
+		self.datapoints[sid].total += total		
+
+	def merge(self, other):
+		for key, val in other.datapoints.items():
+			if key in self.datapoints:
+				self.update(key, val.correct, val.total)
+			else:
+				self.datapoints[key] = val
+
+	def tallyPredictions(self):
+		tally = {}
+		correct = 0
+		total = 0
+		for key, val in self.datapoints.items():
+			if val.correct in tally:
+				tally[val.correct] += 1
+			else:
+				tally[val.correct] = 1
+
+		return tally.items()
+
+	def __str__(self):
+		points = []
+		for key, val in self.datapoints.items():
+			points.append(str(val))
+
+		return ('\n').join(points)
+
+	def __len__(self):
+		return len(self.datapoints)
+
+
+class Datapoint:
+	def __init__(self, sid, label, correct = 0, total = 0):		
+		self.sid = sid
+		self.label = label		
+		self.correct = correct
+		self.total = total
+
+	def __str__(self):
+			return "id: {0:}, label: {1:}, correct: {2:<d}, total: {3:}".format(self.sid, self.label, self.correct, self.total)
+
+	def	__hash__(self):
+			return hash(self.sid)
+
+	def	__eq__(self, other):
+			return slef.id == other.sid
+
+
+class FileBackedCSVBuffer:
+
+	def __init__(self, filename, directory = "", header = [], delimiter='\t', clearFile=False):
 		self._header = ["<" + head + ">" for head in header]
 		self._filebacked = []
 		self._buffer = []
@@ -25,10 +100,10 @@ class FileBackedCSVBuffer:
 		if os.path.isfile(self._file_path):
 			with open(self._file_path, 'r', encoding='utf8') as file:
 				self._filebacked = file.readlines()
-			
+
 		self._rewrite(clearFile)
 		atexit.register(self.flush)
-		
+
 	def write(self, cols):
 		cols = [str(col) for col in cols]
 		self._buffer.append(self._delimiter.join(cols))
@@ -46,17 +121,17 @@ class FileBackedCSVBuffer:
 				self._filebacked.clear()
 			self._buffer = [line + "\n" for line in self._buffer]
 			self._filebacked.extend(self._buffer)
-			
+
 			if self._header:
 				header = self._delimiter.join(self._header) + "\n"
 				if not self._filebacked:
 					self._filebacked.append(header)
 				else:
-					self._filebacked[0] = header		
+					self._filebacked[0] = header
 
 			file.writelines(self._filebacked)
 			self._buffer.clear()
-	
+
 	def append(self, cols):
 
 		#can't append to empty buffer, write instead
@@ -75,9 +150,6 @@ class FileBackedCSVBuffer:
 
 		self.write(cols)
 
-		
-
-				
 
 class Arg_handler():
 	"""
@@ -97,7 +169,7 @@ class Arg_handler():
 		self._aliases[flag] = flag
 		for alias in aliases:
 			self._aliases[alias] = flag
-				
+
 		return self
 
 	def consume_flags(self):
@@ -111,15 +183,15 @@ class Arg_handler():
 					quit()
 				else:
 					flag = self._aliases[arg]
-					callback, _ = self._flags[flag]					
-					argspecs = inspect.getargspec(callback)						
+					callback, _ = self._flags[flag]
+					argspecs = inspect.getargspec(callback)
 					all_fpc = len(argspecs.args) if argspecs.args else 0 #hasattr(argspecs,'args')
 					def_fpc = len(argspecs.defaults) if argspecs.defaults else 0 #hasattr(argspecs,'defaults')
-					if flag == '?': 
+					if flag == '?':
 						all_fpc = 0 #print_help takes self, ignore that
 					#print("params: {}, cb args {}, default: {}".format(len(params), all_fpc, def_fpc))
 					if (all_fpc >= len(params) >= all_fpc - def_fpc):
-						#print("correct params count")					
+						#print("correct params count")
 						callback(*params)
 					else:
 						print("Wrong number of parmaters for flag: {}".format(arg))
@@ -135,20 +207,22 @@ class Arg_handler():
 
 	def _printHelp(self, alias = None):
 		print('Flags registered:')
-		for flag, cb in self._flags.items():			
+		for flag, cb in self._flags.items():
 			_, helptext = self._flags[flag]
 			items = filter(lambda v: v[1] == flag, self._aliases.items())
 			aliases = [k for k,v in items if k != flag]
 			print('Flag: [--' + flag + ']', end=" ")
 			print(',aliases: ' + str(aliases), end=" ")
-			print(', description: ' + helptext)
+			print(', description: ' + helptext, end="\n\n")
 		quit()
+
 
 class Stack(list):
 	def push(self, item):
 		self.append(item)
 	def isEmpty(self):
 		return not self
+
 
 class DebugLoop:
 	"""
@@ -157,18 +231,18 @@ class DebugLoop:
 	  and then feed the loop() method with the iterable.
 	If maxloops is set to None it has no effect, loop() just returns the iterable.
 
-	Example (will print 0, 1, 2, 3, 4): 		
+	Example (will print 0, 1, 2, 3, 4):
 		dl = DebugLoop(5)
 		for x in dl.loop(range(10))
 			print(x)
 	"""
 
 	def __init__(self, maxloops=None):
-		
+
 		if maxloops == None:
 			self.loop = lambda itrble : itrble
 		else:
-			self.maxloops = maxloops 		
+			self.maxloops = maxloops
 
 	def loop(self, itrble):
 		loops = 0
@@ -178,31 +252,32 @@ class DebugLoop:
 			loops += 1
 			yield x
 
-class Hyper:	
-	""" 
+
+class Hyper:
+	"""
 	All hail the Hyper! Any attempt to understand this code will be met
 	 with the fiercest of resistance!
 
     Iterable of generators, values are acessed via dynmically generated attributes.
 	Holds generators for all params provided, that yield a random value in the
-	  range provided for the step count provided. 
-	 Values are accessed via attributes that hold structs to allow for double 
+	  range provided for the step count provided.
+	 Values are accessed via attributes that hold structs to allow for double
 	  dot notation.
 	Values are updated on every call to next (or iteration step)
 	"""
 
-	def __init__(self, steps, **kwargs):		
-		
+	def __init__(self, steps, **kwargs):
+
 		self.gens = {} #holds the generators for every value
-		
-		new_attribs = {}		
+
+		new_attribs = {}
 		for name, valdict in kwargs.items():
-			self.gens[name] = {}			
+			self.gens[name] = {}
 			structdict = {}
 
-			for valname, (minval, maxval) in valdict.items():				
+			for valname, (minval, maxval) in valdict.items():
 				self.gens[name][valname] = self.generate(minval, maxval, steps)
-				structdict[valname] = 0.0 
+				structdict[valname] = 0.0
 			new_attribs[name] = Struct(**structdict)
 
 		self.__dict__.update(new_attribs)
@@ -233,15 +308,16 @@ class Hyper:
 		self._update_args()
 		return self
 
+
 class Struct:
-	def __init__(self, **entries): 
+	def __init__(self, **entries):
 		self.__dict__.update(entries)
 
 	def __eq__(self, other):
 		return self.__dict__ == other.__dict__
 
-class MinMax():
 
+class MinMax():
 	def __init__(self):
 		self.minval = None
 		self.maxval = None
@@ -273,16 +349,13 @@ class MinMax():
 			raise ValueError("illegal parameter value")
 
 
-
-
-
 class Logger:
 	"""
-	Convenience class that let's you log data and then print or save it to 
+	Convenience class that let's you log data and then print or save it to
 	  file. Has the option to only log every n:th input and only up to
 	  a maximum count, in order to stave of overwhelm.
 	"""
-	
+
 	save_config = False
 
 	def __init__(self, enable = True):
@@ -307,7 +380,7 @@ class Logger:
 		by default everything is logged.
 
 		Keyword arguments:
-		logname -- the name of the log to save to if you want to keep 
+		logname -- the name of the log to save to if you want to keep
 	      separate logs, else evrything is logged to 'default'.
 		maxlogs -- maximum kept in a given logname (or default), further entries
 		  are diregarded.
@@ -320,14 +393,14 @@ class Logger:
 
 		if logname not in self.logs:
 			self.logs[logname] = []
-			self.config[logname] = {"maxlogs": maxlogs, 
+			self.config[logname] = {"maxlogs": maxlogs,
 									"step": step,
 									"aslist": aslist,
 									"log_count": 0,
 									"call_count": 0
 									}
-		
-		c = self.config[logname]		
+
+		c = self.config[logname]
 		if c["call_count"] % c["step"] == 0:
 			if c["maxlogs"] is None or c["log_count"] < c["maxlogs"]:
 				if c['aslist']:
@@ -336,11 +409,11 @@ class Logger:
 					self.logs[logname] = text
 				self.config[logname]["log_count"] += 1
 		self.config[logname]["call_count"] += 1
-	
+
 	def items(self, logname = "default", count=None):
 		"""returns an iterator over the logname"""
 		if logname not in self.config:
-			raise StopIteration 
+			raise StopIteration
 		elif not self.config[logname]['aslist']:
 			yield self.logs[logname]
 		else:
@@ -351,7 +424,7 @@ class Logger:
 
 	def save(self, file_name = None, directory="logs", append=False, log_name = None):
 		"""
-		Save the logs to a JSON-file. Freetext is saved to a separate file 
+		Save the logs to a JSON-file. Freetext is saved to a separate file
 		  with 'freetext_' prepended to the filename
 		"""
 
@@ -360,7 +433,7 @@ class Logger:
 			if len(callstack) < 2:
 				caller = callstack[0][1]
 			else:
-				caller = inspect.stack()[1][1]				
+				caller = inspect.stack()[1][1]
 			file_name = str(os.path.basename(caller)) + ".log"
 
 		if not (os.path.isdir(directory)):
@@ -375,9 +448,9 @@ class Logger:
 			logs = self.logs[log_name]
 
 		content = json.dumps(
-			logs, 
-			ensure_ascii=False, 
-			indent=4, 
+			logs,
+			ensure_ascii=False,
+			indent=4,
 			separators=( ',',': '))
 
 		with open(file_path, open_for, encoding='utf8') as out_file:
@@ -386,13 +459,13 @@ class Logger:
 		# Used for debugging the logger
 		if Logger.save_config:
 			content = json.dumps(
-				self.config, 
-				ensure_ascii=False, 
-				indent=4, 
+				self.config,
+				ensure_ascii=False,
+				indent=4,
 				separators=( ',',': '))
 			with open('logs/config.log', 'w', encoding='utf8') as out_file:
 				out_file.write(content)
-	
+
 	def print_log(self, logname = "default", count = None):
 		for item in self.items(logname=logname, count=count):
 			print(item)
@@ -404,39 +477,50 @@ class Binary_confusion_matrix:
 	Prints a confusion matrix and some other metrics for a given binary classification
 	"""
 	# positive means sarcastic, negative means normal
-	# fn: false negative, fp: false positive,tp: true positive,tn: true negative
+	# fn: false negative, fp: false positive,tp: true positive,tn: true negative	
 
-	def __init__(self, ids = [], predictions = [], Ys = []):
+	def __init__(self, predictions_file = None):
+		
 		self.metrics = {}
 		self.rows = []
+		self._datapoints = {}
 
-	def calc(self, ids, predictions, Ys, name = None):
+	def calc(self, ids, predictions, Ys, name = None):		
+		
+		tm = TroubleMakers(ids, Ys)		
 
-		fn = fp = tp = tn = 0 
+		fn = fp = tp = tn = 0
 		facit = list( zip( ids, predictions, Ys ) )
 		for sample in facit:
+			predicted_true = False
 			sample_id, predicted, actual = sample
-			if predicted[0] < predicted[1]: # e.g (0.33, 0.77) predicted positive
+			if predicted[0] < predicted[1]: # e.g (0.33, 0.77) 
+				#predicted positive
 				if actual[0] < actual[1]: #actual positive
 					tp += 1
+					predicted_true = True					
 				else:
 					fp += 1
-			else: # predicted negative
+			else: 
+				#predicted negative
 				if actual[0] < actual[1]: #actual positive
 					fn += 1
 				else:
 					tn += 1
+					predicted_true = True
+
+			tm.increment(sample_id, isTrue = predicted_true)
 
 		#avoid division by zero
 		count = len(predictions)
 		accuracy = ( (tp + tn) / count ) if count > 0 else 0
 		precision = ( tp / (tp + fp) ) if (tp + fp) > 0 else 0
 		recall = ( tp / (tp + fn) ) if (tp + fn) > 0 else 0
-		f1_score = 2*((precision * recall) / (precision + recall )) if (precision + recall) > 0 else 0 
-		
+		f1_score = 2*((precision * recall) / (precision + recall )) if (precision + recall) > 0 else 0
+
 		if name == None:
-			name = len(self.metrics.items())
-		
+			name = 'default'
+
 		metrics = {
 			"fn": fn,
 			"fp": fp,
@@ -450,44 +534,64 @@ class Binary_confusion_matrix:
 
 		self.metrics[name] = metrics
 		self._compile_table(name)
+		
+		if name in self._datapoints:
+			self._datapoints[name].merge(tm)
+		else:
+			self._datapoints[name] = tm
 
 	def _compile_table(self, name):
-
 		# for readability
 		metrics = self.metrics[name]
 		fn = metrics['fn']; fp = metrics['fp']; tp = metrics['tp']; tn = metrics['tn']
 
-		# format the table		
-		rows = ['' for i in range(16)]
-		rows[0] = '{0:9}{1:^11}|{1:^11}'.format(' ', 'Predicted')
-		rows[1] = '{0:12}{1:^8}|{2:^8}{3:^10}'.format('', 'No','Yes', 'total:')
-		rows[2] = (' ' * 9) + ('-' * 20)
-		rows[3] = '{:<20}{}'.format('Actual:','|')
-		rows[4] = '{:^10}{:>9,}{:^3}{:<9,d}{:>,}'.format("No", tn,'|', fp, (tn + fp) )
-		rows[5] = rows[2]
-		rows[6] = rows[3]
-		rows[7] = '{:^10}{:>9,}{:^3}{:<9,d}{:>,}'.format('Yes',fn , '|', tp, (fn + tp) )
-		rows[8] = rows[2]
-		rows[9] = '{:^12}{:^8,d} {:^9,d}'.format('Total:', (tn + fn), (fp + tp) )
-		
-		rows[10] = ""
-		rows[11] = "accuracy: {:^1}{:<.2f}".format("", metrics['accuracy'])
-		rows[12] = "precision: {:^}{:<.2f}".format("", metrics['precision'])
-		rows[13] = "recall: {:^3}{:<.2f}".format("", metrics['recall'])
-		rows[14] = "f1_score: {:^1}{:<.2f}".format("", metrics['f1_score'])
-		rows[15] = ""
+		pt = PrettyTable([Fore.GREEN + name + Style.RESET_ALL,'Predicted NO','Predicted YES','Total'])
+		pt.add_row(['Actual NO',tn,fp,tn+fp])
+		pt.add_row(['Actual YES',fn,tp,fn+tp])
+		pt.add_row(['Total',tn+fn,fp+tp,''])
+		pt.hrules = ALL
 
-		header = ["\n   {} Confusion Matrix: \n".format(name)]
+		rows = ['' for i in range(6)]
+		rows[0] = pt.get_string(padding_width=5)
+		rows[1] = "Accuracy: {:^1}{:<.2f}".format("", metrics['accuracy'])
+		rows[2] = "Precision: {:^}{:<.2f}".format("", metrics['precision'])
+		rows[3] = "Recall: {:^3}{:<.2f}".format("",   metrics['recall'])
+		rows[4] = "F1-score: {:^1}{:<.2f}".format("", metrics['f1_score'])
+		rows[5] = ""
 
-		self.rows.extend(header + rows)
+		self.rows.extend(rows)
 
-	def print_tables(self):		
+	def print_tables(self):
 		for row in self.rows:
 			print(row)
 
-	def save(self, 
+	def save_predictions(self,
+		filename = 'predictions.pickle', 
+		directory = 'logs',
+		sets = ['default'],
+		update = True):
+
+		tm = TroubleMakers()
+		for s in sets:
+			if s in self._datapoints:
+				tm.merge(self._datapoints[s])
+
+
+		file_path = os.path.join('.', directory, filename)
+		if not (os.path.isdir(directory)):
+			os.makedirs(directory)
+
+		if update and os.path.isfile(file_path):
+			with open(file_path, 'rb') as handle:
+				saved = pickle.load(handle)
+				tm.merge(saved)
+		
+		with open(file_path, 'wb') as handle:
+			pickle.dump(tm, handle)
+
+	def save(self,
 			 filename = 'confusion.log',
-			 directory = 'logs', 
+			 directory = 'logs',
 			 content = 'table'):
 
 		if not (os.path.isdir(directory)):
@@ -500,31 +604,15 @@ class Binary_confusion_matrix:
 		elif content == 'metrics':
 			text = json.dumps(
 				self.metrics,
-				ensure_ascii=False, 
-				indent=4, 
+				ensure_ascii=False,
+				indent=4,
 				separators=( ',',': ')
 			)
 		else:
-			raise ValueError("invalid fileformat provided") 
+			raise ValueError("invalid fileformat provided")
 
 		with open(file_path, 'w', encoding='utf8') as out_file:
 			out_file.write(text)
-
-		
-		"""
-		file_path = os.path.join(directory, file_name)		
-			with open(file_path, 'w', encoding='utf8') as out_file:
-				out_file.write(self.freetext)
-
-
-		logger.log(accuracy, logname="accuracy")
-		logger.log(recall, logname="recall")
-		logger.log(precision, logname="precision")
-		logger.log(f1_score, logname="f1_score")
-		logger.save(file_name="matrix.log")
-		"""
-
-
 
 class Progress_bar:
 	"""
@@ -535,7 +623,7 @@ class Progress_bar:
 	iter_from -- the last iterstion value
 	bar_max_len -- the maximum length of the progressbar in chars
 	update_freq -- max updates per second (prints to screen)
-	
+
 	Usage example:
 	pb = Progress_bar(1000, 0, 50, 60)
 	for i in range(1000)
@@ -547,7 +635,7 @@ class Progress_bar:
 	"""
 
 	# 1/8 parts expanding right
-	bar_gradual = {	
+	bar_gradual = {
 		0: '\u258F',
 		1: '\u258E',
 		2: '\u258D',
@@ -559,7 +647,7 @@ class Progress_bar:
 		}
 
 	# Fade in-out
-	bar_blink = {	
+	bar_blink = {
 		0: ' ',
 		1: '\u2591',
 		2: '\u2592',
@@ -568,10 +656,10 @@ class Progress_bar:
 		5: '\u2593',
 		6: '\u2592',
 		7: '\u2591'
-		}	
+		}
 
 	# Ascii
-	bar_ascii = {	
+	bar_ascii = {
 		0: '|',
 		1: '/',
 		2: '-',
@@ -601,9 +689,9 @@ class Progress_bar:
 	def progress( self, iteration ):
 
 		# Update the progress bar by excplicitly providing the iteration step
-		self.i = iteration		
-		if (self.last_update + ( 1 / self.update_freq ) > time.time() ) and self.i < self.iter_to: 
-			return		
+		self.i = iteration
+		if (self.last_update + ( 1 / self.update_freq ) > time.time() ) and self.i < self.iter_to:
+			return
 		percent = ( self.i / self.iter_to ) if self.iter_to != 0 else 1
 		#bar_len = min( math.floor( percent * self.bar_max_len ), self.bar_max_len)
 		bar_len = min( percent * self.bar_max_len , self.bar_max_len )
@@ -613,14 +701,14 @@ class Progress_bar:
 		spin_char = self.bar_parts[s]
 
 		if self.i >= self.iter_to: #last iteration step
-			spin_char = ''; 
+			spin_char = '';
 			self.spinner = 0
 			eol="\r\n"
 		else:
-			eol = "\r"	
-			
+			eol = "\r"
+
 		bar = ("\u2588" * bar_len) + spin_char
-		bar_filler = "\u2577"*( self.bar_max_len - bar_len - 1 ) 
+		bar_filler = "\u2577"*( self.bar_max_len - bar_len - 1 )
 		line = " {0:} Progress: {0:}{1:}{2:}{0:}{3:^8.1%}{0:}".format('\u2551', bar, bar_filler, percent)
 		print( line, end=eol)
 		self.spinner += 1
@@ -644,16 +732,16 @@ class Working_animation:
 			self.init_len = len(message)
 
 	def tick(self, message = None):
-		if (self.last_update + ( 1 / 25 )) > time.time(): 
+		if (self.last_update + ( 1 / 25 )) > time.time():
 			return
 		else:
-			self.last_update = time.time()		
+			self.last_update = time.time()
 			message = self.message if message == None else message
 			 #toggles on every 20th iteration
 			rem = (self.step % 10)
 			if rem == 0:
 				self.toggle = not self.toggle
-			if self.toggle: 
+			if self.toggle:
 				t = rem + 1
 			else:
 				t = 10 - rem
@@ -677,25 +765,25 @@ def reverse_lookup( index_vector, rev_vocabulary, ascii_console=False ):
 
 def generate_name():
 	t = time.localtime()
-	a = random.choice(['blue', 'yellow', 'green', 'red', 'orange','pink','grey', 
+	a = random.choice(['blue', 'yellow', 'green', 'red', 'orange','pink','grey',
 		               'white', 'black', 'turkouse', 'fushia', 'beige','purple',
 		               'rustic', 'idyllic', 'kind', 'turbo', 'feverish','horrid',
 		               'master', 'correct', 'insane', 'relevant','chocolate',
 		               'silk', 'big', 'short', 'cool', 'mighty', 'weak','candid',
 		               'figting','flustered', 'perplexed', 'screaming','hip',
 		               'glorious','magnificent', 'crazy', 'gyrating','sleeping'])
-	b = random.choice(['battery', 'horse', 'stapler', 'giraff', 'tiger', 'snake', 
+	b = random.choice(['battery', 'horse', 'stapler', 'giraff', 'tiger', 'snake',
 		               'cow', 'mouse', 'eagle', 'elephant', 'whale', 'shark',
 		               'house', 'car', 'boat', 'bird', 'plane', 'sea','genius',
 		               'leopard', 'clown', 'matador', 'bull', 'ant','starfish',
 		               'falcon', 'eagle','warthog','fulcrum', 'tank', 'foxbat',
 		               'flanker', 'fullback', 'archer', 'arrow', 'hound'])
-	
+
 	datestr = time.strftime("%m%d%H%M%S", t).encode('utf8')
 	b32 = base36encode(int(datestr))
 	name = "{}_{}_{}".format(b32,a,b)
 	return name.upper()
- 
+
 
 def base36encode(integer):
     chars, encoded = '0123456789abcdefghijklmnopqrstuvwxyz', ''
@@ -706,11 +794,11 @@ def base36encode(integer):
 
     return encoded
 
-def normalize(xs): 
+def normalize(xs):
 	min_xs = min(xs)
 	max_xs = max(xs)
 	ys = []
-	
+
 	if max_xs == min_xs:
 		ys = np.random.randint(0, 1, size=2)
 	else:
@@ -771,7 +859,7 @@ def pad_sequences(sequences, maxlen=None, dtype='int32', padding='post',
 
 def squared_error(ys, xs, fun = lambda x: x):
 	"""
-	Returns the mean squared error for function fun over values xs compared 
+	Returns the mean squared error for function fun over values xs compared
 	  to targets ys. If no function is provided xs are treated like
 	  already computed values.
 	"""
@@ -789,3 +877,12 @@ def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
+
+def boxString(bare_string):
+	str_len = len(bare_string)
+	horiz_bar = "-" * (str_len + 4)
+	vert_bar = '|'
+	boxed_string = "{1:}{3:}{0:} {2:} {0:}{3:}{1:}".format(
+		vert_bar, horiz_bar, bare_string, "\n")
+
+	return boxed_string

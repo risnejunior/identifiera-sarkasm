@@ -20,7 +20,7 @@ class Networks:
 
 		callables = [method for method in dir(self) if callable(getattr(self, method))]
 		self.callables = [method for method in callables if method[0] != '_' and method[:2] != "get"]
-	
+
 	def get_network(self, name, params):
 			if name in self.callables:
 				return getattr(self, name)(**params)
@@ -66,7 +66,7 @@ class Networks:
 		                         loss='categorical_crossentropy')
 		return net
 
-	def little_pony(self, hyp, pd):
+	def basic_pony(self, hyp, pd):
 		net = tflearn.input_data([None, pd.max_sequence], dtype=tf.float32)
 		net = tflearn.embedding(net, input_dim=pd.vocab_size,
 								     output_dim=pd.emb_size,
@@ -75,6 +75,46 @@ class Networks:
 						   32,
 						   dynamic=False,
 						   name="lstm")
+		net = tflearn.fully_connected(net,
+									  2,
+									  activation='softmax',
+									  name="output",
+									  restore=True)
+		net = tflearn.regression(net,
+			                     optimizer='adam',
+			                     learning_rate=hyp.regression.learning_rate,
+		                         loss='categorical_crossentropy')
+		return net
+
+	def little_pony(self, hyp, pd):
+		net = tflearn.input_data([None, pd.max_sequence], dtype=tf.float32)
+		net = tflearn.embedding(net, input_dim=pd.vocab_size,
+								     output_dim=pd.emb_size,
+								     name="embedding")
+		net = tflearn.lstm(net,
+						   256,
+						   dynamic=True,
+						   name="lstm")
+		net = tflearn.fully_connected(net,
+									  2,
+									  activation='softmax',
+									  name="output",
+									  restore=True)
+		net = tflearn.regression(net,
+			                     optimizer='adam',
+			                     learning_rate=hyp.regression.learning_rate,
+		                         loss='categorical_crossentropy')
+		return net
+
+	def little_gru(self, hyp, pd):
+		net = tflearn.input_data([None, pd.max_sequence], dtype=tf.float32)
+		net = tflearn.embedding(net, input_dim=pd.vocab_size,
+								     output_dim=pd.emb_size,
+								     name="embedding")
+		net = tflearn.gru(net,
+						   256,
+						   dynamic=True,
+						   name="gru")
 		net = tflearn.fully_connected(net,
 									  2,
 									  activation='softmax',
@@ -123,7 +163,7 @@ class Networks:
 
 	def convolve_me(self, hyp, pd):
 		network = input_data(shape=[None, pd.max_sequence], name='input')
-		network = tflearn.embedding(network, 
+		network = tflearn.embedding(network,
 									input_dim=pd.vocab_size,
 								    output_dim=pd.emb_size,
 								    name="embedding")

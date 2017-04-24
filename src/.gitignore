@@ -9,3 +9,6 @@ __pycache__/
 models/
 checkpoints/
 logs/
+*.sublime-workspace
+.DS_Store
+../.DS_Store
