@@ -529,14 +529,20 @@ class Binary_confusion_matrix:
 		for row in self.rows:
 			print(row)
 
-	def save_predictions(self, filename = 'predictions.pickle', directory = 'logs'):
+	def save_predictions(self, 
+		filename = 'predictions.pickle', 
+		directory = 'logs',
+		update = True):
 
-		#with open(file_path, 'rb') as handle:
-		#	pickled_preds = pickle.load(handle)
-		#	self._predictions.update(pickled_preds)
+		file_path = os.path.join('.', directory, filename)
 		if not (os.path.isdir(directory)):
 			os.makedirs(directory)
-		file_path = os.path.join('.', directory, filename)
+
+		if update:
+			with open(file_path, 'rb') as handle:
+				saved = pickle.load(handle)
+				self._datapoints.update(saved)
+		
 		with open(file_path, 'wb') as handle:
 			pickle.dump(self._datapoints, handle)
 

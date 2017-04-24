@@ -353,16 +353,31 @@ logger = common_funs.Logger()
 t_table = dict( ( ord(char), None) for char in ['.','_'] ) #translation tabler  for puctuation
 if nltk_dowload: nltk.download("stopwords"); nltk.download("punkt")
 
-file_list_normal = os.listdir(path_name_neg)[:sample_count]
-file_list_sarcastic = os.listdir(path_name_pos)[:sample_count]
-file_list_all = file_list_normal + file_list_sarcastic
+file_list_normal = os.listdir(path_name_neg)
+file_list_sarcastic = os.listdir(path_name_pos)
+pos_files = len(file_list_sarcastic)
+neg_files = len(file_list_normal)
+print()
+print("Sample files found, total: {}, positive: {}, negative: {}"
+	.format(pos_files + neg_files, pos_files, neg_files))
+
+if set_balance:
+	positive_count = math.ceil(set_balance * sample_count)
+	negative_count = math.floor((1 - set_balance) * sample_count) 
+else:
+	positive_count = negative_count = sample_count
+
+file_list_sarcastic = file_list_sarcastic[:positive_count]
+file_list_normal = file_list_normal[:negative_count]
+pos_files = len(file_list_sarcastic)
+neg_files = len(file_list_normal)
+print("After applying sample limit and set balance, total: {}, positive: {}, negative: {}"
+	.format(pos_files + neg_files, pos_files, neg_files))
+print()
 
 samples = {}
 all_words = []
 sequence_lengths = []
-
-print()
-print("{} sample files found (positive + negative)\n".format(len(file_list_all)))
 
 tokenize_helper(path_name_neg, file_list_normal, samples, all_words, False)
 tokenize_helper(path_name_pos,file_list_sarcastic, samples, all_words, True)
@@ -408,23 +423,7 @@ sample_count = len(samples)
 
 # assign category labels
 print("Assigning category labels...")
-positive_count = negative_count = 0
-set_balance = set_balance if set_balance else 0
-positive_max = math.ceil(set_balance * sample_count)
-negative_max = sample_count - positive_max
 for key, val in samples.items():
-	pos = val['sarcastic']
-	if pos:
-		if positive_count > positive_max and set_balance:
-			continue 
-		else: 
-			positive_count += 1
-	else:
-		if negative_count > negative_max and set_balance:
-			continue 
-		else:
-		 	negative_count += 1
-
 	if random_labels:
 		if random.randint(1,2) == 1:
 			labels.append( pos_label )

@@ -154,9 +154,8 @@ print('Counting and sorting word frequencies...')
 logger.log("Total words: {:d}".format(len(all_words)))
 word_dicts = OrderedDict({0: {}, 1:{}, 2:{}})
 for i_dict, words in enumerate([all_words, neg_words, pos_words]):
-	c = Counter(words)
-	print(c.most_common(1)[0])
-	largest = c.most_common(1)[0][1]
+	c = Counter(words)	
+	largest = c.most_common(1)[0][1] #will fail if sets are empty
 	logger.log(largest, logname="most common")
 	d = dict(c)
 	d = OrderedDict(sorted(d.items(), key=lambda t: t[1], reverse=True) )
