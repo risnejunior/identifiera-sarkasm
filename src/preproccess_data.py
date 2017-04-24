@@ -415,12 +415,12 @@ negative_max = sample_count - positive_max
 for key, val in samples.items():
 	pos = val['sarcastic']
 	if pos:
-		if positive_count > positive_max and sample_count:
+		if positive_count > positive_max and set_balance:
 			continue 
 		else: 
 			positive_count += 1
 	else:
-		if negative_count > negative_max and sample_count:
+		if negative_count > negative_max and set_balance:
 			continue 
 		else:
 		 	negative_count += 1
