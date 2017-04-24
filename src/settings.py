@@ -29,6 +29,14 @@ embedding_size = 200 #allowed: 25, 50, 100, 200
 vocabulary_size = 20000
 max_sequence = 45 # words to include from sample, smaller samples will be padded
 
+#clean tweets
+includetags = False
+
+if includetags:
+	tags = ["<user>", "<url>", "<hashtag>"]
+else:
+	tags = [" ", " ", " "]
+
 #used in training
 network_name = 'basic_pony'
 run_count = 1
@@ -77,16 +85,22 @@ datasets = {
 		"neg_source": "",
 		"pos_source": "",
 		"ps_file_name": "processed.pickle"
+	},
+	"detector" : {
+		"rel_path": [".","..", "datasets","detector"],
+		"neg_source": "normal_tweets.csv",
+		"pos_source": "sarcastic_tweets.csv",
+		"ps_file_name": "processed.pickle"
 	}
 }
 
 ProcessedData = namedtuple('ProcessedData',[
-	'dataset', 
-	'embeddings', 
-	'vocab', 
-	'rev_vocab', 
-	'emb_size', 
-	'vocab_size', 
+	'dataset',
+	'embeddings',
+	'vocab',
+	'rev_vocab',
+	'emb_size',
+	'vocab_size',
 	'max_sequence'])
 Dataset = namedtuple('Dataset', ['train', 'valid', 'test'])
 Setpart = namedtuple('Setpart', ['names', 'length', 'ids', 'xs','ys'])
@@ -102,7 +116,7 @@ def set_rel_paths(dataset_proto):
 	dataset["path_name_neg"] = os.path.join(dataset["rel_path"], "neg")
 	dataset["path_name_pos"] = os.path.join(dataset["rel_path"], "pos")
 	dataset["samples_path"] = os.path.join(dataset["rel_path"], dataset_proto['ps_file_name'])
-	
+
 	return dataset
 
 
@@ -120,6 +134,8 @@ def get_raw_embeddings_path(size):
 #############################################################
 ds_paths = set_rel_paths(datasets[dataset_name])
 rel_data_path = ds_paths["rel_path"]
+path_neg = ds_paths["neg_source_path"]
+path_pos = ds_paths["pos_source_path"]
 path_name_neg = ds_paths["path_name_neg"]
 path_name_pos = ds_paths["path_name_pos"]
 samples_path = ds_paths["samples_path"]

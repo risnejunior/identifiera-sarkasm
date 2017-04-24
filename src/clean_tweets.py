@@ -45,7 +45,7 @@ pattern_whitespace = re.compile(r"(\s{3}|\s{2})+") #regex for reducing whitespac
 delete_this = str.maketrans(dict.fromkeys("1234567890:\?;@!&\#\,.()[]\'"))
 
 def replace(original_text, indices_list ):
-	if len(indices_list) == 0:		
+	if len(indices_list) == 0:
 		return original_text
 
 	prev_last = 0
@@ -69,7 +69,7 @@ def replace(original_text, indices_list ):
 
 def get_indices(list_string, label):
 	indices_list = re.findall(pattern_indices, list_string)
-	if len(indices_list) == 0:		
+	if len(indices_list) == 0:
 		return []
 	converted = []
 	for i in indices_list:
@@ -84,9 +84,9 @@ def status_message( tweet_nr ):
 
 # Index mapping
 ################
-#x0: id	
+#x0: id
 #x1: screen_name
-#x2: tweet_text	
+#x2: tweet_text
 #x3: hashtag_indices
 #x4: user_mentions_indices
 #x5: url_indices
@@ -102,11 +102,11 @@ def clean_tweets(target_folder, source_name):
 			z = re.findall(pattern_indices, col[3] + col[4] + col[5])
 			out_file_name = os.path.join(target_folder, col[0] + ".txt")
 			out_file = open(out_file_name, 'w', encoding="utf8")
-					
+
 			indices_list = []
 			indices_list += get_indices(col[3], "<hashtag>") #<hashtag> removed because to high accuracy
-			indices_list += get_indices(col[4], "<user>") 
-			indices_list += get_indices(col[5], "<url>") 
+			indices_list += get_indices(col[4], "<user>")
+			indices_list += get_indices(col[5], "<url>")
 			text = replace(text, indices_list )
 
 			tweets += (text)
@@ -118,16 +118,16 @@ def clean_tweets(target_folder, source_name):
 
 
 #normal
-target_folder = os.path.join(settings.rel_data_path, "neg") 
+target_folder = os.path.join(settings.rel_data_path, "neg")
 if not (os.path.isdir(target_folder)):
 	os.makedirs(target_folder)
-print( "Cleaning:" + settings.dataset["neg_source"])
-clean_tweets(target_folder, settings.dataset["neg_source"])
+print( "Cleaning:" + settings.path_neg)
+clean_tweets(target_folder, settings.path_neg)
 print()
 
 #sarcastic
-target_folder = os.path.join(settings.rel_data_path, "pos") 
+target_folder = os.path.join(settings.rel_data_path, "pos")
 if not (os.path.isdir(target_folder)):
 	os.makedirs(target_folder)
-print( "Cleaning: " + settings.dataset["pos_source"])
-clean_tweets(target_folder, settings.dataset["pos_source"])
+print( "Cleaning: " + settings.path_pos)
+clean_tweets(target_folder, settings.path_pos)
