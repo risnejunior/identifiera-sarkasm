@@ -37,12 +37,6 @@ if includetags:
 else:
 	tags = [" ", " ", " "]
 
-
-#mixed use
-use_embeddings = True
-ascii_console = False #set to true if your console doesn't handle unicode
-use_logger = True
-
 #used in training
 network_name = 'basic_pony'
 run_count = 1
@@ -93,7 +87,7 @@ datasets = {
 		"ps_file_name": "processed.pickle"
 	},
 	"detector" : {
-		"rel_path": os.path.join(".","..", "datasets","detector"),
+		"rel_path": [".","..", "datasets","detector"],
 		"neg_source": "normal_tweets.csv",
 		"pos_source": "sarcastic_tweets.csv",
 		"ps_file_name": "processed.pickle"
