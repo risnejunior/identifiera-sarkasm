@@ -37,6 +37,7 @@ n_classes = 2
 chunk_size = embedding_size
 n_chunks = max_sequence
 rnn_size = 64
+roundform = "{0:.5f}"
 
 data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,max_sequence])
 labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
@@ -85,24 +86,24 @@ def train_neural_network(ps,emb_init,W,emb_placeholder):
     with sess.as_default():
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
-
+        loops = len(xs_split)
         for epoch in range(epochs):
             epoch_loss = 0
-            for batch_i in range(len(xs_split)):
-
+            for batch_i in range(loops):
                 batch_x = xs_split[batch_i]
                 batch_y = ys_split[batch_i]
-
-                _, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
+                _, c,pred = sess.run([optimizer,cost,prediction], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
+                comp = np.equal(np.argmax(pred,1),np.argmax(batch_y,1))
+                current_accuracy = np.mean(comp.astype(np.float32))
                 epoch_loss += c
-            #val_accuracy = sess.run(validation,
-            #                        feed_dict = {val_data_placeholder: ps.valid.xs,
-            #                                    val_labels_placeholder: np.array(ps.valid.ys)})
+                print( batch_i + 1, "batches completed out of:", loops ,"| current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(current_accuracy), "",end=" \r",)
+
             saver = tf.train.Saver()
+            print("")
             save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
             accuracy = test_network_run(ps.valid.xs,np.array(ps.valid.ys),prediction)
             print("Checkpoint file saved in %s" % save_path )
-            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', epoch_loss, '| Accuracy:', accuracy)
+            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(accuracy))
 
         saver = tf.train.Saver()
         date = time.strftime("%m%d%y-%H%M%S")
@@ -154,7 +155,7 @@ def run_test(ps,path,network_name):
     emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
     embeddings = word_embedding_layer(data_placeholder,W)
     output = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
-    with tf.Session() as sess:
+    with tf.Session().as_default() as sess:
         saver = tf.train.Saver()
         saver.restore(sess, path)
         accuracy = test_network_run(ps.train.xs,np.array(ps.train.ys),output)
