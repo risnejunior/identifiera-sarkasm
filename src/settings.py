@@ -27,7 +27,7 @@ padding_char = '.'
 padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
 embedding_size = 200 #allowed: 25, 50, 100, 200
 vocabulary_size = 20000
-max_sequence = 45 # words to include from sample, smaller samples will be padded
+max_sequence = 75 # words to include from sample, smaller samples will be padded
 
 #clean tweets
 includetags = False
