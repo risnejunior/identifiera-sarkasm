@@ -16,13 +16,46 @@ from collections import namedtuple
 import numpy as np
 
 class TroubleMakers:
-	def __init__(self, ids, ys):
-		self.datapoints = {sid: Datapoint(sid, y[0] < y[1]) for sid, y in zip(ids, ys)}
+	def __init__(self, ids= None, ys = None):
+		self.datapoints = {}
 
-	def addPrediction(self, sid, correct=True):
-		if correct:
-			self.datapoints[sid].correct += 1
-		self.datapoints[sid].total += 1
+		if ids and ys:
+			self.datapoints = {sid: Datapoint(sid, y[0] < y[1]) for sid, y in zip(ids, ys)}
+
+	def increment(self, sid, isTrue):
+		if sid in self.datapoints:
+			if isTrue:
+				self.datapoints[sid].correct += 1
+			self.datapoints[sid].total += 1
+		else:
+			raise ValueError("Can't increment none existant key")
+
+	def addNew(self, sid, label, correct, total):		
+		newPoint = Datapoint(sid, label, correct, total)
+		self.datapoints[sid] = newPoint
+
+	def update(self, sid, correct, total):
+		self.datapoints[sid].correct += correct		
+		self.datapoints[sid].total += total		
+
+	def merge(self, other):
+		for key, val in other.datapoints.items():
+			if key in self.datapoints:
+				self.update(key, val.correct, val.total)
+			else:
+				self.datapoints[key] = val
+
+	def tallyPredictions(self):
+		tally = {}
+		correct = 0
+		total = 0
+		for key, val in self.datapoints.items():
+			if val.correct in tally:
+				tally[val.correct] += 1
+			else:
+				tally[val.correct] = 1
+
+		return tally.items()
 
 	def __str__(self):
 		points = []
@@ -31,8 +64,9 @@ class TroubleMakers:
 
 		return ('\n').join(points)
 
-	def merge(self, other):
-		self.datapoints.update(other.datapoints)
+	def __len__(self):
+		return len(self.datapoints)
+
 
 class Datapoint:
 	def __init__(self, sid, label, correct = 0, total = 0):		
@@ -449,21 +483,22 @@ class Binary_confusion_matrix:
 		
 		self.metrics = {}
 		self.rows = []
-		self._datapoints = None
+		self._datapoints = {}
 
 	def calc(self, ids, predictions, Ys, name = None):		
 		
-		tm = TroubleMakers(ids, Ys)
+		tm = TroubleMakers(ids, Ys)		
 
 		fn = fp = tp = tn = 0
 		facit = list( zip( ids, predictions, Ys ) )
 		for sample in facit:
+			predicted_true = False
 			sample_id, predicted, actual = sample
 			if predicted[0] < predicted[1]: # e.g (0.33, 0.77) 
 				#predicted positive
 				if actual[0] < actual[1]: #actual positive
 					tp += 1
-					tm.addPrediction(sample_id)
+					predicted_true = True					
 				else:
 					fp += 1
 			else: 
@@ -472,8 +507,9 @@ class Binary_confusion_matrix:
 					fn += 1
 				else:
 					tn += 1
-					tm.addPrediction(sample_id)
-			#predictions[sample_id].total += 1
+					predicted_true = True
+
+			tm.increment(sample_id, isTrue = predicted_true)
 
 		#avoid division by zero
 		count = len(predictions)
@@ -499,10 +535,10 @@ class Binary_confusion_matrix:
 		self.metrics[name] = metrics
 		self._compile_table(name)
 		
-		if self._datapoints:
-			self._datapoints.merge(tm)
+		if name in self._datapoints:
+			self._datapoints[name].merge(tm)
 		else:
-			self._datapoints = tm
+			self._datapoints[name] = tm
 
 	def _compile_table(self, name):
 		# for readability
@@ -529,22 +565,29 @@ class Binary_confusion_matrix:
 		for row in self.rows:
 			print(row)
 
-	def save_predictions(self, 
+	def save_predictions(self,
 		filename = 'predictions.pickle', 
 		directory = 'logs',
+		sets = ['default'],
 		update = True):
+
+		tm = TroubleMakers()
+		for s in sets:
+			if s in self._datapoints:
+				tm.merge(self._datapoints[s])
+
 
 		file_path = os.path.join('.', directory, filename)
 		if not (os.path.isdir(directory)):
 			os.makedirs(directory)
 
-		if update:
+		if update and os.path.isfile(file_path):
 			with open(file_path, 'rb') as handle:
 				saved = pickle.load(handle)
-				self._datapoints.update(saved)
+				tm.merge(saved)
 		
 		with open(file_path, 'wb') as handle:
-			pickle.dump(self._datapoints, handle)
+			pickle.dump(tm, handle)
 
 	def save(self,
 			 filename = 'confusion.log',
