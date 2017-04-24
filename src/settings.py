@@ -29,6 +29,20 @@ embedding_size = 200 #allowed: 25, 50, 100, 200
 vocabulary_size = 20000
 max_sequence = 45 # words to include from sample, smaller samples will be padded
 
+#clean tweets
+includetags = False
+
+if includetags:
+	tags = ["<user>", "<url>", "<hashtag>"]
+else:
+	tags = [" ", " ", " "]
+
+
+#mixed use
+use_embeddings = True
+ascii_console = False #set to true if your console doesn't handle unicode
+use_logger = True
+
 #used in training
 network_name = 'basic_pony'
 run_count = 1
@@ -76,6 +90,12 @@ datasets = {
 		"rel_path": [".","..", "datasets","imdb"],
 		"neg_source": "",
 		"pos_source": "",
+		"ps_file_name": "processed.pickle"
+	},
+	"detector" : {
+		"rel_path": os.path.join(".","..", "datasets","detector"),
+		"neg_source": "normal_tweets.csv",
+		"pos_source": "sarcastic_tweets.csv",
 		"ps_file_name": "processed.pickle"
 	}
 }
