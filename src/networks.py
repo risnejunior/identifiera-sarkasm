@@ -48,6 +48,7 @@ class Networks:
 									  activation='sigmoid',
 									  regularizer='L2',
 									  weight_decay=hyp.middle.weight_decay,
+									  weights_init='uniform_scaling',
 									  name="middle",
 									  restore=restore)
 
