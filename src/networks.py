@@ -91,9 +91,29 @@ class Networks:
 								     output_dim=pd.emb_size,
 								     name="embedding")
 		net = tflearn.lstm(net,
-						   pd.max_sequence,
+						   256,
 						   dynamic=True,
 						   name="lstm")
+		net = tflearn.fully_connected(net,
+									  2,
+									  activation='softmax',
+									  name="output",
+									  restore=True)
+		net = tflearn.regression(net,
+			                     optimizer='adam',
+			                     learning_rate=hyp.regression.learning_rate,
+		                         loss='categorical_crossentropy')
+		return net
+
+	def little_gru(self, hyp, pd):
+		net = tflearn.input_data([None, pd.max_sequence], dtype=tf.float32)
+		net = tflearn.embedding(net, input_dim=pd.vocab_size,
+								     output_dim=pd.emb_size,
+								     name="embedding")
+		net = tflearn.gru(net,
+						   256,
+						   dynamic=True,
+						   name="gru")
 		net = tflearn.fully_connected(net,
 									  2,
 									  activation='softmax',

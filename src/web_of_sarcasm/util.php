@@ -1,5 +1,7 @@
 <?php
 
+require "db_settings.php";
+
 class Errors {
 	protected $errors = array();
 
@@ -22,11 +24,6 @@ class Errors {
 }
 
 class DbAdapter {
-	const DB_SERVER = "localhost";
-	const DB_USER = "root";
-	const DB_PASSWORD = "";
-	const DB_NAME = "sarcasm_db";
-
 	public $errors;
 	private $conn;
 
@@ -35,10 +32,10 @@ class DbAdapter {
 		
 		// Create connection
 		$this->conn = new mysqli(
-			self::DB_SERVER, 
-			self::DB_USER, 
-			self::DB_PASSWORD, 
-			self::DB_NAME
+			DB_SERVER, 
+			DB_USER, 
+			DB_PASSWORD, 
+			DB_NAME
 		);
 
 		// Check connection
@@ -60,7 +57,6 @@ class DbAdapter {
 		if ($user && $user['nonce'] == $nonce) {
 			$validated = true;
 		} else {
-			//echo($user['nonce'] . '=' . $nonce . $user_id . '=' . $user['user_id']);
 			$this->errors->add('nonce not matched');
 		}
 
@@ -77,7 +73,6 @@ class DbAdapter {
 		SUM(CASE WHEN a.answer = 1 AND s.class = 0 THEN 1 ELSE 0 END) fp,
 		SUM(CASE WHEN a.answer = 0 AND s.class = 1 THEN 1 ELSE 0 END) fn
 		FROM users u
-
 
 		LEFT JOIN answers a
 		ON u.user_id = a.user_id
@@ -97,13 +92,20 @@ class DbAdapter {
 	public function getQuiz($size, $dataset) {
 		$sql = "
 		SELECT id, sample_text
-		FROM samples AS r1 
-		JOIN (SELECT CEIL(RAND() * (SELECT MAX(id)
-			  FROM samples 
-			  WHERE dataset = '{$dataset}')) AS ids) AS r2
-		 WHERE r1.id >= r2.ids		 
-		 ORDER BY r1.id ASC
-		 LIMIT {$size}
+		FROM samples AS s
+		JOIN ( 
+			SELECT (
+		  		SELECT CEIL( RAND( ) * id_norm.c + id_norm.m ) 
+		  		FROM (
+		    		SELECT COUNT( id ) c, MIN( id ) m
+		    		FROM samples
+		    		WHERE dataset = '{$dataset}'
+					) AS id_norm
+		  		) AS ids
+			) AS rnd
+		WHERE s.id >= rnd.ids
+		ORDER BY s.id ASC 
+		LIMIT {$size}
 		 ";
 		 $rows = $this->execQuery($sql);
 

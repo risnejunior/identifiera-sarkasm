@@ -4,6 +4,8 @@ import os
 import json
 import inspect
 import random
+import pickle
+
 from random import triangular as rt
 from prettytable import PrettyTable, ALL
 from colorama import Fore, Back, Style
@@ -12,6 +14,42 @@ import sys
 from collections import namedtuple
 
 import numpy as np
+
+class TroubleMakers:
+	def __init__(self, ids, ys):
+		self.datapoints = {sid: Datapoint(sid, y[0] < y[1]) for sid, y in zip(ids, ys)}
+
+	def addPrediction(self, sid, correct=True):
+		if correct:
+			self.datapoints[sid].correct += 1
+		self.datapoints[sid].total += 1
+
+	def __str__(self):
+		points = []
+		for key, val in self.datapoints.items():
+			points.append(str(val))
+
+		return ('\n').join(points)
+
+	def merge(self, other):
+		self.datapoints.update(other.datapoints)
+
+class Datapoint:
+	def __init__(self, sid, label, correct = 0, total = 0):		
+		self.sid = sid
+		self.label = label		
+		self.correct = correct
+		self.total = total
+
+	def __str__(self):
+			return "id: {0:}, label: {1:}, correct: {2:<d}, total: {3:}".format(self.sid, self.label, self.correct, self.total)
+
+	def	__hash__(self):
+			return hash(self.sid)
+
+	def	__eq__(self, other):
+			return slef.id == other.sid
+
 
 class FileBackedCSVBuffer:
 
@@ -79,9 +117,6 @@ class FileBackedCSVBuffer:
 		self.write(cols)
 
 
-
-
-
 class Arg_handler():
 	"""
 		class for handling command line arguments.
@@ -147,11 +182,13 @@ class Arg_handler():
 			print(', description: ' + helptext, end="\n\n")
 		quit()
 
+
 class Stack(list):
 	def push(self, item):
 		self.append(item)
 	def isEmpty(self):
 		return not self
+
 
 class DebugLoop:
 	"""
@@ -180,6 +217,7 @@ class DebugLoop:
 				raise StopIteration
 			loops += 1
 			yield x
+
 
 class Hyper:
 	"""
@@ -236,6 +274,7 @@ class Hyper:
 		self._update_args()
 		return self
 
+
 class Struct:
 	def __init__(self, **entries):
 		self.__dict__.update(entries)
@@ -243,8 +282,8 @@ class Struct:
 	def __eq__(self, other):
 		return self.__dict__ == other.__dict__
 
-class MinMax():
 
+class MinMax():
 	def __init__(self):
 		self.minval = None
 		self.maxval = None
@@ -274,9 +313,6 @@ class MinMax():
 			return (self.maxval)
 		else:
 			raise ValueError("illegal parameter value")
-
-
-
 
 
 class Logger:
@@ -407,28 +443,37 @@ class Binary_confusion_matrix:
 	Prints a confusion matrix and some other metrics for a given binary classification
 	"""
 	# positive means sarcastic, negative means normal
-	# fn: false negative, fp: false positive,tp: true positive,tn: true negative
+	# fn: false negative, fp: false positive,tp: true positive,tn: true negative	
 
-	def __init__(self):
+	def __init__(self, predictions_file = None):
+		
 		self.metrics = {}
-		self.rows = []		
+		self.rows = []
+		self._datapoints = None
 
-	def calc(self, ids, predictions, Ys, name = None):
+	def calc(self, ids, predictions, Ys, name = None):		
+		
+		tm = TroubleMakers(ids, Ys)
 
 		fn = fp = tp = tn = 0
 		facit = list( zip( ids, predictions, Ys ) )
 		for sample in facit:
 			sample_id, predicted, actual = sample
-			if predicted[0] < predicted[1]: # e.g (0.33, 0.77) predicted positive
+			if predicted[0] < predicted[1]: # e.g (0.33, 0.77) 
+				#predicted positive
 				if actual[0] < actual[1]: #actual positive
 					tp += 1
+					tm.addPrediction(sample_id)
 				else:
 					fp += 1
-			else: # predicted negative
+			else: 
+				#predicted negative
 				if actual[0] < actual[1]: #actual positive
 					fn += 1
 				else:
 					tn += 1
+					tm.addPrediction(sample_id)
+			#predictions[sample_id].total += 1
 
 		#avoid division by zero
 		count = len(predictions)
@@ -438,7 +483,7 @@ class Binary_confusion_matrix:
 		f1_score = 2*((precision * recall) / (precision + recall )) if (precision + recall) > 0 else 0
 
 		if name == None:
-			name = len(self.metrics.items())
+			name = 'default'
 
 		metrics = {
 			"fn": fn,
@@ -453,6 +498,11 @@ class Binary_confusion_matrix:
 
 		self.metrics[name] = metrics
 		self._compile_table(name)
+		
+		if self._datapoints:
+			self._datapoints.merge(tm)
+		else:
+			self._datapoints = tm
 
 	def _compile_table(self, name):
 		# for readability
@@ -479,6 +529,16 @@ class Binary_confusion_matrix:
 		for row in self.rows:
 			print(row)
 
+	def save_predictions(self, filename = 'predictions.pickle', directory = 'logs'):
+
+		#with open(file_path, 'rb') as handle:
+		#	pickled_preds = pickle.load(handle)
+		#	self._predictions.update(pickled_preds)
+		if not (os.path.isdir(directory)):
+			os.makedirs(directory)
+		file_path = os.path.join('.', directory, filename)
+		with open(file_path, 'wb') as handle:
+			pickle.dump(self._datapoints, handle)
 
 	def save(self,
 			 filename = 'confusion.log',

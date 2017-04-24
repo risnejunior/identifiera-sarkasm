@@ -16,17 +16,25 @@ remove_punctuation = True
 remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
 sample_count = 100000 # set to the smallest (36366) of the both classes to get an even nr of samples
-partition_training = 0.1
-partition_validation = 0.1
-partition_test = 0.8
-set_balance = 0.5 # proportion of sarcastic samples.
+partition_training = 0.7
+partition_validation = 0.15
+partition_test = 0.15
+set_balance = None # proportion of sarcastic samples (0.0 - 0.1). Not used if None
 placeholder_char = '_' # placeholder char for words not in vocabulary
 padding_char = '.'
 padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
 
 embedding_size = 200 #allowed: 25, 50, 100, 200
 vocabulary_size = 20000
-max_sequence = 45 # words to include from sample, smaller samples will be padded
+max_sequence = 75 # words to include from sample, smaller samples will be padded
+
+#clean tweets
+includetags = False
+
+if includetags:
+	tags = ["<user>", "<url>", "<hashtag>"]
+else:
+	tags = [" ", " ", " "]
 
 #used in training
 network_name = 'basic_pony'
@@ -76,6 +84,12 @@ datasets = {
 		"neg_source": "",
 		"pos_source": "",
 		"ps_file_name": "processed.pickle"
+	},
+	"detector" : {
+		"rel_path": [".","..", "datasets","detector"],
+		"neg_source": "normal_tweets.csv",
+		"pos_source": "sarcastic_tweets.csv",
+		"ps_file_name": "processed.pickle"
 	}
 }
 
@@ -119,6 +133,8 @@ def get_raw_embeddings_path(size):
 #############################################################
 ds_paths = set_rel_paths(datasets[dataset_name])
 rel_data_path = ds_paths["rel_path"]
+path_neg = ds_paths["neg_source_path"]
+path_pos = ds_paths["pos_source_path"]
 path_name_neg = ds_paths["path_name_neg"]
 path_name_pos = ds_paths["path_name_pos"]
 samples_path = ds_paths["samples_path"]

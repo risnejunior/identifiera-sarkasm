@@ -15,14 +15,21 @@
 			$dataset = $_POST['dataset'];
 
 			if ($db->validate_user($user_id, $nonce)) {
-				$quiz = $db->getQuiz($size, $dataset);	
+				$questions = $db->getQuiz($size, $dataset);	
+                $score = $db->getScore($user_id, $dataset);                
+
+                $quiz = array(
+                    'questions'=> $questions,
+                    'metrics'=>$score ? $score[0] : []
+                );
+
 				$result_array = array(
                     'type'=>'set_quiz',
-					'dataset'=>$dataset,
 					'quiz' =>$quiz
 				);
-                if (count($quiz) < 1) {
-                    $errors->add("No quiz found");
+
+                if (count($questions) < 1) {
+                    $errors->add("No questions found");
                 }
 			} else {
 				$errors->add("user not validated");
@@ -34,7 +41,7 @@
             if (strlen($name) > 30) {
                 $errors->add("username too long, should be < 30 charachters.");
             } else if (strlen($name) < 2) {
-                $errors->add("username too short, should be at least 1 charachter.");
+                $errors->add("username too short, should be at least 2 charachters.");
             } else {
                 $user = $db->createUser($name);
                 $result_array = array(
@@ -89,9 +96,7 @@
                         implode(', ', $all_errors) . 
                         "\n", 3, "errors.log"
             );
-		} else {
-            //
-        }
+		} 
 
 		echo json_encode( $result_array );
 		die();
@@ -106,13 +111,14 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title></title>
+        <title>Sarcasm quiz</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="apple-touch-icon" href="apple-touch-icon.png">
-
+        <link rel="shortcut icon" href="/favicon_s.png" type="image/x-icon">
+        
         <link rel="stylesheet" href="css/normalize.min.css">
-        <link rel="stylesheet" href="css/main.css">
+        <link rel="stylesheet" href="css/main-1.0.css">
 
         <script src="js/vendor/modernizr-2.8.3-respond-1.4.2.min.js"></script>
     </head>
@@ -146,20 +152,20 @@
             	    </header>        	    
             	</article>
 
-
-                <article id='quiz' class='quiz-container easy'>    
+                <article id='quiz' class='quiz-container' type=''> <!-- style="opacity: 0;">   -->
                 </article>        
 
-                <aside id='aside'>
+                <aside id='aside' hidden='true'>
                 	<div id='status'></div>
-                    <div class='tooltip'>
-                    <ul id='score'>
-                        <li>Answered: <div id='count' class='metric'>0</div></li>
-                        <li>Accuracy: <div id='accuracy' class='metric'>0</div></li>
-                        <li>Precision: <div id='precision' class='metric'>0</div></li>
-                        <li>Recall: <div id='recall' class='metric'>0</div></li>
-                        <li>F1-score: <div id='f1_score' class='metric'>0</div></li>
-                    </ul>                                                    
+                    <div id='metrics' class='tooltip'>
+                        <h2 id="score-header"></h2>
+                        <ul id='score'>
+                            <li>Answered: <div id='count' class='metric'>0</div></li>
+                            <li>Accuracy: <div id='accuracy' class='metric'>0</div></li>
+                            <li>Precision: <div id='precision' class='metric'>0</div></li>
+                            <li>Recall: <div id='recall' class='metric'>0</div></li>
+                            <li>F1-score: <div id='f1_score' class='metric'>0</div></li>
+                        </ul>                                                    
                         <span class="tooltiptext">Your score is updated when you've answered all visable questions
                         </span>                        
                     </div>
@@ -169,13 +175,17 @@
         </div> <!-- #main-container -->
 
         <div class="footer-container">
+            <div id='error' hidden='true'>
+                <h2></h2>
+                <p></p>                
+            </div>
             <footer class="wrapper">
-                <h3>footer</h3>
+                <div id="logout"><a href="#">Log out</a></div>           
             </footer>
         </div>
 
         <script src="js/vendor/jquery-1.11.2.js"></script>
-        <script src="js/main.js"></script>
+        <script src="js/main-1.0.js"></script>
 
         <!--
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.js"></script>

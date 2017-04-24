@@ -16,6 +16,7 @@ from common_funs import Binary_confusion_matrix
 from common_funs import Arg_handler
 from settings import *
 
+
 class FubarException(Exception):
     pass
 
@@ -154,6 +155,7 @@ logger.log("Total words: {:d}".format(len(all_words)))
 word_dicts = OrderedDict({0: {}, 1:{}, 2:{}})
 for i_dict, words in enumerate([all_words, neg_words, pos_words]):
 	c = Counter(words)
+	print(c.most_common(1)[0])
 	largest = c.most_common(1)[0][1]
 	logger.log(largest, logname="most common")
 	d = dict(c)
@@ -181,4 +183,5 @@ cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
 cm.print_tables()
 cm.save(content='metrics')
 cm.save(content='table')
+cm.save_predictions()
 logger.save(file_name="frequencies.log")

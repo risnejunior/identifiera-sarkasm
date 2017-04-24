@@ -156,7 +156,7 @@ nav a:hover {
 
 .button {
     background-color: #9e9e9e;
-    border: none;
+    border: lightgrey;
     color: white;
     padding: 10px 14px;
     text-align: center;
@@ -168,6 +168,9 @@ nav a:hover {
     cursor: pointer;
     border-style: inherit;
     width: 120px;
+    border-width: 3.4px;
+    outline: none;
+    border-style: outset;
 }
 
 .button.selected {
@@ -226,10 +229,73 @@ ul#score {
     text-shadow: 2px 2px #558ABB;
 }
 
+section.working-animation.question {
+    /*position:absolute; */
+    /* width:100%; */
+    /* height:100%; */
+    background:#FFFFFF url(../img/working_animation.gif) 50% 50% no-repeat;
+    /* left:0px; */
+    /* top:0px; */
+    opacity:0.8;
+    filter:alpha(opacity=60);
+}
 
+section.question {
+    background: rgb(248, 237, 232);
+    margin: 5px;
+    padding: 5px;
+    border-radius: 6px;
+}
 
+h2#score-header {
+    margin: 5px;
+    padding: 0px;
+}
 
+div#error {
+    display: block;
+    color: red;
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    top: 50%;
+    left: 25%;
+    font-family: monospace;
+    /* font-size: xx-large; */
+}
 
+#error p {
+    cursor: pointer;
+}
+
+.footer-container {
+    position: relative;
+}
+
+#submit-name {
+    height: 40px;
+    width: 80px;
+    border-radius: 10px;
+    border: 1px solid #000;
+    margin-top: 15px;
+}
+
+#name-form input[type="text"] {
+    padding: 10px;
+    border: none;
+    border-bottom: solid 2px #c9c9c9;
+    transition: border 0.3s;
+}
+
+#name-form input[type="text"]:focus,
+#name-form input[type="text"].focus {
+    border-bottom: solid 2px #969696;
+}
+
+#logout a{
+    text-decoration: none;
+    color: dimgrey;
+}
 
 /* ==========================================================================
    Media Queries
