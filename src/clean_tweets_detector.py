@@ -1,14 +1,9 @@
 """  This functions cleans all the tweets """
-
-import numpy as np
 import os
 import csv
 import re
 import settings
-
-
-
-
+import json
 
 def clean_tweets_detector(source_name):
     data=[]
@@ -21,28 +16,31 @@ def clean_tweets_detector(source_name):
 
     csv_file_object = csv.reader(open(source_name, 'rU'),delimiter='\n')
     next(csv_file_object)
+
     for row in csv_file_object:
 
         if len(row[0:])==1:
 
-
-
-            if settings.dataset_name == "poria-balanced":
+            if settings.dataset_name == "poria-balanced" or settings.dataset_name == "poria-ratio":
                 temp=row[0:]
                 temp = (temp[0].split('\t'))[2]
             else:
                 temp=row[0:][0]
 
+            try:
+                temp = json.loads('"'+temp+'"')
+            except Exception:
+                pass
 
             temp=hashtags.sub(settings.tags[2],temp)
 
-            if len(temp)>0 and temp[0]!='@' and r'\u' not in temp:
+            if len(temp)>0 and temp[0]!='@':
 
                 temp=friendtag.sub(settings.tags[0], temp)
                 temp=sarcasmtag.sub('', temp)
                 temp=sarcastictag.sub('', temp)
-                temp = url.sub(settings.tags[1], temp)
-                temp = url2.sub(settings.tags[1], temp)
+                temp=url.sub(settings.tags[1], temp)
+                temp=url2.sub(settings.tags[1], temp)
                 temp=' '.join(temp.split()) #remove useless space
 
                 # Check that tweet contains more than 3 words
@@ -50,7 +48,6 @@ def clean_tweets_detector(source_name):
                     data.append(temp)
 
     data=list(set(data))
-    #print ("Data length is: " + str(len(data)))
     return data
 
 def create_tweets(data, target_folder, index):
