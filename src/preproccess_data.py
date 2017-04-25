@@ -35,6 +35,7 @@ import settings
 from settings import *
 
 #### functions ###############################################################################
+
 def _arg_callback_sp(train, cross, test):
 	global partition_training, partition_validation, partition_test
 	partition_training = float(train)

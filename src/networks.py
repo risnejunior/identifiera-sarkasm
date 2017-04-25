@@ -34,11 +34,13 @@ class Networks:
 		net = tflearn.embedding(net, input_dim=pd.vocab_size,
 								     output_dim=pd.emb_size,
 								     name="embedding",
+								     weights_init='uniform_scaling',
 								     restore=restore)
 
 		net = tflearn.lstm(net,
-						   64,
+						   128,
 						   dropout=hyp.lstm.dropout,
+						   weights_init='uniform_scaling',
 						   dynamic=True,
 						   name="lstm",
 						   restore=restore)
@@ -58,6 +60,7 @@ class Networks:
 									  activation='softmax',
 									  regularizer='L2',
 									  weight_decay=hyp.output.weight_decay,
+									  weights_init='uniform_scaling',
 									  name="output",
 									  restore=restore)
 		net = tflearn.regression(net,

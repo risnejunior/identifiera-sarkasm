@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sys
 import collections
 import math
 import random
@@ -6,7 +7,12 @@ import os
 import json
 import pickle
 import csv
-import sys
+import time
+from time import strftime
+
+#suppress tf logging
+cls_file = open('tmp.txt', 'w')
+sys.stdout = cls_file
 
 import tflearn
 import numpy as np
@@ -25,6 +31,11 @@ from common_funs import boxString
 from settings import *
 from networks import Networks
 from networks import NetworkNotFoundError
+
+#suppress tf logging
+sys.stdout = sys.__stdout__
+tf.logging.set_verbosity(tf.logging.ERROR)
+
 
 class EarlyStoppingError(StopIteration):
 	pass
@@ -61,7 +72,8 @@ class EarlyStoppingMonitor():
 			filename='earlystopping.csv',
 			directory='logs',
 			header=['epoch', 'val loss', 'avg val loss', 'loss limit', 'status'],
-			clearFile=True)
+			clearFile=True,
+			padding=12)
 
 	def send(self, state):
 
@@ -136,9 +148,9 @@ def _arg_callback_in(file_name):
 	"""
 	Take preprocessed samples from the selected file
 	"""
-	global samples_path
-	samples_path = os.path.join(rel_data_path, file_name)
-	print("<Using processed samples from: {}>".format(samples_path))
+	global dataset_proto
+	dataset_proto['ps_file_name'] = file_name
+	print("<Using processed samples from: {}>".format(file_name))
 
 def _arg_callback_ss(s_step = None, s_epoch = 'False'):
 	"""
@@ -153,11 +165,7 @@ def _arg_callback_ss(s_step = None, s_epoch = 'False'):
 
 def build_network(name, hyp, pd):
 
-	params = {
-		'hyp': hypers,
-		'pd': pd,
-	}
-
+	params = {'hyp': hypers, 'pd': pd}
 	nets = Networks()
 	net = nets.get_network(name=name, params=params)
 
@@ -198,12 +206,13 @@ def train_model(model, hyp, this_run_id, log_run):
 	monitorCallback = MonitorCallback(api)
 
 	perflog.write([
-		this_run_id,
+		strftime('%Y-%m-%d %H:%M', time.localtime()),	
 		network_name,
 		os.path.basename(samples_path),
 		'-',
 		'-',
-		'Starting training...',
+		this_run_id,
+		'Starting',
 		]
 	)
 
@@ -248,15 +257,20 @@ def do_prediction(model, hyp, this_run_id, log_run):
 		cm.calc(ps.test.ids , predictions, ps.test.ys, 'test-set')
 
 	cm.print_tables()
+	cm.save_predictions(this_run_id + '_predictions.pickle', 
+						directory = 'logs',
+						sets=['training-set','validation-set','test-set'],
+						update = True)
 
 	#cm.save(this_run_id + '.res', content='metrics')
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
 	the_list = [
-		this_run_id,
+		strftime('%Y-%m-%d %H:%M', time.localtime()),
 		network_name,
 		os.path.basename(samples_path),
 		cm.metrics['validation-set']['accuracy'],
-		cm.metrics['validation-set']['f1_score']
+		cm.metrics['validation-set']['f1_score'],
+		this_run_id,
 		]
 	if print_test:
 		the_list.append(cm.metrics['test-set']['accuracy'])
@@ -287,17 +301,16 @@ arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce result
 print("\n")
 arghandler.consume_flags()
 
-#ashdiudh
+#hack to get ds flag to work with in flag
 dataset = settings.set_rel_paths(dataset_proto)
 samples_path = dataset["samples_path"]
-
-
 
 debug_log = Logger()
 perflog = FileBackedCSVBuffer(
 	"training_performance.csv",
 	"logs",
-	header=['Run id', 'Network name', 'data file', 'Val acc', 'Val f1', 'Status'])
+	header=['Time', 'Network name', 'data file', 'Val acc', 'Val f1', 'Run id','Status'],
+	padding=17)
 
 # Load processed data from file
 with open(samples_path, 'rb') as handle:
@@ -327,7 +340,6 @@ hypers = Hyper(run_count,
 	output = {'weight_decay': (0.01, 0.06)}
 )
 
-
 # training loop, every loop trains a network with different hyperparameters
 for hyp in hypers:
 	log_run = Logger()
@@ -345,15 +357,15 @@ for hyp in hypers:
 		try:
 			net = build_network(network_name, hyp, pd)
 			model = create_model(net, hyp, this_run_id, log_run)
-			if training:
+			if training:				
 				model = train_model(model, hyp, this_run_id, log_run)
 		except NetworkNotFoundError as e:
 			print("The network name provided din't match any defined network")
 		except EarlyStoppingError as e:
-			stop_reason = ["Stopping due to early stopping"]
+			stop_reason = ["early stopping"]
 			do_prediction(model, hyp, this_run_id, log_run)
 		else:
-			stop_reason = ["Stopping due to epoch limit"]
+			stop_reason = ["epoch limit"]
 			do_prediction(model, hyp, this_run_id, log_run)
 		finally:
 			#do_prediction(model, hyp, this_run_id, log_run)

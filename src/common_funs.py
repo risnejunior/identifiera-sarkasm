@@ -50,10 +50,12 @@ class TroubleMakers:
 		correct = 0
 		total = 0
 		for key, val in self.datapoints.items():
-			if val.correct in tally:
-				tally[val.correct] += 1
+			true_total = (val.correct, val.total)
+
+			if true_total in tally:
+				tally[true_total] += 1
 			else:
-				tally[val.correct] = 1
+				tally[true_total] = 1
 
 		return tally.items()
 
@@ -87,12 +89,13 @@ class Datapoint:
 
 class FileBackedCSVBuffer:
 
-	def __init__(self, filename, directory = "", header = [], delimiter='\t', clearFile=False):
-		self._header = ["<" + head + ">" for head in header]
+	def __init__(self, filename, directory = "", header = [], delimiter='\t', clearFile=False, padding=0):
+		self._header = ["[{:<{padding}}]".format(head, padding=padding) for head in header]
 		self._filebacked = []
 		self._buffer = []
 		self._delimiter = delimiter
 		self._file_path = os.path.join(directory, filename)
+		self._padding = padding
 
 		if directory and not (os.path.isdir(directory)):
 			os.makedirs(directory)
@@ -108,8 +111,19 @@ class FileBackedCSVBuffer:
 		cols = [str(col) for col in cols]
 		self._buffer.append(self._delimiter.join(cols))
 
+	def _padRows(self, rows):
+		padded_lines = []
+		for line in self._buffer:
+			padded_line = []
+			for col in line.split(self._delimiter):
+				padded_line.append("{0:<{padding}}".format(col, padding=self._padding))
+			padded_lines.append(self._delimiter.join(padded_line))
+
+		return padded_lines
+
 	def flush(self):
 		with open(self._file_path, 'a', encoding='utf8') as out_file:
+			self._buffer = self._padRows(self._buffer)
 			self._buffer = [line + "\n" for line in self._buffer]
 			out_file.writelines(self._buffer)
 			self._filebacked.extend(self._buffer)
@@ -132,7 +146,7 @@ class FileBackedCSVBuffer:
 			file.writelines(self._filebacked)
 			self._buffer.clear()
 
-	def append(self, cols):
+	def append(self, cols):		
 
 		#can't append to empty buffer, write instead
 		if self._buffer:
