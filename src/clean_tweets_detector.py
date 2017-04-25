@@ -46,8 +46,6 @@ def clean_tweets_detector(source_name):
                     temp=friendtag.sub(settings.tags[0], temp)
                     temp=sarcasmtag.sub('', temp)
                     temp=sarcastictag.sub('', temp)
-                    #temp=url.sub(settings.tags[1], temp)
-                    #temp=url2.sub(settings.tags[1], temp)
                     temp=' '.join(temp.split()) #remove useless space
 
                     # Check that tweet contains more than 3 words
