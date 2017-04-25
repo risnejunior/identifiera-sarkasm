@@ -104,12 +104,12 @@ class EarlyStoppingMonitor():
 			self.losses.append(val_loss)
 
 		self._buff.flush()
-		
-		
+
+
 def _arg_callback_pt():
 	global print_test
 	print_test = True
-		
+
 def _arg_callback_ds(ds_name):
 	"""
 	Select dataset
@@ -117,18 +117,18 @@ def _arg_callback_ds(ds_name):
 	global dataset_proto
 	dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
 	print("<Using dataset: {}>".format(ds_name))
-		
+
 def _arg_callback_pretrained(path):
 	global save_the_model, pretrained_model, training, pretrained_path
 	save_the_model = False
 	pretrained_model = True
 	training = False
-	
+
 	models_path = os.path.join("models")
 	if not (os.path.isdir(models_path)):
 		os.makedirs(models_path)
 	pretrained_path = os.path.join(models_path, path + ".tfl")
-	
+
 	print("<Using pretrained model " + path + " for results only.")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
@@ -206,7 +206,7 @@ def train_model(model, hyp, this_run_id, log_run):
 	monitorCallback = MonitorCallback(api)
 
 	perflog.write([
-		strftime('%Y-%m-%d %H:%M', time.localtime()),	
+		strftime('%Y-%m-%d %H:%M', time.localtime()),
 		network_name,
 		os.path.basename(samples_path),
 		'-',
@@ -242,7 +242,7 @@ def train_model(model, hyp, this_run_id, log_run):
 def do_prediction(model, hyp, this_run_id, log_run):
 	# print confusion matrix for the different sets
 	print("\nRunning prediction...")
-	print(boxString("Run id: " + this_run_id))
+	print(boxString("Run id: " + this_run_id + " | Dataset: " + settings.dataset_name))
 
 	cm = Binary_confusion_matrix()
 
@@ -251,13 +251,13 @@ def do_prediction(model, hyp, this_run_id, log_run):
 
 	predictions = model.predict(ps.valid.xs)
 	cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
-	
+
 	if print_test:
 		predictions = model.predict(ps.test.xs)
 		cm.calc(ps.test.ids , predictions, ps.test.ys, 'test-set')
 
 	cm.print_tables()
-	cm.save_predictions(this_run_id + '_predictions.pickle', 
+	cm.save_predictions(this_run_id + '_predictions.pickle',
 						directory = 'logs',
 						sets=['training-set','validation-set','test-set'],
 						update = True)
@@ -275,7 +275,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	if print_test:
 		the_list.append(cm.metrics['test-set']['accuracy'])
 		the_list.append(cm.metrics['test-set']['f1_score'])
-		
+
 	perflog.replace(the_list)
 
 ################################################################################
@@ -357,7 +357,7 @@ for hyp in hypers:
 		try:
 			net = build_network(network_name, hyp, pd)
 			model = create_model(net, hyp, this_run_id, log_run)
-			if training:				
+			if training:
 				model = train_model(model, hyp, this_run_id, log_run)
 		except NetworkNotFoundError as e:
 			print("The network name provided din't match any defined network")
