@@ -7,7 +7,7 @@ import numpy as np
 ##########################################################################
 
 #mixed use
-dataset_name = "poria-balanced" #"poria-ratio" # "poria-balanced", "imdb"
+dataset_name = "detector" #"poria-ratio" # "poria-balanced", "imdb"
 use_embeddings = True
 ascii_console = False #set to true if your console doesn't handle unicode
 use_logger = True
@@ -17,7 +17,7 @@ allowed_emb_sizes = [25,50,100,200]
 remove_punctuation = True
 remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
-sample_count = 100000 # set to the smallest (36366) of the both classes to get an even nr of samples
+sample_count = 27131 # set to the smallest (27131) of the both classes to get an even nr of samples
 partition_training = 0.7
 partition_validation = 0.15
 partition_test = 0.15
@@ -30,7 +30,8 @@ vocabulary_size = 20000
 max_sequence = 75 # words to include from sample, smaller samples will be padded
 
 #clean tweets
-includetags = False
+strict = False #option to chose strict cleansing of tweets or non-strict
+includetags = True #option to include tags or not
 
 if includetags:
 	tags = ["<user>", "<url>", "<hashtag>"]
@@ -38,7 +39,7 @@ else:
 	tags = [" ", " ", " "]
 
 #used in training
-network_name = 'basic_pony'
+network_name = 'little_pony'
 run_count = 1
 epochs = 1
 batch_size = 128
