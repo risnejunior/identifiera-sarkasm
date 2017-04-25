@@ -7,7 +7,7 @@ import numpy as np
 ##########################################################################
 
 #mixed use
-dataset_name = "detector" #"poria-ratio" # "poria-balanced", "imdb"
+dataset_name = "detector" #"poria-ratio", "poria-balanced", "imdb", "detector"
 use_embeddings = True
 ascii_console = False #set to true if your console doesn't handle unicode
 use_logger = True
