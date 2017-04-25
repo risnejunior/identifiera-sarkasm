@@ -9,6 +9,7 @@ import csv
 import re
 import settings
 import json
+from common_funs import Progress_bar
 
 def clean_tweets_detector(source_name):
     data=[]
@@ -19,7 +20,7 @@ def clean_tweets_detector(source_name):
     url = re.compile(r'\bhttp\b\S+')
     url2 = re.compile(r'\bhttps\b\S+')
 
-    csv_file_object = csv.reader(open(source_name, 'rU'),delimiter='\n')
+    csv_file_object = csv.reader(open(source_name, 'r'),delimiter='\n')
     next(csv_file_object)
 
 
@@ -89,15 +90,17 @@ def clean_tweets_detector(source_name):
         return data
 
 def create_tweets(data, target_folder, index):
+    pb = Progress_bar( len(data)-1 )
     i = index
 
     for row in data:
        # print ("Index is: " + str(i))
         out_file_name = os.path.join(target_folder, str(i) + ".txt")
-        out_file = open(out_file_name, 'w')
+        out_file = open(out_file_name, 'w', encoding='utf8')
         out_file.write(row)
         out_file.close()
         i += 1
+        pb.tick()
 
 #normal
 target_folder = os.path.join(settings.rel_data_path, "neg")
