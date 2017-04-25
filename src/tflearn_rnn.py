@@ -106,6 +106,10 @@ class EarlyStoppingMonitor():
 		self._buff.flush()
 		
 		
+def _arg_callback_trouble(file_name):
+	global predictions_filename
+	predictions_filename = file_name
+
 def _arg_callback_pt():
 	global print_test
 	print_test = True
@@ -257,7 +261,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 		cm.calc(ps.test.ids , predictions, ps.test.ys, 'test-set')
 
 	cm.print_tables()
-	cm.save_predictions(this_run_id + '_predictions.pickle', 
+	cm.save_predictions(predictions_filename, 
 						directory = 'logs',
 						sets=['training-set','validation-set','test-set'],
 						update = True)
@@ -283,6 +287,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 # affected by flags, need to be before consume_flags()
 snapshot_epoch = True
 print_debug = True
+predictions_filename = 'predictions.pickle'
 
 # sdasd
 dataset_proto = datasets[dataset_name]
@@ -298,6 +303,7 @@ arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set s
 arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
+arghandler.register_flag('trouble', _arg_callback_trouble, [], "File name to save/read for trouble makers predictions. Args: <filename>")
 print("\n")
 arghandler.consume_flags()
 

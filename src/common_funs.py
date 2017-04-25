@@ -15,6 +15,11 @@ from collections import namedtuple
 
 import numpy as np
 
+"""
+class TallyGroup:
+	def __init__(self, ):
+"""
+
 class TroubleMakers:
 	def __init__(self, ids= None, ys = None):
 		self.datapoints = {}
@@ -46,6 +51,7 @@ class TroubleMakers:
 				self.datapoints[key] = val
 
 	def tallyPredictions(self):
+		Group = namedtuple("group", ['correct','total','length', 'ids'])
 		tally = {}
 		correct = 0
 		total = 0
