@@ -15,8 +15,10 @@ def clean_tweets_detector(source_name):
     data=[]
     hashtags = re.compile(r'#\w+\s?')
     friendtag = re.compile(r'@\w+\s?')
-    sarcasmtag = re.compile(re.escape('sarcasm'),re.IGNORECASE)
-    sarcastictag = re.compile(re.escape('sarcastic'),re.IGNORECASE)
+    sarcasmtag = re.compile(r'#sarcasm\b', re.IGNORECASE)
+    sarcastictag = re.compile(r'#sarcastic\b', re.IGNORECASE)
+    #sarcasmtag = re.compile(re.escape('sarcasm'),re.IGNORECASE)
+    #sarcastictag = re.compile(re.escape('sarcastic'),re.IGNORECASE)
     url = re.compile(r'\bhttp\b\S+')
     url2 = re.compile(r'\bhttps\b\S+')
 
@@ -40,13 +42,12 @@ def clean_tweets_detector(source_name):
                 except Exception:
                     pass
 
-                temp=hashtags.sub(settings.tags[2],temp)
-
                 if len(temp)>0 and temp[0]!='@' and 'http' not in temp and 'https' not in temp:
 
                     temp=friendtag.sub(settings.tags[0], temp)
                     temp=sarcasmtag.sub('', temp)
                     temp=sarcastictag.sub('', temp)
+                    temp=hashtags.sub(settings.tags[2],temp)
                     temp=' '.join(temp.split()) #remove useless space
 
                     # Check that tweet contains more than 3 words
@@ -71,13 +72,12 @@ def clean_tweets_detector(source_name):
                 except Exception:
                     pass
 
-                temp=hashtags.sub(settings.tags[2],temp)
-
                 if len(temp)>0:
 
                     temp=friendtag.sub(settings.tags[0], temp)
                     temp=sarcasmtag.sub('', temp)
                     temp=sarcastictag.sub('', temp)
+                    temp=hashtags.sub(settings.tags[2],temp)
                     temp=url.sub(settings.tags[1], temp)
                     temp=url2.sub(settings.tags[1], temp)
                     temp=' '.join(temp.split()) #remove useless space
