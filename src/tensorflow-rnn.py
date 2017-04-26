@@ -46,6 +46,63 @@ keep_prob_placeholder = tf.placeholder('float')
 train_call = 1
 val_call = 2
 
+def _arg_callback_pt():
+	global print_test
+	print_test = True
+
+def _arg_callback_ds(ds_name):
+	"""
+	Select dataset
+	"""
+	global dataset_proto
+	dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
+	print("<Using dataset: {}>".format(ds_name))
+
+def _arg_callback_pretrained(path):
+	global save_the_model, pretrained_model, training, pretrained_path
+	save_the_model = False
+	pretrained_model = True
+	training = False
+
+	models_path = os.path.join("models")
+	if not (os.path.isdir(models_path)):
+		os.makedirs(models_path)
+	pretrained_path = os.path.join(models_path, path + ".tfl")
+
+	print("<Using pretrained model " + path + " for results only.")
+
+def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
+	global epochs, run_count, batch_size, training
+	epochs = int(nr_epochs)
+	run_count = int(count)
+	batch_size = int(batchsize)
+	training = True
+	print("<Training for, epochs: {}, runs:{}, batchsize: {}>".format(nr_epochs, count, batchsize))
+
+def _arg_callback_net(name):
+	global network_name
+	network_name = name
+	print("<Using network: {}>".format(name))
+
+def _arg_callback_in(file_name):
+	"""
+	Take preprocessed samples from the selected file
+	"""
+	global samples_path
+	samples_path = os.path.join(rel_data_path, file_name)
+	print("<Using processed samples from: {}>".format(samples_path))
+
+def _arg_callback_ss(s_step = None, s_epoch = 'False'):
+	"""
+	Set the snapshot step
+	"""
+	global snapshot_step, snapshot_epoch
+	if isinstance(s_step, str) and s_step.lower() == 'none':
+		s_step = None
+	snapshot_step = int(s_step) if s_step is not None else None
+	snapshot_epoch = True if s_epoch.lower() == 'true' else False
+	print("<Snapshot step: {}, Snaphot epoch end: {}>".format(s_step, s_epoch))
+
 ## Create the embedding variable
 def init_embedding(vocabulary_size,embedding_size):
     with tf.device("/cpu:0"):
@@ -165,6 +222,20 @@ def run_test(ps,path,network_name):
 
 
 # Here starts the program
+
+#Argument handling, Copy paste from tflearn_rnn.py
+arghandler = Arg_handler()
+arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from. args: <filename>")
+arghandler.register_flag('net', _arg_callback_net, ['network'], "Which network to use. args: <network name>")
+arghandler.register_flag('train', _arg_callback_train, helptext = "Use settings for training. Args: <epochs> <run_count> <batch size>")
+arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set snapshots. No arguments means no snapshots. Args: <snapshot step> <epoch end>")
+arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
+arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
+arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
+print("\n")
+arghandler.consume_flags()
+
+
 with open(samples_path, 'rb') as handle:
     pd = pickle.load( handle )
 
