@@ -12,8 +12,6 @@ use_embeddings = True
 ascii_console = False #set to true if your console doesn't handle unicode
 use_logger = True
 allowed_emb_sizes = [25,50,100,200]
-
-#used in preprocess
 remove_punctuation = True
 remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
@@ -25,6 +23,7 @@ set_balance = None # proportion of sarcastic samples (0.0 - 0.1). Not used if No
 placeholder_char = '_' # placeholder char for words not in vocabulary
 padding_char = '.'
 padding_pos = "post" #pad at the start or at the end of the sample (pre/post)
+
 embedding_size = 200 #allowed: 25, 50, 100, 200
 vocabulary_size = 20000
 max_sequence = 75 # words to include from sample, smaller samples will be padded
@@ -41,8 +40,8 @@ else:
 #used in training
 network_name = 'little_pony'
 run_count = 1
-epochs = 1
-batch_size = 128
+epochs = 10
+batch_size = 90
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
 #For loading and saving models
