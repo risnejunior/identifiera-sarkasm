@@ -15,7 +15,7 @@ allowed_emb_sizes = [25,50,100,200]
 remove_punctuation = True
 remove_stopwords = False
 use_casual_tokenizer = True 	# doens't remove special chars
-sample_count = 50000 # set to the smallest (27131) of the both classes to get an even nr of samples
+sample_count = 100000 # set to the smallest (27131) of the both classes to get an even nr of samples
 partition_training = 0.7
 partition_validation = 0.15
 partition_test = 0.15
@@ -140,4 +140,3 @@ path_name_pos = ds_paths["path_name_pos"]
 samples_path = ds_paths["samples_path"]
 
 sqlite_file = os.path.join(".","..", "datasets","datasets.sqlite")
-

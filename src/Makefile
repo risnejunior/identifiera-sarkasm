@@ -1,5 +1,8 @@
 train:
-	python3 tflearn_rnn.py --net little_pony
+	python3 tflearn_rnn.py
+
+test:
+	python3 tflearn_rnn.py --ds poria-ratio --in ratio.pickle --pt --pretrained 71PVGG_BIG_CLOWN
 
 # CLEAN NORMAL DATASET #
 balanced:
