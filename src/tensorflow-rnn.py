@@ -146,6 +146,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
         loops = len(xs_split)
         for epoch in range(epochs):
             epoch_loss = 0
+            print("\n=== BEGIN EPOCH",epoch+1, "===\n")
             for batch_i in range(loops):
                 batch_x = xs_split[batch_i]
                 batch_y = ys_split[batch_i]
@@ -153,10 +154,11 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
                 comp = np.equal(np.argmax(pred,1),np.argmax(batch_y,1))
                 current_accuracy = np.mean(comp.astype(np.float32))
                 epoch_loss += c
-                print( batch_i + 1, "batches completed out of:", loops ,"| current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(current_accuracy), "",end=" \r",)
+                print("Optimizer:",optimizer.name, "|", batch_i + 1, "batches completed out of:", loops)
+                print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(current_accuracy), "",end=" \033[A\r",flush=True)
 
+            print("\033[2B")
             saver = tf.train.Saver()
-            print("")
             save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
             accuracy = test_network_run(ps.valid.xs,np.array(ps.valid.ys),prediction)
             print("Checkpoint file saved in %s" % save_path )
