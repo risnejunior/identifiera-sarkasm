@@ -43,8 +43,7 @@ data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,max_sequence])
 labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
 keep_prob_placeholder = tf.placeholder('float')
 
-train_call = 1
-val_call = 2
+trainable_embeddings = False
 
 def _arg_callback_pt():
 	global print_test
@@ -92,22 +91,26 @@ def _arg_callback_in(file_name):
 	samples_path = os.path.join(rel_data_path, file_name)
 	print("<Using processed samples from: {}>".format(samples_path))
 
-def _arg_callback_ss(s_step = None, s_epoch = 'False'):
-	"""
-	Set the snapshot step
-	"""
-	global snapshot_step, snapshot_epoch
-	if isinstance(s_step, str) and s_step.lower() == 'none':
-		s_step = None
-	snapshot_step = int(s_step) if s_step is not None else None
-	snapshot_epoch = True if s_epoch.lower() == 'true' else False
-	print("<Snapshot step: {}, Snaphot epoch end: {}>".format(s_step, s_epoch))
+def _arg_callback_trainemb(trainable = True):
+    global trainable_embeddings
+    trainable_embeddings = trainable
+
+#def _arg_callback_ss(s_step = None, s_epoch = 'False'):
+#	"""
+#	Set the snapshot step
+#	"""
+#	global snapshot_step, snapshot_epoch
+#	if isinstance(s_step, str) and s_step.lower() == 'none':
+#		s_step = None
+#	snapshot_step = int(s_step) if s_step is not None else None
+#	snapshot_epoch = True if s_epoch.lower() == 'true' else False
+#	print("<Snapshot step: {}, Snaphot epoch end: {}>".format(s_step, s_epoch))
 
 ## Create the embedding variable
-def init_embedding(vocabulary_size,embedding_size):
+def init_embedding(vocabulary_size,embedding_size,trainable = False):
     with tf.device("/cpu:0"):
         W = tf.Variable(tf.constant(0.0, shape = [vocabulary_size, embedding_size]),
-                        trainable = False,
+                        trainable = trainable,
                         name = "W")
         embedding_placeholder = tf.placeholder(dtype = tf.float32,
                                                shape = [vocabulary_size, embedding_size]
@@ -118,12 +121,13 @@ def init_embedding(vocabulary_size,embedding_size):
 
 # Setting the word embeddings
 def set_embedding(sess,init,placeholder,embeddings):
-    sess.run(init, feed_dict={placeholder: embeddings})
-
+	with tf.device("/cpu:0"):
+		sess.run(init, feed_dict={placeholder: embeddings})
 #Word embedding layer
 def word_embedding_layer(word,embedding_tensor):
-    embedding_layer = tf.nn.embedding_lookup(embedding_tensor,word)
-    return embedding_layer #Not sure if this is done yet
+	with tf.device("/cpu:0"):
+		embedding_layer = tf.nn.embedding_lookup(embedding_tensor,word)
+		return embedding_layer #Not sure if this is done yet
 
 #Defining and building the Neural Network
 
@@ -230,7 +234,7 @@ arghandler = Arg_handler()
 arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from. args: <filename>")
 arghandler.register_flag('net', _arg_callback_net, ['network'], "Which network to use. args: <network name>")
 arghandler.register_flag('train', _arg_callback_train, helptext = "Use settings for training. Args: <epochs> <run_count> <batch size>")
-arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set snapshots. No arguments means no snapshots. Args: <snapshot step> <epoch end>")
+#arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set snapshots. No arguments means no snapshots. Args: <snapshot step> <epoch end>")
 arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
@@ -249,7 +253,7 @@ else:
     emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
 
 
-emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
+emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size, trainable_embeddings)
 train_neural_network(ps,emb_init,W,emb_placeholder,network_name)
 
 
