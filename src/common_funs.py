@@ -21,11 +21,20 @@ class TallyGroup:
 """
 
 class TroubleMakers:
-	def __init__(self, ids= None, ys = None):
+	def __init__(self, ids= None, ys = None, do_nothing = False):
 		self.datapoints = {}
 
+		if do_nothing:
+			self.init_points = self.increment = self.addNew = self.update = self.merge = self.do_nothing
+
 		if ids and ys:
-			self.datapoints = {sid: Datapoint(sid, y[0] < y[1]) for sid, y in zip(ids, ys)}
+			self.datapoints = self.init_points(ids, ys)
+
+	def do_nothing(self):
+		pass
+
+	def init_points(self, ids, ys):
+		return {sid: Datapoint(sid, y[0] < y[1]) for sid, y in zip(ids, ys)}
 
 	def increment(self, sid, isTrue):
 		if sid in self.datapoints:
@@ -79,7 +88,7 @@ class TroubleMakers:
 class Datapoint:
 	def __init__(self, sid, label, correct = 0, total = 0):		
 		self.sid = sid
-		self.label = label		
+		self.label = label
 		self.correct = correct
 		self.total = total
 
@@ -499,7 +508,7 @@ class Binary_confusion_matrix:
 	# positive means sarcastic, negative means normal
 	# fn: false negative, fp: false positive,tp: true positive,tn: true negative	
 
-	def __init__(self, predictions_file = None):
+	def __init__(self, save_predictions = True):
 		
 		self.metrics = {}
 		self.rows = []
@@ -507,7 +516,7 @@ class Binary_confusion_matrix:
 
 	def calc(self, ids, predictions, Ys, name = None):		
 		
-		tm = TroubleMakers(ids, Ys)		
+		tm = TroubleMakers(ids, Ys)
 
 		fn = fp = tp = tn = 0
 		facit = list( zip( ids, predictions, Ys ) )

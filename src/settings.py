@@ -66,7 +66,6 @@ if not (os.path.isdir(models_path)):
 	os.makedirs(models_path)
 pretrained_path = os.path.join(models_path, '6P8GFZ_FEVERISH_FOXBAT' + ".tfl")
 
-
 # what data set to use
 datasets = {
 	"poria-balanced": {
@@ -140,3 +139,6 @@ path_pos = ds_paths["pos_source_path"]
 path_name_neg = ds_paths["path_name_neg"]
 path_name_pos = ds_paths["path_name_pos"]
 samples_path = ds_paths["samples_path"]
+
+sqlite_file = os.path.join(".","..", "datasets","datasets.sqlite")
+

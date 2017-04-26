@@ -20,11 +20,6 @@ tally = saved.tallyPredictions()
 print(tally)
 print(sample_count)
 
-total = None
-for group in tally:
-	if group.
-
-
 plt.axis([0, 30, 0, sample_count])
 plt.ion()
 
