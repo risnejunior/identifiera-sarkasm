@@ -14,12 +14,19 @@ from common_funs import Arg_handler
 from settings import *
 
 def _arg_callback_ds(ds_name):
-	"""
-	Select dataset
-	"""
-	global dataset_proto
-	dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
-	print("<Using dataset: {}>".format(ds_name))
+    """
+    Select dataset
+    """
+    global dataset_name, dataset_proto
+    dataset_name = ds_name
+    dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
+    print("<Using dataset: {}>".format(ds_name))
+
+def _arg_callback_strict():
+    global strict, includetags
+    strict = True
+    includetags = False
+    print("<Using strict cleaning>")
 
 def clean_tweets_detector(source_name):
     data=[]
@@ -38,7 +45,6 @@ def clean_tweets_detector(source_name):
 
     if settings.strict:
         for row in csv_file_object:
-
             if len(row[0:])==1:
 
                 if settings.dataset_name == "poria-balanced" or settings.dataset_name == "poria-ratio":
@@ -116,16 +122,11 @@ dataset_proto = datasets[dataset_name]
 
 arghandler = Arg_handler()
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
+arghandler.register_flag('strict', _arg_callback_ds, [''], "If flag is set, clean the dataset with strict settings.")
 arghandler.consume_flags()
 
 dataset = settings.set_rel_paths(dataset_proto)
 samples_path = dataset["samples_path"]
-
-# print(settings.rel_data_path)
-# print(settings.path_neg)
-# print(dataset["rel_path"])
-# print(dataset["rel_path"]+"/"+dataset_proto["neg_source"])
-
 
 #normal
 target_folder = os.path.join(dataset["rel_path"], "neg")
