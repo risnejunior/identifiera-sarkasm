@@ -5,20 +5,106 @@ import json
 import inspect
 import random
 import pickle
-
 from random import triangular as rt
-from prettytable import PrettyTable, ALL
-from colorama import Fore, Back, Style
 import atexit
 import sys
 from collections import namedtuple
 
+import sqlite3
+from prettytable import PrettyTable, ALL
+from colorama import Fore, Back, Style
 import numpy as np
 
-"""
-class TallyGroup:
-	def __init__(self, ):
-"""
+import settings
+
+class Open_Dataset:
+	modes = {'w':'write','r':'read'}
+
+	def __init__(self, dataset, table, mode, **where):
+
+		if mode not in Open_Dataset.modes:
+			raise ValueError("mode not recognized")
+
+		self._dataset = dataset		
+		self._table = table
+		self._mode = mode
+		self._db = DB_Handler(settings.sqlite_file)
+		self._where = where
+
+	def write(self, sample_id, text):
+		self._db.insertRow(self._table,
+						   dataset = self._dataset,
+						   sample_text=text, 
+						   sample_id=sample_id,
+						   **self._where)
+
+	def _enter_w(self):
+		return self
+
+	def _enter_r(self):
+		for row in self._db.getRows(self._table, **self._where):
+			yield row
+
+	def __enter__(self):
+		if self._mode == 'r':
+			return self._enter_r()
+		else:
+			return self._enter_w()
+
+	def __exit__(self, type, value, trackback):
+		self._db.close()
+
+class DB_Handler:
+
+	def __init__(self, sqlite_file):
+		self._conn = sqlite3.connect(sqlite_file)
+		self._conn.row_factory = sqlite3.Row
+		self._c = self._conn.cursor()
+		#atexit.register(self.close)
+
+	def close(self):
+		#commit and close
+		self._conn.commit()
+		self._conn.close()
+
+	def createTable(self, table_name):
+		try:
+			self._c.execute('CREATE TABLE {tn} (id INTEGER PRIMARY KEY)'
+				.format(tn=table_name))
+		except sqlite3.OperationalError:
+			return False
+		else:
+			return True
+
+	def addColumn(self, table_name, column_name, column_type):
+		try:
+			self._c.execute('ALTER TABLE {tn} ADD COLUMN {cn} {ct}'
+				.format(tn=table_name, cn=column_name, ct=column_type))
+		except sqlite3.OperationalError:
+			return False
+		else:
+			return True
+
+	def commit(self):
+		self._conn.commit()
+
+	def getRows(self, table_name, **where):
+
+		whereSql = ""
+		for i, clause in enumerate(where.keys()):		
+			cmd =  'WHERE' if i == 0 else 'AND'
+			whereSql += " {0:} {1:} = :{1:}".format(cmd, clause)
+
+		self._c.execute("SELECT * FROM {}{}"
+			.format(table_name, whereSql), where)
+		return self._c.fetchall()
+
+
+	def insertRow(self, table_name, **vals):
+		columns = ','.join(vals.keys())
+		vals_ph = ','.join(['?' for _ in range(len(vals))])
+		self._c.execute('INSERT OR IGNORE INTO {tn} ({cols}) VALUES ({v_ph})'
+			.format(tn=table_name, cols=columns, v_ph=vals_ph), list(vals.values()))
 
 class TroubleMakers:
 	def __init__(self, ids= None, ys = None, do_nothing = False):

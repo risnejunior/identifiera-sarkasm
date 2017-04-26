@@ -39,7 +39,7 @@ def clean_tweets_detector(source_name):
     url = re.compile(r'\bhttp\b\S+')
     url2 = re.compile(r'\bhttps\b\S+')
 
-    csv_file_object = csv.reader(open(source_name, 'r'),delimiter='\n')
+    csv_file_object = csv.reader(open(source_name, 'r', encoding='utf8'),delimiter='\n')
     next(csv_file_object)
 
 
