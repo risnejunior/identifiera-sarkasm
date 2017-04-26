@@ -43,11 +43,11 @@ def clean_tweets_detector(source_name):
     next(csv_file_object)
 
 
-    if settings.strict:
+    if strict:
         for row in csv_file_object:
             if len(row[0:])==1:
 
-                if settings.dataset_name == "poria-balanced" or settings.dataset_name == "poria-ratio":
+                if dataset_name == "poria-balanced" or dataset_name == "poria-ratio":
                     temp=row[0:]
                     temp = (temp[0].split('\t'))[2]
                 else:
@@ -77,7 +77,7 @@ def clean_tweets_detector(source_name):
 
             if len(row[0:])==1:
 
-                if settings.dataset_name == "poria-balanced" or settings.dataset_name == "poria-ratio":
+                if dataset_name == "poria-balanced" or dataset_name == "poria-ratio":
                     temp=row[0:]
                     temp = (temp[0].split('\t'))[2]
                 else:
