@@ -245,7 +245,7 @@ def train_model(model, hyp, this_run_id, log_run):
 def do_prediction(model, hyp, this_run_id, log_run):
 	# print confusion matrix for the different sets
 	print("\nRunning prediction...")
-	print(boxString("Run id: " + this_run_id + " | Dataset: " + settings.dataset_name))
+	print(boxString("Run id: " + this_run_id))
 
 	cm = Binary_confusion_matrix()
 
@@ -260,7 +260,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 		cm.calc(ps.test.ids , predictions, ps.test.ys, 'test-set')
 
 	cm.print_tables()
-	cm.save_predictions(predictions_filename, 
+	cm.save_predictions(predictions_filename,
 						directory = 'logs',
 						sets=['training-set','validation-set','test-set'],
 						update = True)
@@ -352,6 +352,7 @@ for hyp in hypers:
 	log_run.log(hyp.get_hypers(), logname='hypers', aslist = False)
 	log_run.log(this_run_id, logname='run_id', aslist = False)
 	log_run.log(network_name, logname='network_name', aslist = False)
+	log_run.log(dataset_proto['ps_file_name'], logname='Dataset', aslist = False)
 
 	tf.reset_default_graph()
 	with tf.Graph().as_default(), tf.Session() as sess:

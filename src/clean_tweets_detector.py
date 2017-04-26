@@ -1,4 +1,4 @@
-"""  This functions cleans all the tweets. In two ways: Either strict or non-strict. """ 
+"""  This functions cleans all the tweets. In two ways: Either strict or non-strict. """
 
 """ The strict version discards all tweets that start with a @ (i.e mention), and also discard all tweets that contain an url. Thereafter it replaces the sarcasm and sarcastic hashtags (#) with blank. Friendtags (@) and regular hashtags (#) are replaced with either a <tag> or with blank, depending on how the includetags variable is set in settings.py. Lastly we remove all duplicates and check if the tweet, after all replacing, is longer than 2, to get rid of short tweets. """
 
@@ -10,6 +10,23 @@ import re
 import settings
 import json
 from common_funs import Progress_bar
+from common_funs import Arg_handler
+from settings import *
+
+def _arg_callback_ds(ds_name):
+    """
+    Select dataset
+    """
+    global dataset_name, dataset_proto
+    dataset_name = ds_name
+    dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
+    print("<Using dataset: {}>".format(ds_name))
+
+def _arg_callback_strict():
+    global strict, includetags
+    strict = True
+    includetags = False
+    print("<Using strict cleaning>")
 
 def clean_tweets_detector(source_name):
     data=[]
@@ -26,12 +43,11 @@ def clean_tweets_detector(source_name):
     next(csv_file_object)
 
 
-    if settings.strict:
+    if strict:
         for row in csv_file_object:
-
             if len(row[0:])==1:
 
-                if settings.dataset_name == "poria-balanced" or settings.dataset_name == "poria-ratio":
+                if dataset_name == "poria-balanced" or dataset_name == "poria-ratio":
                     temp=row[0:]
                     temp = (temp[0].split('\t'))[2]
                 else:
@@ -61,7 +77,7 @@ def clean_tweets_detector(source_name):
 
             if len(row[0:])==1:
 
-                if settings.dataset_name == "poria-balanced" or settings.dataset_name == "poria-ratio":
+                if dataset_name == "poria-balanced" or dataset_name == "poria-ratio":
                     temp=row[0:]
                     temp = (temp[0].split('\t'))[2]
                 else:
@@ -102,22 +118,32 @@ def create_tweets(data, target_folder, index):
         i += 1
         pb.tick()
 
+dataset_proto = datasets[dataset_name]
+
+arghandler = Arg_handler()
+arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
+arghandler.register_flag('strict', _arg_callback_ds, [''], "If flag is set, clean the dataset with strict settings.")
+arghandler.consume_flags()
+
+dataset = settings.set_rel_paths(dataset_proto)
+samples_path = dataset["samples_path"]
+
 #normal
-target_folder = os.path.join(settings.rel_data_path, "neg")
+target_folder = os.path.join(dataset["rel_path"], "neg")
 nindex = 0
 if not (os.path.isdir(target_folder)):
     os.makedirs(target_folder)
-print( "Cleaning:" + settings.path_neg)
-negdata = clean_tweets_detector(settings.path_neg)
+print( "Cleaning:" + dataset["rel_path"]+"/"+dataset_proto["neg_source"])
+negdata = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["neg_source"])
 print ("Normal tweets: " + str(len(negdata)))
 create_tweets(negdata, target_folder, nindex)
 
 #sarcastic
-target_folder = os.path.join(settings.rel_data_path, "pos")
+target_folder = os.path.join(dataset["rel_path"], "pos")
 sindex = 1000000
 if not (os.path.isdir(target_folder)):
     os.makedirs(target_folder)
-print( "Cleaning: " + settings.path_pos)
-posdata = clean_tweets_detector(settings.path_pos)
+print( "Cleaning: " + dataset["rel_path"]+"/"+dataset_proto["pos_source"])
+posdata = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["pos_source"])
 print ("Sarcastic tweets: " + str(len(posdata)))
 create_tweets(posdata, target_folder, sindex)
