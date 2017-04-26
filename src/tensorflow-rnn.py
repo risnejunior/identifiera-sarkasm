@@ -141,9 +141,11 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
                                                                   ))
 
     l2_loss = network.calc_l2_loss()
+    if trainable_embeddings:
+        l2_loss = l2_loss + tf.nn.l2_loss(W)
     optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost + 0.01 * l2_loss)
     sess = tf.Session()
-    xs_split,ys_split = split_chunks(ps.train.xs, np.array(ps.train.ys),batch_size)
+    xs_split,ys_split = split_chunks(ps.train.xs,batch_size, np.array(ps.train.ys))
     with sess.as_default():
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
@@ -162,9 +164,10 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
                 print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(current_accuracy), "",end=" \033[A\r",flush=True)
 
             print("\033[2B")
+            print("VALIDATING TRAINING:...")
             saver = tf.train.Saver()
             save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
-            accuracy = test_network_run(ps.valid.xs,np.array(ps.valid.ys),prediction)
+            accuracy = validation_run(ps.valid.xs,np.array(ps.valid.ys),prediction)
             print("Checkpoint file saved in %s" % save_path )
             print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(accuracy))
 
@@ -172,34 +175,35 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
         date = time.strftime("%m%d%y-%H%M%S")
         saver_path = saver.save(sess, "../models/tfrnn_model-%s.ckpt" % date)
         print("Model saved at %s" % saver_path )
-        accuracy = test_network_run(ps.test.xs,np.array(ps.test.ys),prediction)
-        print("Test accuracy of this network is: ", accuracy)
+        run_test_print_cm(ps,prediction)
     sess.close()
 
-def split_chunks(xs,ys,size):
+def split_chunks(xs,size,ys=None):
     xh,xw = xs.shape
-    yh,yw = ys.shape
-    if xh != yh :
-        raise ValueError("Sizes don't match")
-    #print(xh)
     n_batches = xh//size
-    #print(n_batches)
-    overflow = xh - (n_batches * size)
-    #print(overflow)
-    xs_overflow = xs[-overflow:]
-    #print(xs_overflow.shape)
-    xs_notoverflow = xs[:xh - overflow]
-    ys_overflow = ys[-overflow:]
-    ys_notoverflow = ys[:yh - overflow]
-    xs_split = np.split(xs_notoverflow,n_batches)
-    ys_split = np.split(ys_notoverflow,n_batches)
-    xs_split.append(np.array(xs_overflow))
-    ys_split.append(np.array(ys_overflow))
+    ys_split = None
+    if ys != None:
+        yh,yw = ys.shape
+        if xh != yh :
+            raise ValueError("Sizes don't match")
+        ys_split = split_chunks_helper(ys,n_batches,size)
+    xs_split = split_chunks_helper(xs,n_batches,size)
     return xs_split,ys_split
 
+def split_chunks_helper(xs,n_batches,size):
+	xh, _ = xs.shape
+	#print(n_batches)
+	overflow = xh - (n_batches * size)
+	#print(overflow)
+	xs_overflow = xs[-overflow:]
+	    #print(xs_overflow.shape)
+	xs_notoverflow = xs[:xh - overflow]
+	xs_split = np.split(xs_notoverflow,n_batches)
+	xs_split.append(np.array(xs_overflow))
+	return xs_split
 
 # Method for validating network in training
-def test_network_run(data,labels,network_op):
+def validation_run(data,labels,network_op):
     prediction = tf.nn.log_softmax(network_op)
     correct = tf.equal(tf.argmax(prediction,1), tf.argmax(labels_placeholder,1))
     accuracy = tf.reduce_mean(tf.cast(correct,'float'))
@@ -224,9 +228,31 @@ def run_test(ps,path,network_name):
         accuracy = test_network_run(ps.train.xs,np.array(ps.train.ys),output)
         print("Test accuracy of this network is: ", accuracy)
 
+def run_test_print_cm(ps,network_op):
 
+    sess = tf.get_default_session()
+    cm = Binary_confusion_matrix()
+    pred1 = batchpredict(90,ps.train.xs,network_op)
+    cm.calc(ps.train.ids , pred1, ps.train.ys, 'training-set')
+    pred2 = sess.run(network_op, feed_dict={data_placeholder: ps.valid.xs, keep_prob_placeholder: 1.0})
+    cm.calc(ps.valid.ids , pred2, ps.valid.ys, 'validation-set')
+    if print_test:
+        pred3 = sess.run(network_op, feed_dict={data_placeholder: ps.test.xs, keep_prob_placeholder: 1.0})
+        cm.calc(ps.test.ids , pred3, ps.test.ys, 'test-set')
+    cm.print_tables()
 
+def batchpredict(batch_size,data,network_op):
 
+	sess = tf.get_default_session()
+	data_batches, _ = split_chunks(data,batch_size)
+	results = np.array([np.zeros(n_classes)])
+	for batch in data_batches:
+		pred = sess.run(network_op,feed_dict={data_placeholder: batch, keep_prob_placeholder: 1.0})
+		results = np.concatenate((results,pred))
+
+	results = np.delete(results, (0), axis = 0)
+	print(results)
+	return results
 # Here starts the program
 
 #Argument handling, Copy paste from tflearn_rnn.py
