@@ -70,10 +70,10 @@ def word_embedding_layer(word,embedding_tensor):
 
 #Defining and building the Neural Network
 
-def train_neural_network(ps,emb_init,W,emb_placeholder):
+def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
 
     embeddings = word_embedding_layer(data_placeholder,W)
-    network = tfnetworks.fetch_network("little pony",n_classes,params = {'rnn_size': rnn_size})
+    network = tfnetworks.fetch_network(network_name,n_classes,params = {'rnn_size': rnn_size})
     prediction = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
                                                                   labels = labels_placeholder
@@ -177,7 +177,7 @@ else:
 
 
 emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
-train_neural_network(ps,emb_init,W,emb_placeholder)
+train_neural_network(ps,emb_init,W,emb_placeholder,network_name)
 
 
 
