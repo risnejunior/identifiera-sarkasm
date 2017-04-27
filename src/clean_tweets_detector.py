@@ -66,10 +66,10 @@ def clean_tweets_detector(source_name):
 
                 if len(temp)>0 and temp[0]!='@' and 'http' not in temp and 'https' not in temp: #try with and without url
 
-                    temp=friendtag.sub(settings.tags[0], temp)
+                    temp=friendtag.sub(tags[0], temp)
                     temp=sarcasmtag.sub('', temp)
                     temp=sarcastictag.sub('', temp)
-                    temp=hashtags.sub(settings.tags[2],temp)
+                    temp=hashtags.sub(tags[2],temp)
                     temp=' '.join(temp.split()) #remove useless space
 
                     # Check that tweet contains more than 3 words
@@ -96,12 +96,12 @@ def clean_tweets_detector(source_name):
 
                 if len(temp)>0:
 
-                    temp=friendtag.sub(settings.tags[0], temp)
+                    temp=friendtag.sub(tags[0], temp)
                     temp=sarcasmtag.sub('', temp)
                     temp=sarcastictag.sub('', temp)
-                    temp=hashtags.sub(settings.tags[2],temp)
-                    temp=url.sub(settings.tags[1], temp)
-                    temp=url2.sub(settings.tags[1], temp)
+                    temp=hashtags.sub(tags[2],temp)
+                    temp=url.sub(tags[1], temp)
+                    temp=url2.sub(tags[1], temp)
                     temp=' '.join(temp.split()) #remove useless space
 
                     # Check that tweet contains more than 3 words
