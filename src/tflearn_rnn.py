@@ -181,7 +181,9 @@ def create_model(net, hyp, this_run_id, log_run):
 	checkpoint_path = os.path.join("checkpoints",this_run_id + ".ckpt")
 	model = tflearn.DNN(net,
 					    tensorboard_verbose=3,
-					    checkpoint_path=checkpoint_path)
+					    checkpoint_path=checkpoint_path,
+					    best_checkpoint_path=checkpoint_path,
+					    best_val_accuracy=0.75)
 
 	#Load pretrained model
 	if pretrained_model:
@@ -248,15 +250,18 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	print(boxString("Run id: " + this_run_id))
 
 	cm = Binary_confusion_matrix()
+	from common_funs import chunks
+	fun_chunks = lambda fun, parts: [fun(part) for part in chunks(parts, 100)]	
+	flatten = lambda l: [x for xs in l for x in xs]
 
-	predictions = model.predict(ps.train.xs)
+	predictions = flatten(fun_chunks(model.predict, ps.train.xs))
 	cm.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
 
-	predictions = model.predict(ps.valid.xs)
+	predictions = flatten(fun_chunks(model.predict, ps.valid.xs))
 	cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
 
 	if print_test:
-		predictions = model.predict(ps.test.xs)
+		predictions = flatten(fun_chunks(model.predict, ps.test.xs))
 		cm.calc(ps.test.ids , predictions, ps.test.ys, 'test-set')
 
 	cm.print_tables()
