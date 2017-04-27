@@ -265,6 +265,7 @@ arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate t
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
 print("\n")
+arghandler.register_flag('trainemb', _arg_callback_trainemb, ['trainable'], "Set trainable embeddings")
 arghandler.consume_flags()
 
 
