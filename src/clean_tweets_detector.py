@@ -25,8 +25,14 @@ def _arg_callback_ds(ds_name):
 def _arg_callback_strict():
     global strict, includetags
     strict = True
-    includetags = False
+    includetags = True
     print("<Using strict cleaning>")
+
+def _arg_callback_poria():
+    global strict, includetags
+    strict = False
+    includetags = False
+    print("<Using poria cleaning>")
 
 def clean_tweets_detector(source_name):
     data=[]
@@ -122,7 +128,8 @@ dataset_proto = datasets[dataset_name]
 
 arghandler = Arg_handler()
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
-arghandler.register_flag('strict', _arg_callback_ds, [''], "If flag is set, clean the dataset with strict settings.")
+arghandler.register_flag('strict', _arg_callback_strict, [''], "If flag is set, clean the dataset with strict settings.")
+arghandler.register_flag('poria', _arg_callback_poria, [''], "If flag is set, clean the dataset with poria settings.")
 arghandler.consume_flags()
 
 dataset = settings.set_rel_paths(dataset_proto)

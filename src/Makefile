@@ -72,3 +72,14 @@ train-strict-scramble-ratio:
 
 train-strict-scramble-detector:
 	python3 tflearn_rnn.py --ds detector --in strict_scrambled_detector.pickle
+
+	# STRICT VS PORIA #
+strict-clean-detector:
+	python3 clean_tweets_detector.py --ds detector --strict
+	python3 preprocess_data.py --ds detector --of strict_detector.pickle
+	python3 tflearn_rnn.py --ds detector --in strict_detector.pickle
+
+poria-clean-detector:
+	python3 clean_tweets_detector.py --ds detector --poria
+	python3 preprocess_data.py --ds detector --of poriacleaned_detector.pickle
+	python3 tflearn_rnn.py --ds detector --in poriacleaned_detector.pickle
