@@ -40,7 +40,7 @@ else:
 #used in training
 network_name = 'little_pony'
 run_count = 1
-epochs = 10
+epochs = 2
 batch_size = 90
 snapshot_steps = math.floor(sample_count / (1 * batch_size)) # n = checkpoints per epoch
 
