@@ -27,6 +27,7 @@ import time
 import tensorflow as tf
 # Importing rnn framework
 from tensorflow.contrib import rnn
+from tensorflow.contrib import learn
 # Importing NumPy
 import numpy as np
 
@@ -151,7 +152,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
     tf.summary.scalar("Accuracy:", accuracy)
     #tf.summary.scalar("Optimizer", optimizer)
     tf.summary.scalar("Loss:", cost)
-    date = time.strftime("%m%d%y-%H%M%S")
+    date = time.strftime("%b%d%y-%H%M%S")
     summary_op = tf.summary.merge_all()
     sess = tf.Session()
     xs_split,ys_split = split_chunks(ps.train.xs,batch_size, np.array(ps.train.ys))
@@ -179,12 +180,12 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
             print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy))
 
             saver = tf.train.Saver()
-            save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
+            save_path = saver.save(sess, "./models/tfcheckpoint.ckpt")
             print("Checkpoint file saved in %s" % save_path )
 
         saver = tf.train.Saver()
         date = time.strftime("%m%d%y-%H%M%S")
-        saver_path = saver.save(sess, "../models/tfrnn_model-%s.ckpt" % date)
+        saver_path = saver.save(sess, "./models/tfrnn_model-%s.ckpt" % date)
         print("Model saved at %s" % saver_path )
         run_test_print_cm(ps,prediction)
     sess.close()
