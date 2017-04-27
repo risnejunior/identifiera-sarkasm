@@ -20,6 +20,68 @@ import settings
 class Open_Dataset:
 	modes = {'w':'write','r':'read'}
 
+	@staticmethod
+	def check_init_db(s_classes):
+		"""
+		Check if DB file has tables and some data, else create and populate tables 
+		"""
+
+		#check if DB has tables raw & cleaned
+		db = DB_Handler(settings.sqlite_file)
+		db._c.execute("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name='raw' OR name='cleaned';")
+		count = db._c.fetchone()
+		if count and count['count'] < 2:
+			print("Adding tables to database")
+			db._c.executescript("""
+				CREATE TABLE IF NOT EXISTS raw (
+				  id            integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+				  sample_id     integer,
+				  sample_text   text,
+				  sample_class  integer,
+				  dataset       text,
+				  
+				  /* Keys */
+				  CONSTRAINT sid_dataset
+				    UNIQUE (sample_id, dataset)
+				);
+
+				CREATE TABLE IF NOT EXISTS cleaned (
+				  id            integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+				  sample_id     integer,
+				  sample_text   text,
+				  sample_class  integer,
+				  dataset       text,
+				  
+				  /* Keys */
+				  CONSTRAINT sid_dataset
+				    UNIQUE (sample_id, dataset)
+				);
+			""")
+		else:
+			print("Database present")
+
+		#Check if table raw has at least one row
+		db._c.execute("SELECT COUNT(*) AS count FROM raw;")
+		count = db._c.fetchone()
+		if count and count['count'] < 1:
+			print("no data in table raw, fetching..")
+
+			import csv
+			#add samples to table 'raw'			
+			i = 1
+			for path, hasOwnId, s_class in s_classes:
+				with open(path, 'r', encoding="utf8") as f:
+					for line in csv.reader(f, delimiter='\t'):
+						if not line: continue
+						#if hasown id
+						db.insertRow('raw', dataset=settings.dataset_name, 
+											sample_id= i, 
+											sample_class= s_class, 
+											sample_text=line[0])
+						if i % 5000 == 0: print("Rows: {}".format(str(i)), end='\r')
+						i += 1
+		db.close()
+
 	def __init__(self, dataset, table, mode, **where):
 
 		if mode not in Open_Dataset.modes:
@@ -30,6 +92,8 @@ class Open_Dataset:
 		self._mode = mode
 		self._db = DB_Handler(settings.sqlite_file)
 		self._where = where
+		self._rows = ()
+		self._i = 0
 
 	def write(self, sample_id, text):
 		self._db.insertRow(self._table,
@@ -53,6 +117,18 @@ class Open_Dataset:
 
 	def __exit__(self, type, value, trackback):
 		self._db.close()
+
+	def __next__(self):
+		if self._i < len(self._rows):
+			row = self._rows[self._i]
+			self._i += 1
+			return row 
+		else:
+			raise StopIteration
+
+	def __iter__(self):
+		self._rows = self._db.getRows(self._table, **self._where)
+		return self
 
 class DB_Handler:
 
@@ -99,6 +175,11 @@ class DB_Handler:
 			.format(table_name, whereSql), where)
 		return self._c.fetchall()
 
+	def insertRows(self, table_name, cols = [], values = [()]):
+		columns = ','.join(cols)
+		vals_ph = ','.join(['?' for _ in range(len(values[0]))])
+		self._c.executemany('INSERT OR IGNORE INTO {tn} ({cols}) VALUES ({v_ph})'
+			.format(tn=table_name, cols=columns, v_ph=vals_ph), values)
 
 	def insertRow(self, table_name, **vals):
 		columns = ','.join(vals.keys())
@@ -316,8 +397,9 @@ class Arg_handler():
 				params.insert(0, arg)
 
 		if len(params) > 0:
-			print("Arguments passed but not consumed:")
+			print("Arguments passed but not consumed:", end='')
 			print(params)
+			print("Make sure you use '--' instead of '-' to denote flags")
 			quit()
 
 	def _printHelp(self, alias = None):

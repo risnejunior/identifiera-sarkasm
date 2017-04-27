@@ -31,11 +31,7 @@ max_sequence = 75 # words to include from sample, smaller samples will be padded
 #clean tweets
 strict = False #option to chose strict cleansing of tweets or non-strict
 includetags = True #option to include tags or not
-
-if includetags:
-	tags = ["<user>", "<url>", "<hashtag>"]
-else:
-	tags = [" ", " ", " "]
+tags = ["<user>", "<url>", "<hashtag>"]
 
 #used in training
 network_name = 'little_pony'
@@ -71,25 +67,29 @@ datasets = {
 		"rel_path": [".","..", "datasets","poria", "en-balanced"],
 		"neg_source": "balanced_normal_tweets.csv",
 		"pos_source": "balanced_sarcastic_tweets.csv",
-		"ps_file_name": "processed.pickle"
+		"ps_file_name": "processed.pickle",
+		"has_own_id": True
 	},
 	"poria-ratio": {
 		"rel_path": [".","..", "datasets","poria", "en-ratio"],
 		"neg_source": "normal_tweets.csv",
 		"pos_source": "sarcastic_tweets.csv",
-		"ps_file_name": "processed.pickle"
+		"ps_file_name": "processed.pickle",
+		"has_own_id": True
 	},
 	"imdb" : {
 		"rel_path": [".","..", "datasets","imdb"],
 		"neg_source": "",
 		"pos_source": "",
-		"ps_file_name": "processed.pickle"
+		"ps_file_name": "processed.pickle",
+		"has_own_id": True
 	},
 	"detector" : {
 		"rel_path": [".","..", "datasets","detector"],
 		"neg_source": "normal_tweets.csv",
 		"pos_source": "sarcastic_tweets.csv",
-		"ps_file_name": "processed.pickle"
+		"ps_file_name": "processed.pickle",
+		"has_own_id": False
 	}
 }
 

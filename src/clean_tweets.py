@@ -1,133 +1,153 @@
-# -*- coding: utf-8 -*-
+"""  This functions cleans all the tweets. In two ways: Either strict or non-strict. """
 
-##############
-# Removes mentions, hashtags, links and other media from tweets and creates
-# a new file per tweet in target sub directore under 'cleanded' containing only the text.
-#
-# Usage example: python clean_tweets.py balanced_normal_tweets.csv normal
-#
+""" The strict version discards all tweets that start with a @ (i.e mention), and also discard all tweets that contain an url. Thereafter it replaces the sarcasm and sarcastic hashtags (#) with blank. Friendtags (@) and regular hashtags (#) are replaced with either a <tag> or with blank, depending on how the includetags variable is set in settings.py. Lastly we remove all duplicates and check if the tweet, after all replacing, is longer than 2, to get rid of short tweets. """
 
-from pprint import pprint
-import sys
-import codecs
-import re
-import nltk
-import string
-from collections import Counter
-from nltk.corpus import stopwords
-import csv
-import json
+""" The non-strict version replaces the sarcasm and sarcastic hashtags (#) with blank. Friendtags (@), regular hashtags (#), urls (http) are replaced with either a <tag> or with blank, depending on how the includetags variable is set in settings.py. Lastly we remove all duplicates and check if the tweet, after all replacing, is longer than 2, to get rid of short tweets. """
+
 import os
+import csv
+import re
 import settings
+import json
+from common_funs import Progress_bar
+from common_funs import Arg_handler
+from settings import *
+from collections import OrderedDict
+from common_funs import Logger
 
-# settings
-####################
-#tweets
+def _arg_callback_ds(ds_name):
+    """
+    Select dataset
+    """
+    global dataset_name, dataset_proto
+    dataset_name = ds_name
+    dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
+    print("<Using dataset: {}>".format(ds_name))
 
-if len(sys.argv) == 3:
-	source_name = sys.argv[1]
-	target_folder = os.path.join('cleaned', sys.argv[2])
-	if not os.path.exists(target_folder):
-		os.makedirs(target_folder)
+def _arg_callback_strict():
+    global strict, includetags
+    strict = True
+    includetags = False
+    print("<Using strict cleaning>")
 
-# Downlaod nltk data
-##########################
-# Can also use nltk downlaod manager
-# in python promt:
-# import nltk
-# nltk.download()
-#
-#nltk.download("stopwords")
+def clean_tweets_detector(source_name, sid_i):    
+    ordered_data = OrderedDict()    
+    skipped = dict(empty = 0, url = 0, reply = 0, short = 0, duplicate=0)
+    
+    csv_file_object = csv.reader(open(source_name, 'r', encoding='utf8'), 
+                                delimiter='\t', 
+                                quoting=csv.QUOTE_NONE)
+    for row in csv_file_object:
+        #skip empty rows
+        if not row:
+            skipped['empty'] += 1
+            continue
 
-exclude_tags = ["#sarcasm"]
-pattern_indices = re.compile(r"(?:\[)([\d\s,]+?)(?:\])") #regex for finding indices
-pattern_whitespace = re.compile(r"(\s{3}|\s{2})+") #regex for reducing whitespace
-delete_this = str.maketrans(dict.fromkeys("1234567890:\?;@!&\#\,.()[]\'"))
+        #poria has tweets id, 4 columns and shouldn't be unescaped
+        if len(row) > 1:
+            sid = row[0]
+            temp = row[2]
+            unescape = False
+        
+        #detector has no id, one column and should be unescaped
+        else:
+            sid = sid_i 
+            temp = row[0]
+            unescape = True
+        
+        logger.log((sid, temp), logname='before',  maxlogs=5)
 
-def replace(original_text, indices_list ):
-	if len(indices_list) == 0:
-		return original_text
+        if unescape:
+            temp = temp.encode('unicode-escape').decode("utf8")
+            temp = temp.replace('\\\\u', '\\u')
+            temp = temp.replace(r'"', r'\"')
+            temp = decoder.raw_decode('"'+ temp +'"')[0]
 
-	prev_last = 0
-	list = []
-	indices_list =sorted(indices_list,key=lambda l:l[1][0], reverse=False)
-	for i in indices_list:
-		if not i:
-			continue
-		label,toup = i
-		first, last = toup
-		list.append( original_text[prev_last:first] )
-		#special case sarcastic hashtags
-		if original_text[first:last].lower() not in exclude_tags:
-			list.append( label )
-			#print(label + ": " + original_text[first:last].lower())
-		prev_last = last
+        if 'skip_url' in restrictions and url.search(temp):
+            skipped['url'] += 1
+            continue
 
-	if prev_last != len(original_text):
-		list.append( original_text[prev_last:] )
-	return "".join(list)
+        if 'skip_replies' in restrictions and retweet.search(temp):
+            skipped['reply'] += 1
+            continue
 
-def get_indices(list_string, label):
-	indices_list = re.findall(pattern_indices, list_string)
-	if len(indices_list) == 0:
-		return []
-	converted = []
-	for i in indices_list:
-		a, b = map(int, i.split(","))
-		converted.append([a, b])
-	name_list = [label for _ in list_string]
-	return list( zip(name_list, converted) )
+        if 'remove_tags' in restrictions:
+            temp=friendtag.sub('', temp)
+            temp=url.sub('', temp)
+            temp=hashtags.sub('',temp)
+        else:
+            temp=friendtag.sub(settings.tags[0], temp)
+            temp=url.sub(settings.tags[1], temp)
+            temp=hashtags.sub(settings.tags[2],temp)
 
+        # always remove hashtags
+        temp=sarcasmtag.sub('', temp)
+        
+        if 'skip_short' in restrictions and len(temp.split()) < 3:  
+            skipped['short'] += 1
+            continue
 
-def status_message( tweet_nr ):
-	print("Tweets written: %i" %(tweet_nr) , end="\r")
+        #whitespace
+        temp = ' '.join(temp.split()) #whitespace
+        logger.log((sid, temp), logname='after',  maxlogs=5)
 
-# Index mapping
-################
-#x0: id
-#x1: screen_name
-#x2: tweet_text
-#x3: hashtag_indices
-#x4: user_mentions_indices
-#x5: url_indices
+        # the hash of the tweets is used as the key to remove duplicates
+        sample_hash = hash(temp)
+        if sample_hash not in ordered_data:
+            ordered_data[sample_hash] = (sid, temp)
+        else:
+            skipped['duplicate'] += 1            
+        sid_i += 1
 
-def clean_tweets(target_folder, source_name):
-	tweets = ""
-	tweet_nr = 1
-	with open(source_name, encoding='utf8') as f:
-		next(f) #skip column header
-		for line in f:
-			col=line.split("\t")
-			text = col[2]
-			z = re.findall(pattern_indices, col[3] + col[4] + col[5])
-			out_file_name = os.path.join(target_folder, col[0] + ".txt")
-			out_file = open(out_file_name, 'w', encoding="utf8")
+    print("Tweets skipped/reason: " + str(skipped))
+    return ordered_data.values()
 
-			indices_list = []
-			indices_list += get_indices(col[3], "<hashtag>") #<hashtag> removed because to high accuracy
-			indices_list += get_indices(col[4], "<user>")
-			indices_list += get_indices(col[5], "<url>")
-			text = replace(text, indices_list )
+def create_tweets(data, target_folder):
+    pb = Progress_bar( len(data)-1 )
+    for i, row in data:
+       # print ("Index is: " + str(i))
+        out_file_name = os.path.join(target_folder, str(i) + ".txt")
+        out_file = open(out_file_name, 'w', encoding='utf8')
+        out_file.write(row)
+        out_file.close()
+        pb.tick()
 
-			tweets += (text)
-			reduced = re.sub(pattern_whitespace,' ', text)
-			out_file.write( reduced )
-			out_file.close()
-			status_message( tweet_nr )
-			tweet_nr += 1
+logger = Logger()
+decoder = json.JSONDecoder()
 
+hashtags = re.compile(r'#[^\s.,;]*')
+friendtag = re.compile(r'\S*@[^\s.,;]*')
+retweet = re.compile(r'\A@|RT')
+sarcasmtag = re.compile(r'#sarcasm|sarcastic\b', re.IGNORECASE)
+url = re.compile(r'\bhttps?:\S+', re.IGNORECASE) 
+
+dataset_proto = datasets[dataset_name]
+arghandler = Arg_handler()
+arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
+arghandler.register_flag('strict', _arg_callback_strict, [''], "If flag is set, clean the dataset with strict settings.")
+arghandler.consume_flags()
+dataset = settings.set_rel_paths(dataset_proto)
+samples_path = dataset["samples_path"]
+
+sid_i = 1 # id used, if not in file
+restrictions = []
+if not includetags: restrictions.append('remove_tags')
+if strict: restrictions.extend(['skip_url', 'skip_replies', 'skip_short'])
 
 #normal
-target_folder = os.path.join(settings.rel_data_path, "neg")
+target_folder = os.path.join(dataset["rel_path"], "neg")
 if not (os.path.isdir(target_folder)):
-	os.makedirs(target_folder)
-print( "Cleaning:" + settings.path_neg)
-clean_tweets(target_folder, settings.path_neg)
-print()
+    os.makedirs(target_folder)
+print( "Cleaning:" + dataset["rel_path"]+"/"+dataset_proto["neg_source"])
+negdata = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["neg_source"], sid_i)
+print ("Normal tweets: " + str(len(negdata)))
+create_tweets(negdata, target_folder)
 
 #sarcastic
-target_folder = os.path.join(settings.rel_data_path, "pos")
+target_folder = os.path.join(dataset["rel_path"], "pos")
 if not (os.path.isdir(target_folder)):
-	os.makedirs(target_folder)
-print( "Cleaning: " + settings.path_pos)
-clean_tweets(target_folder, settings.path_pos)
+    os.makedirs(target_folder)
+print( "Cleaning: " + dataset["rel_path"]+"/"+dataset_proto["pos_source"])
+posdata = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["pos_source"], sid_i)
+print ("Sarcastic tweets: " + str(len(posdata)))
+create_tweets(posdata, target_folder)

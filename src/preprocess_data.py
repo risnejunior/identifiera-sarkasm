@@ -343,6 +343,7 @@ dataset = settings.set_rel_paths(dataset_proto)
 path_name_neg = dataset["path_name_neg"]
 path_name_pos = dataset["path_name_pos"]
 samples_path = dataset["samples_path"]
+rel_data_path = ds_paths["rel_path"]
 
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
 tknzr = TweetTokenizer(reduce_len=True, preserve_case=False)
