@@ -151,7 +151,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
     tf.summary.scalar("Accuracy:", accuracy)
     #tf.summary.scalar("Optimizer", optimizer)
     tf.summary.scalar("Loss:", cost)
-
+    date = time.strftime("%m%d%y-%H%M%S")
     summary_op = tf.summary.merge_all()
     sess = tf.Session()
     xs_split,ys_split = split_chunks(ps.train.xs,batch_size, np.array(ps.train.ys))
@@ -159,8 +159,8 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
         loops = len(xs_split)
+        writer = tf.summary.FileWriter(logs_path + "/" + network_name + "-" + date,sess.graph)
         print("Tensorboard log path:",logs_path)
-        writer = tf.summary.FileWriter(logs_path,sess.graph)
         for epoch in range(epochs):
             epoch_loss = 0
             print("\n=== BEGIN EPOCH",epoch+1, "===\n")
@@ -169,7 +169,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
                 batch_y = ys_split[batch_i]
                 _, c,train_acc,summary = sess.run([optimizer,cost,accuracy,summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
                 epoch_loss += c
-                writer.add_summary(summary,batch_i)
+                writer.add_summary(summary, epoch*loops + batch_i)
                 print("Optimizer:",optimizer.name, "|", batch_i + 1, "batches completed out of:", loops)
                 print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(train_acc), "",end=" \033[A\r",flush=True)
 
@@ -261,7 +261,6 @@ def batchpredict(batch_size,data,network_op):
 		results = np.concatenate((results,pred))
 
 	results = np.delete(results, (0), axis = 0)
-	print(results)
 	return results
 # Here starts the program
 
