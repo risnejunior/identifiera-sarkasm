@@ -23,15 +23,15 @@ def _arg_callback_ds(ds_name):
     print("<Using dataset: {}>".format(ds_name))
 
 def _arg_callback_strict():
-    global strict, includetags
+    global strict, tags
     strict = True
-    includetags = True
+    tags = ["<user>", "<url>", "<hashtag>"]
     print("<Using strict cleaning>")
 
 def _arg_callback_poria():
-    global strict, includetags
+    global strict, tags
     strict = False
-    includetags = False
+    tags = [" ", " ", " "]
     print("<Using poria cleaning>")
 
 def clean_tweets_detector(source_name):
