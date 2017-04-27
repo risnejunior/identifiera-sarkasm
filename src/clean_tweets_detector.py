@@ -23,10 +23,16 @@ def _arg_callback_ds(ds_name):
     print("<Using dataset: {}>".format(ds_name))
 
 def _arg_callback_strict():
-    global strict, includetags
+    global strict, tags
     strict = True
-    includetags = False
+    tags = ["<user>", "<url>", "<hashtag>"]
     print("<Using strict cleaning>")
+
+def _arg_callback_poria():
+    global strict, tags
+    strict = False
+    tags = [" ", " ", " "]
+    print("<Using poria cleaning>")
 
 def clean_tweets_detector(source_name):
     data=[]
@@ -58,12 +64,12 @@ def clean_tweets_detector(source_name):
                 except Exception:
                     pass
 
-                if len(temp)>0 and temp[0]!='@' and 'http' not in temp and 'https' not in temp:
+                if len(temp)>0 and temp[0]!='@' and 'http' not in temp and 'https' not in temp: #try with and without url
 
-                    temp=friendtag.sub(settings.tags[0], temp)
+                    temp=friendtag.sub(tags[0], temp)
                     temp=sarcasmtag.sub('', temp)
                     temp=sarcastictag.sub('', temp)
-                    temp=hashtags.sub(settings.tags[2],temp)
+                    temp=hashtags.sub(tags[2],temp)
                     temp=' '.join(temp.split()) #remove useless space
 
                     # Check that tweet contains more than 3 words
@@ -90,12 +96,12 @@ def clean_tweets_detector(source_name):
 
                 if len(temp)>0:
 
-                    temp=friendtag.sub(settings.tags[0], temp)
+                    temp=friendtag.sub(tags[0], temp)
                     temp=sarcasmtag.sub('', temp)
                     temp=sarcastictag.sub('', temp)
-                    temp=hashtags.sub(settings.tags[2],temp)
-                    temp=url.sub(settings.tags[1], temp)
-                    temp=url2.sub(settings.tags[1], temp)
+                    temp=hashtags.sub(tags[2],temp)
+                    temp=url.sub(tags[1], temp)
+                    temp=url2.sub(tags[1], temp)
                     temp=' '.join(temp.split()) #remove useless space
 
                     # Check that tweet contains more than 3 words
@@ -122,7 +128,8 @@ dataset_proto = datasets[dataset_name]
 
 arghandler = Arg_handler()
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
-arghandler.register_flag('strict', _arg_callback_ds, [''], "If flag is set, clean the dataset with strict settings.")
+arghandler.register_flag('strict', _arg_callback_strict, [''], "If flag is set, clean the dataset with strict settings.")
+arghandler.register_flag('poria', _arg_callback_poria, [''], "If flag is set, clean the dataset with poria settings.")
 arghandler.consume_flags()
 
 dataset = settings.set_rel_paths(dataset_proto)
