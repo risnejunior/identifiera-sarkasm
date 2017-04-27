@@ -13,6 +13,7 @@ import json
 import pickle
 import csv
 import sys
+import tempfile
 from common_funs import *
 
 sys.path.append("../identifiera-sarkasm/")
@@ -26,6 +27,7 @@ import time
 import tensorflow as tf
 # Importing rnn framework
 from tensorflow.contrib import rnn
+from tensorflow.contrib import learn
 # Importing NumPy
 import numpy as np
 
@@ -44,7 +46,7 @@ labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
 keep_prob_placeholder = tf.placeholder('float')
 
 trainable_embeddings = False
-
+logs_path = tempfile.gettempdir() + "/tfnetwork/"
 def _arg_callback_pt():
 	global print_test
 	print_test = True
@@ -132,10 +134,11 @@ def word_embedding_layer(word,embedding_tensor):
 #Defining and building the Neural Network
 
 def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
-
+	# Defining all the operations
     embeddings = word_embedding_layer(data_placeholder,W)
     network = tfnetworks.fetch_network(network_name,n_classes,params = {'rnn_size': rnn_size})
     prediction = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
+    accuracy = test_accuracy(tf.nn.softmax(prediction),labels_placeholder)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
                                                                   labels = labels_placeholder
                                                                   ))
@@ -144,36 +147,45 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
     if trainable_embeddings:
         l2_loss = l2_loss + tf.nn.l2_loss(W)
     optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost + 0.01 * l2_loss)
+
+	#Defining the summaries
+    tf.summary.scalar("Accuracy:", accuracy)
+    #tf.summary.scalar("Optimizer", optimizer)
+    tf.summary.scalar("Loss:", cost)
+    date = time.strftime("%b%d%y-%H%M%S")
+    summary_op = tf.summary.merge_all()
     sess = tf.Session()
     xs_split,ys_split = split_chunks(ps.train.xs,batch_size, np.array(ps.train.ys))
     with sess.as_default():
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
         loops = len(xs_split)
+        writer = tf.summary.FileWriter(logs_path + "/" + network_name + "-" + date,sess.graph)
+        print("Tensorboard log path:",logs_path)
         for epoch in range(epochs):
             epoch_loss = 0
             print("\n=== BEGIN EPOCH",epoch+1, "===\n")
             for batch_i in range(loops):
                 batch_x = xs_split[batch_i]
                 batch_y = ys_split[batch_i]
-                _, c,pred = sess.run([optimizer,cost,prediction], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
-                comp = np.equal(np.argmax(pred,1),np.argmax(batch_y,1))
-                current_accuracy = np.mean(comp.astype(np.float32))
+                _, c,train_acc,summary = sess.run([optimizer,cost,accuracy,summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
                 epoch_loss += c
+                writer.add_summary(summary, epoch*loops + batch_i)
                 print("Optimizer:",optimizer.name, "|", batch_i + 1, "batches completed out of:", loops)
-                print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(current_accuracy), "",end=" \033[A\r",flush=True)
+                print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(train_acc), "",end=" \033[A\r",flush=True)
 
             print("\033[2B")
             print("VALIDATING TRAINING:...")
+            val_accuracy = accuracy.eval(feed_dict={data_placeholder: ps.valid.xs,labels_placeholder: np.array(ps.valid.ys), keep_prob_placeholder: 1.0})
+            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy))
+
             saver = tf.train.Saver()
-            save_path = saver.save(sess, "../models/tfcheckpoint.ckpt")
-            accuracy = validation_run(ps.valid.xs,np.array(ps.valid.ys),prediction)
+            save_path = saver.save(sess, "./models/tfcheckpoint.ckpt")
             print("Checkpoint file saved in %s" % save_path )
-            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(accuracy))
 
         saver = tf.train.Saver()
         date = time.strftime("%m%d%y-%H%M%S")
-        saver_path = saver.save(sess, "../models/tfrnn_model-%s.ckpt" % date)
+        saver_path = saver.save(sess, "./models/tfrnn_model-%s.ckpt" % date)
         print("Model saved at %s" % saver_path )
         run_test_print_cm(ps,prediction)
     sess.close()
@@ -203,11 +215,10 @@ def split_chunks_helper(xs,n_batches,size):
 	return xs_split
 
 # Method for validating network in training
-def validation_run(data,labels,network_op):
-    prediction = tf.nn.log_softmax(network_op)
-    correct = tf.equal(tf.argmax(prediction,1), tf.argmax(labels_placeholder,1))
+def test_accuracy(prediction,labels):
+    correct = tf.equal(tf.argmax(prediction,1), tf.argmax(labels,1))
     accuracy = tf.reduce_mean(tf.cast(correct,'float'))
-    return accuracy.eval(feed_dict={data_placeholder: data, labels_placeholder: labels, keep_prob_placeholder: 1.0})
+    return accuracy
 
 def test_network(ps,network_name,path=None):
     if path == None :
@@ -251,7 +262,6 @@ def batchpredict(batch_size,data,network_op):
 		results = np.concatenate((results,pred))
 
 	results = np.delete(results, (0), axis = 0)
-	print(results)
 	return results
 # Here starts the program
 
@@ -265,6 +275,7 @@ arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate t
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
 print("\n")
+arghandler.register_flag('trainemb', _arg_callback_trainemb, ['trainable'], "Set trainable embeddings")
 arghandler.consume_flags()
 
 
