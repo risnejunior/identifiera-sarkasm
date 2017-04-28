@@ -42,7 +42,7 @@ n_chunks = max_sequence
 rnn_size = 64
 roundform = "{0:.5f}"
 
-data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,max_sequence])
+data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,None])
 labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
 keep_prob_placeholder = tf.placeholder('float')
 
@@ -137,65 +137,68 @@ def word_embedding_layer(word,embedding_tensor):
 
 def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
 	# Defining all the operations
-    embeddings = word_embedding_layer(data_placeholder,W)
-    network = tfnetworks.fetch_network(network_name,n_classes,params = {'rnn_size': rnn_size})
-    prediction = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
-    accuracy = test_accuracy(tf.nn.softmax(prediction),labels_placeholder)
-    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
-                                                                  labels = labels_placeholder
-                                                                  ))
+	embeddings = word_embedding_layer(data_placeholder,W)
+	network = tfnetworks.fetch_network(network_name,n_classes,params = {'rnn_size': rnn_size})
+	prediction = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
+	accuracy = test_accuracy(tf.nn.softmax(prediction),labels_placeholder)
+	val_accuracy_op = test_accuracy(data_placeholder,labels_placeholder)
+	cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
+	labels = labels_placeholder
+	))
 
-    l2_loss = network.calc_l2_loss()
-    if trainable_embeddings:
-        l2_loss = l2_loss + tf.nn.l2_loss(W)
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost + 0.01 * l2_loss)
+	l2_loss = network.calc_l2_loss()
+	if trainable_embeddings:
+		l2_loss = l2_loss + tf.nn.l2_loss(W)
+
+	optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost + 0.01 * l2_loss)
 
 	#Defining the summaries
-    tf.summary.scalar("Accuracy:", accuracy)
-    #tf.summary.scalar("Optimizer", optimizer)
-    tf.summary.scalar("Loss:", cost)
-    date = time.strftime("%b%d%y-%H%M%S")
-    summary_op = tf.summary.merge_all()
-    sess = tf.Session()
-    xs_split,ys_split = split_chunks(ps.train.xs,batch_size, np.array(ps.train.ys))
-    with sess.as_default():
-        sess.run(tf.global_variables_initializer())
-        set_embedding(sess,emb_init,emb_placeholder,emb)
-        loops = len(xs_split)
-        writer = tf.summary.FileWriter(logs_path + "/" + network_name + "-" + date,sess.graph)
-        print("Tensorboard log path:",logs_path)
-        for epoch in range(epochs):
-            epoch_loss = 0
-            indices = list(range(loops))
-            #print(indices)
+	tf.summary.scalar("Accuracy:", accuracy)
+	#tf.summary.scalar("Optimizer", optimizer)
+	tf.summary.scalar("Loss:", cost)
+	date = time.strftime("%b%d%y-%H%M%S")
+	summary_op = tf.summary.merge_all()
+	sess = tf.Session()
+	xs_split,ys_split = split_chunks(ps.train.xs,batch_size, np.array(ps.train.ys))
+	with sess.as_default():
+		sess.run(tf.global_variables_initializer())
+		set_embedding(sess,emb_init,emb_placeholder,emb)
+		loops = len(xs_split)
+		writer = tf.summary.FileWriter(logs_path + "/" + network_name + "-" + date,sess.graph)
+		print("Tensorboard log path:",logs_path)
+		for epoch in range(epochs):
+			epoch_loss = 0
+			indices = list(range(loops))
+			#print(indices)
 			if shuffle_training:
-            	random.shuffle(indices)
-            #print(indices)
-            print("\n=== BEGIN EPOCH",epoch+1, "===\n")
-            for it,batch_i in enumerate(indices):
-                batch_x = xs_split[batch_i]
-                batch_y = ys_split[batch_i]
-                _, c,train_acc,summary = sess.run([optimizer,cost,accuracy,summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
-                epoch_loss += c
-                writer.add_summary(summary, epoch*loops + it)
-                print("Optimizer:",optimizer.name, "|", it + 1, "batches completed out of:", loops)
-                print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(train_acc), "",end=" \033[A\r",flush=True)
+				random.shuffle(indices)
+				#print(indices)
+			print("\n=== BEGIN EPOCH",epoch+1, "===\n")
+			for it,batch_i in enumerate(indices):
+				batch_x = xs_split[batch_i]
+				batch_y = ys_split[batch_i]
+				_, c,train_acc,summary = sess.run([optimizer,cost,accuracy,summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
+				epoch_loss += c
+				writer.add_summary(summary, epoch*loops + it)
+				print("Optimizer:",optimizer.name, "|", it + 1, "batches completed out of:", loops)
+				print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(train_acc), "",end=" \033[A\r",flush=True)
 
-            print("\033[2B")
-            print("VALIDATING TRAINING:...")
-            val_accuracy = accuracy.eval(feed_dict={data_placeholder: ps.valid.xs,labels_placeholder: np.array(ps.valid.ys), keep_prob_placeholder: 1.0})
-            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy))
+			print("\033[2B")
+			print("VALIDATING TRAINING:...")
+			val_predict = batchpredict(batch_size,ps.valid.xs,prediction)
+			val_accuracy = val_accuracy_op.eval(feed_dict={data_placeholder: val_predict,labels_placeholder: np.array(ps.valid.ys), keep_prob_placeholder: 1.0})
+			print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy))
 
-            saver = tf.train.Saver()
-            save_path = saver.save(sess, "./models/tfcheckpoint.ckpt")
-            print("Checkpoint file saved in %s" % save_path )
+			saver = tf.train.Saver()
+			save_path = saver.save(sess, "./models/tfcheckpoint.ckpt")
+			print("Checkpoint file saved in %s" % save_path )
 
-        saver = tf.train.Saver()
-        date = time.strftime("%m%d%y-%H%M%S")
-        saver_path = saver.save(sess, "./models/tfrnn_model-%s.ckpt" % date)
-        print("Model saved at %s" % saver_path )
-        run_test_print_cm(ps,prediction)
-    sess.close()
+		saver = tf.train.Saver()
+		date = time.strftime("%m%d%y-%H%M%S")
+		saver_path = saver.save(sess, "./models/tfrnn_model-%s.ckpt" % date)
+		print("Model saved at %s" % saver_path )
+		run_test_print_cm(ps,prediction)
+		sess.close()
 
 def split_chunks(xs,size,ys=None):
     xh,xw = xs.shape
@@ -252,7 +255,7 @@ def run_test_print_cm(ps,network_op):
     cm = Binary_confusion_matrix()
     pred1 = batchpredict(90,ps.train.xs,network_op)
     cm.calc(ps.train.ids , pred1, ps.train.ys, 'training-set')
-    pred2 = sess.run(network_op, feed_dict={data_placeholder: ps.valid.xs, keep_prob_placeholder: 1.0})
+    pred2 = batchpredict(90,ps.valid.xs,network_op)
     cm.calc(ps.valid.ids , pred2, ps.valid.ys, 'validation-set')
     if print_test:
         pred3 = sess.run(network_op, feed_dict={data_placeholder: ps.test.xs, keep_prob_placeholder: 1.0})
