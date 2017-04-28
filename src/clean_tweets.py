@@ -14,14 +14,11 @@ from common_funs import Arg_handler
 from settings import *
 from collections import OrderedDict
 from common_funs import Logger
+from common_funs import Open_Dataset
 
 def _arg_callback_ds(ds_name):
-    """
-    Select dataset
-    """
-    global dataset_name, dataset_proto
+    global dataset_name
     dataset_name = ds_name
-    dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
     print("<Using dataset: {}>".format(ds_name))
 
 def _arg_callback_strict():
@@ -30,34 +27,16 @@ def _arg_callback_strict():
     includetags = False
     print("<Using strict cleaning>")
 
-def clean_tweets_detector(source_name, sid_i):    
+def clean_tweets(ds_name, s_class, s_format):
     ordered_data = OrderedDict()    
     skipped = dict(empty = 0, url = 0, reply = 0, short = 0, duplicate=0)
-    
-    csv_file_object = csv.reader(open(source_name, 'r', encoding='utf8'), 
-                                delimiter='\t', 
-                                quoting=csv.QUOTE_NONE)
-    for row in csv_file_object:
-        #skip empty rows
-        if not row:
-            skipped['empty'] += 1
-            continue
 
-        #poria has tweets id, 4 columns and shouldn't be unescaped
-        if len(row) > 1:
-            sid = row[0]
-            temp = row[2]
-            unescape = False
-        
-        #detector has no id, one column and should be unescaped
-        else:
-            sid = sid_i 
-            temp = row[0]
-            unescape = True
-        
+    for row in Open_Dataset(ds_name, 'raw', 'r', sample_class=s_class):
+        temp = row['sample_text']
+        sid = row['sample_id']
         logger.log((sid, temp), logname='before',  maxlogs=5)
 
-        if unescape:
+        if s_format['unescape']:
             temp = temp.encode('unicode-escape').decode("utf8")
             temp = temp.replace('\\\\u', '\\u')
             temp = temp.replace(r'"', r'\"')
@@ -97,23 +76,17 @@ def clean_tweets_detector(source_name, sid_i):
             ordered_data[sample_hash] = (sid, temp)
         else:
             skipped['duplicate'] += 1            
-        sid_i += 1
 
     print("Tweets skipped/reason: " + str(skipped))
     return ordered_data.values()
 
-def create_tweets(data, target_folder):
+def write_clean(data, ds_name, s_class):
     pb = Progress_bar( len(data)-1 )
-    for i, row in data:
-       # print ("Index is: " + str(i))
-        out_file_name = os.path.join(target_folder, str(i) + ".txt")
-        out_file = open(out_file_name, 'w', encoding='utf8')
-        out_file.write(row)
-        out_file.close()
-        pb.tick()
+    with Open_Dataset(ds_name, 'cleaned', 'w', sample_class=s_class) as ds:
+        for i, row in data:
+            ds.write(i, row)
+            pb.tick()
 
-logger = Logger()
-decoder = json.JSONDecoder()
 
 hashtags = re.compile(r'#[^\s.,;]*')
 friendtag = re.compile(r'\S*@[^\s.,;]*')
@@ -121,33 +94,37 @@ retweet = re.compile(r'\A@|RT')
 sarcasmtag = re.compile(r'#sarcasm|sarcastic\b', re.IGNORECASE)
 url = re.compile(r'\bhttps?:\S+', re.IGNORECASE) 
 
-dataset_proto = datasets[dataset_name]
+logger = Logger()
+decoder = json.JSONDecoder()
+
 arghandler = Arg_handler()
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('strict', _arg_callback_strict, [''], "If flag is set, clean the dataset with strict settings.")
 arghandler.consume_flags()
-dataset = settings.set_rel_paths(dataset_proto)
-samples_path = dataset["samples_path"]
 
-sid_i = 1 # id used, if not in file
+#check if the database is initialized, if not, load the missing dataset(s)
+Open_Dataset.check_init_db()
+
 restrictions = []
-if not includetags: restrictions.append('remove_tags')
-if strict: restrictions.extend(['skip_url', 'skip_replies', 'skip_short'])
+if not includetags: 
+    restrictions.append('remove_tags')
+if strict: 
+    restrictions.extend(['skip_url', 'skip_replies', 'skip_short'])
+
+# Description in settings of how the source file looks, here it's used to 
+#  determine if the text should be unicode unescaped (detector)
+source_format = settings.datasets[dataset_name]['source_format']
 
 #normal
-target_folder = os.path.join(dataset["rel_path"], "neg")
-if not (os.path.isdir(target_folder)):
-    os.makedirs(target_folder)
-print( "Cleaning:" + dataset["rel_path"]+"/"+dataset_proto["neg_source"])
-negdata = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["neg_source"], sid_i)
+print("Cleaning normal from: " + dataset_name)
+negdata = clean_tweets(dataset_name, 0, source_format)
 print ("Normal tweets: " + str(len(negdata)))
-create_tweets(negdata, target_folder)
+write_clean(negdata, dataset_name, 0)
 
 #sarcastic
-target_folder = os.path.join(dataset["rel_path"], "pos")
-if not (os.path.isdir(target_folder)):
-    os.makedirs(target_folder)
-print( "Cleaning: " + dataset["rel_path"]+"/"+dataset_proto["pos_source"])
-posdata = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["pos_source"], sid_i)
+print("Cleaning positive from: " + dataset_name)
+posdata = clean_tweets(dataset_name, 1, source_format)
 print ("Sarcastic tweets: " + str(len(posdata)))
-create_tweets(posdata, target_folder)
+write_clean(posdata, dataset_name, 1)
+
+logger.save()

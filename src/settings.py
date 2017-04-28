@@ -65,31 +65,31 @@ pretrained_path = os.path.join(models_path, '6P8GFZ_FEVERISH_FOXBAT' + ".tfl")
 datasets = {
 	"poria-balanced": {
 		"rel_path": [".","..", "datasets","poria", "en-balanced"],
-		"neg_source": "balanced_normal_tweets.csv",
-		"pos_source": "balanced_sarcastic_tweets.csv",
+		"neg_source": "normal_tweets.csv",
+		"pos_source": "sarcastic_tweets.csv",
 		"ps_file_name": "processed.pickle",
-		"has_own_id": True
+		"source_format": {'sample_id':0, 'sample_text':2, 'unescape': False}
 	},
 	"poria-ratio": {
 		"rel_path": [".","..", "datasets","poria", "en-ratio"],
 		"neg_source": "normal_tweets.csv",
 		"pos_source": "sarcastic_tweets.csv",
 		"ps_file_name": "processed.pickle",
-		"has_own_id": True
+		"source_format": {'sample_id':0, 'sample_text':2, 'unescape': False}
 	},
 	"imdb" : {
 		"rel_path": [".","..", "datasets","imdb"],
 		"neg_source": "",
 		"pos_source": "",
 		"ps_file_name": "processed.pickle",
-		"has_own_id": True
+		"source_format": {'sample_id': 0, 'sample_text':1, 'unescape': False}
 	},
 	"detector" : {
 		"rel_path": [".","..", "datasets","detector"],
 		"neg_source": "normal_tweets.csv",
 		"pos_source": "sarcastic_tweets.csv",
 		"ps_file_name": "processed.pickle",
-		"has_own_id": False
+		"source_format": {'sample_id':None, 'sample_text':0, 'unescape': True}
 	}
 }
 

@@ -21,10 +21,17 @@ class Open_Dataset:
 	modes = {'w':'write','r':'read'}
 
 	@staticmethod
-	def check_init_db(s_classes):
+	def check_init_db():
 		"""
 		Check if DB file has tables and some data, else create and populate tables 
 		"""
+		datasets_config = []
+		for ds_name, ds_config in settings.datasets.items():
+			if ds_name == 'imdb': #temporay hax!!!!!!
+				continue
+			ds_paths = settings.set_rel_paths(ds_config)
+			datasets_config.append((ds_name, ds_paths['pos_source_path'], ds_config['source_format'], 1 ))
+			datasets_config.append((ds_name, ds_paths['neg_source_path'], ds_config['source_format'], 0 ))
 
 		#check if DB has tables raw & cleaned
 		db = DB_Handler(settings.sqlite_file)
@@ -60,26 +67,41 @@ class Open_Dataset:
 		else:
 			print("Database present")
 
-		#Check if table raw has at least one row
-		db._c.execute("SELECT COUNT(*) AS count FROM raw;")
-		count = db._c.fetchone()
-		if count and count['count'] < 1:
-			print("no data in table raw, fetching..")
-
-			import csv
-			#add samples to table 'raw'			
-			i = 1
-			for path, hasOwnId, s_class in s_classes:
+		#check if raw has at least one row for each dataset			
+		from common_funs import Logger
+		logger = Logger()
+		sid_i = 1
+		for ds_name, path, file_format, s_class in datasets_config:			
+			db._c.execute("SELECT COUNT(*) AS count FROM raw WHERE dataset = '%s' AND sample_class = %s" %(ds_name, s_class))
+			count = db._c.fetchone()
+			if count and count['count'] < 1:
+				print("no data for dataset {}, class: {}, fetching..".format(ds_name, s_class))
+				import csv
 				with open(path, 'r', encoding="utf8") as f:
-					for line in csv.reader(f, delimiter='\t'):
-						if not line: continue
-						#if hasown id
-						db.insertRow('raw', dataset=settings.dataset_name, 
-											sample_id= i, 
-											sample_class= s_class, 
-											sample_text=line[0])
-						if i % 5000 == 0: print("Rows: {}".format(str(i)), end='\r')
-						i += 1
+					for line in csv.reader(f, delimiter='\t', quoting=csv.QUOTE_NONE):						
+						if not line: 
+							continue
+
+						logger.log(logname='format', maxlogs=10, text=str(file_format))
+						if file_format['sample_id'] is not None:
+							try:
+								sid = int(line[file_format['sample_id']])
+							except ValueError:
+								continue
+						else:
+							sid = sid_i
+							sid_i += 1
+
+						sample_text = line[file_format['sample_text']]
+
+						logger.log(logname=ds_name, maxlogs = 25, text=(sid, sample_text, s_class))
+						db.insertRow('raw', dataset=ds_name, 
+											sample_id= sid, 
+											sample_class= s_class,
+											sample_text=sample_text)
+						#if sid % 5000 == 0: print("Rows: {}".format(str(sid)), end='\r')
+						
+		logger.save()
 		db.close()
 
 	def __init__(self, dataset, table, mode, **where):
@@ -87,7 +109,7 @@ class Open_Dataset:
 		if mode not in Open_Dataset.modes:
 			raise ValueError("mode not recognized")
 
-		self._dataset = dataset		
+		self._dataset = dataset
 		self._table = table
 		self._mode = mode
 		self._db = DB_Handler(settings.sqlite_file)
@@ -106,8 +128,13 @@ class Open_Dataset:
 		return self
 
 	def _enter_r(self):
-		for row in self._db.getRows(self._table, **self._where):
+		for row in self._getRows():
 			yield row
+
+	def _getRows(self):
+		where = dict(dataset = self._dataset)
+		where.update(self._where)
+		return self._db.getRows(self._table, **where)
 
 	def __enter__(self):
 		if self._mode == 'r':
@@ -127,7 +154,7 @@ class Open_Dataset:
 			raise StopIteration
 
 	def __iter__(self):
-		self._rows = self._db.getRows(self._table, **self._where)
+		self._rows = self._getRows()
 		return self
 
 class DB_Handler:
@@ -178,13 +205,13 @@ class DB_Handler:
 	def insertRows(self, table_name, cols = [], values = [()]):
 		columns = ','.join(cols)
 		vals_ph = ','.join(['?' for _ in range(len(values[0]))])
-		self._c.executemany('INSERT OR IGNORE INTO {tn} ({cols}) VALUES ({v_ph})'
+		self._c.executemany('INSERT OR REPLACE INTO {tn} ({cols}) VALUES ({v_ph})'
 			.format(tn=table_name, cols=columns, v_ph=vals_ph), values)
 
 	def insertRow(self, table_name, **vals):
 		columns = ','.join(vals.keys())
 		vals_ph = ','.join(['?' for _ in range(len(vals))])
-		self._c.execute('INSERT OR IGNORE INTO {tn} ({cols}) VALUES ({v_ph})'
+		self._c.execute('INSERT OR REPLACE INTO {tn} ({cols}) VALUES ({v_ph})'
 			.format(tn=table_name, cols=columns, v_ph=vals_ph), list(vals.values()))
 
 class TroubleMakers:
@@ -351,7 +378,6 @@ class Arg_handler():
 	"""
 		class for handling command line arguments.
 		Regsiter a flag and it's corresponding callback function.
-
 	"""
 
 	def __init__(self):
@@ -366,13 +392,10 @@ class Arg_handler():
 		for alias in aliases:
 			self._aliases[alias] = flag
 
-		return self
-
 	def consume_flags(self):
 		params = []
 		for arg in reversed(self._args):
 			if arg[0:2] == '--':
-				#print("isflag")
 				arg = arg[2:]
 				if arg not in self._aliases:
 					print("Flag not registered: {}".format(arg))
@@ -385,9 +408,7 @@ class Arg_handler():
 					def_fpc = len(argspecs.defaults) if argspecs.defaults else 0 #hasattr(argspecs,'defaults')
 					if flag == '?':
 						all_fpc = 0 #print_help takes self, ignore that
-					#print("params: {}, cb args {}, default: {}".format(len(params), all_fpc, def_fpc))
 					if (all_fpc >= len(params) >= all_fpc - def_fpc):
-						#print("correct params count")
 						callback(*params)
 					else:
 						print("Wrong number of parmaters for flag: {}".format(arg))
@@ -397,8 +418,7 @@ class Arg_handler():
 				params.insert(0, arg)
 
 		if len(params) > 0:
-			print("Arguments passed but not consumed:", end='')
-			print(params)
+			print("Arguments passed but not consumed: {}".foramt(params))
 			print("Make sure you use '--' instead of '-' to denote flags")
 			quit()
 

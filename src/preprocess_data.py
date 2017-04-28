@@ -135,6 +135,7 @@ def build_vocabulary( words, max_size ):
 	d = dict(unique_counts.most_common(vocabulary_size-2) )
 	pb = Progress_bar(len(d) - 1) 
 	vocabulary = OrderedDict( sorted(d.items(), key=lambda t: t[1],  reverse=True) )
+
 	# start at 2 to leave room for padding & unknown
 	for i, (key, value) in enumerate(vocabulary.items(), start=2):		
 		vocab_instances += value
@@ -144,6 +145,7 @@ def build_vocabulary( words, max_size ):
 	vocabulary[padding_char] = 0
 	vocabulary[placeholder_char] = 1
 
+	#reverse the vocbulary (for reverse lookup)
 	rev_vocabulary = {v: k for k, v in vocabulary.items()}
 	
 	return len(unique_counts), vocab_instances, vocabulary, rev_vocabulary
@@ -213,43 +215,6 @@ def reverse_lookup( index_vector, rev_vocabulary ):
 		text.append( rev_vocabulary[i] )
 	return text
 
-def _old_reshape_embeddings(vocabulary, embeddings_voc):
-	pb = common_funs.Progress_bar( len(vocabulary)-1 )
-	rt = random.triangular
-	minval = 0.0
-	maxval = 0.0
-	not_found = 0
-	embeddings = []
-	for word, i in vocabulary.items():
-		if word in embeddings_voc:
-			string_vector = embeddings_voc[word]
-		else:
-			# this should be calculated the same as below (min, max)
-			string_vector = [rt(-6.0, 6.0) for _ in range(embedding_size)]
-			not_found += 1
-			logger.log(word, "missing_embeddings", 100)
-
-		float_vec = list(map(lambda x: float(x), string_vector)	)
-		minval = min(float_vec) if min(float_vec) < minval else minval
-		maxval = max(float_vec) if max(float_vec) > maxval else maxval
-
-		embeddings.append(float_vec)
-		
-		logger.log(float_vec, logname="embeddings", step=1000)
-		pb.tick()
-
-	
-	embeddings[0] = [0.0 for _ in range(embedding_size)]
-	embeddings[1] = [rt(minval, maxval) for _ in range(embedding_size)]
-
-	logger.log(minval, logname="min")
-	logger.log(maxval, logname="max")
-	logger.log(not_found, logname="not_found")
-	logger.log(embeddings[0], logname="padding")
-	logger.log(embeddings[1], logname="placeholder")
-
-	return embeddings
-
 def fit_embeddings(vocabulary, source_path):	
 	debug_logger = Logger(enable = False)
 	
@@ -275,7 +240,6 @@ def fit_embeddings(vocabulary, source_path):
 					elif voc_index == 0:
 						nulls += 1
 						rs_embeddings[voc_index] = [0.0 for _ in range(embedding_size)]
-						#rs_embeddings[voc_index] = [0]
 					else:				
 						rs_embeddings[voc_index] = vector
 						minmax.add(vector)
@@ -318,7 +282,7 @@ def fit_embeddings(vocabulary, source_path):
 
 ###########################################################################################
 
-# affected by flags, need to be before consume_flags()
+# affected by flags, need to be set before consume_flags()
 embeddings_maxloop = None
 nltk_dowload = False
 save_debug = False
@@ -345,14 +309,14 @@ path_name_pos = dataset["path_name_pos"]
 samples_path = dataset["samples_path"]
 rel_data_path = ds_paths["rel_path"]
 
+logger = common_funs.Logger()
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
 tknzr = TweetTokenizer(reduce_len=True, preserve_case=False)
 # json files will be written all in one row without indentation unless..
 j_indent = 4
-# If you don't have the packages installed..
-logger = common_funs.Logger()
 #t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
 t_table = dict( ( ord(char), None) for char in ['.','_'] ) #translation tabler  for puctuation
+# If you don't have the packages installed..
 if nltk_dowload: nltk.download("stopwords"); nltk.download("punkt")
 
 file_list_normal = os.listdir(path_name_neg)
