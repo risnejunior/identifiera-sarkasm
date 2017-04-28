@@ -23,6 +23,7 @@ import tfnetworks
 
 import time
 
+import random
 # Importing tensorflow
 import tensorflow as tf
 # Importing rnn framework
@@ -47,6 +48,7 @@ keep_prob_placeholder = tf.placeholder('float')
 
 trainable_embeddings = False
 logs_path = tempfile.gettempdir() + "/tfnetwork/"
+shuffle_training = False
 def _arg_callback_pt():
 	global print_test
 	print_test = True
@@ -164,14 +166,19 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
         print("Tensorboard log path:",logs_path)
         for epoch in range(epochs):
             epoch_loss = 0
+            indices = list(range(loops))
+            #print(indices)
+			if shuffle_training:
+            	random.shuffle(indices)
+            #print(indices)
             print("\n=== BEGIN EPOCH",epoch+1, "===\n")
-            for batch_i in range(loops):
+            for it,batch_i in enumerate(indices):
                 batch_x = xs_split[batch_i]
                 batch_y = ys_split[batch_i]
                 _, c,train_acc,summary = sess.run([optimizer,cost,accuracy,summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
                 epoch_loss += c
-                writer.add_summary(summary, epoch*loops + batch_i)
-                print("Optimizer:",optimizer.name, "|", batch_i + 1, "batches completed out of:", loops)
+                writer.add_summary(summary, epoch*loops + it)
+                print("Optimizer:",optimizer.name, "|", it + 1, "batches completed out of:", loops)
                 print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(train_acc), "",end=" \033[A\r",flush=True)
 
             print("\033[2B")
