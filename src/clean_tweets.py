@@ -42,7 +42,6 @@ def clean_tweets_detector(source_name, sid_i):
                                 escapechar=None,
                                 doublequote=None)
     for row in csv_file_object:
-        #skip empty rows
         if not row:
             skipped['empty'] += 1
             continue
@@ -105,7 +104,7 @@ def clean_tweets_detector(source_name, sid_i):
         sid_i += 1
 
     print("Tweets skipped/reason: " + str(skipped))
-    return ordered_data.values()
+    return (ordered_data.values(), sid_i)
 
 def create_tweets(data, target_folder):
     pb = Progress_bar( len(data)-1 )
@@ -144,8 +143,7 @@ target_folder = os.path.join(dataset["rel_path"], "neg")
 if not (os.path.isdir(target_folder)):
     os.makedirs(target_folder)
 print( "Cleaning:" + dataset["rel_path"]+"/"+dataset_proto["neg_source"])
-negdata = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["neg_source"], sid_i)
-sid_i = len(negdata) + 1
+negdata, sid_i = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["neg_source"], sid_i)
 print ("Normal tweets: " + str(len(negdata)))
 create_tweets(negdata, target_folder)
 
@@ -154,6 +152,6 @@ target_folder = os.path.join(dataset["rel_path"], "pos")
 if not (os.path.isdir(target_folder)):
     os.makedirs(target_folder)
 print( "Cleaning: " + dataset["rel_path"]+"/"+dataset_proto["pos_source"])
-posdata = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["pos_source"], sid_i)
+posdata, sid_i = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["pos_source"], sid_i)
 print ("Sarcastic tweets: " + str(len(posdata)))
 create_tweets(posdata, target_folder)
