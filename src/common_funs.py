@@ -372,7 +372,6 @@ class Arg_handler():
 		params = []
 		for arg in reversed(self._args):
 			if arg[0:2] == '--':
-				#print("isflag")
 				arg = arg[2:]
 				if arg not in self._aliases:
 					print("Flag not registered: {}".format(arg))
@@ -385,9 +384,8 @@ class Arg_handler():
 					def_fpc = len(argspecs.defaults) if argspecs.defaults else 0 #hasattr(argspecs,'defaults')
 					if flag == '?':
 						all_fpc = 0 #print_help takes self, ignore that
-					#print("params: {}, cb args {}, default: {}".format(len(params), all_fpc, def_fpc))
+					# default params don't have to be set
 					if (all_fpc >= len(params) >= all_fpc - def_fpc):
-						#print("correct params count")
 						callback(*params)
 					else:
 						print("Wrong number of parmaters for flag: {}".format(arg))
@@ -415,6 +413,9 @@ class Arg_handler():
 
 
 class Stack(list):
+	"""
+	pop already defined in list which we inherit from
+	"""
 	def push(self, item):
 		self.append(item)
 	def isEmpty(self):
@@ -553,6 +554,7 @@ class Logger:
 	  a maximum count, in order to stave of overwhelm.
 	"""
 
+	# for debuffing, saves the settings for each logname
 	save_config = False
 
 	def __init__(self, enable = True):
@@ -672,9 +674,10 @@ class Logger:
 class Binary_confusion_matrix:
 	"""
 	Prints a confusion matrix and some other metrics for a given binary classification
+	
+	positive means sarcastic, negative means normal
+	fn: false negative, fp: false positive,tp: true positive,tn: true negative	
 	"""
-	# positive means sarcastic, negative means normal
-	# fn: false negative, fp: false positive,tp: true positive,tn: true negative	
 
 	def __init__(self, save_predictions = True):
 		
@@ -916,7 +919,12 @@ class Progress_bar:
 		self.progress( self.i )
 		self.i += 1
 
+
 class Working_animation:
+	"""
+	Provides a nice work in progress animation.
+	Use instead of Progressbar when size of the work isn't know beforehand.
+	"""
 
 	def __init__(self, message, message_len = None):
 		self.message = message
@@ -952,6 +960,7 @@ class Working_animation:
 		message = self.message if message == None else message
 		print(message + ": [Done!]" + ' ' * (self.init_len + 10))
 
+
 def reverse_lookup( index_vector, rev_vocabulary, ascii_console=False ):
 	text = []
 	for i in index_vector:
@@ -977,8 +986,8 @@ def generate_name():
 		               'flanker', 'fullback', 'archer', 'arrow', 'hound'])
 
 	datestr = time.strftime("%m%d%H%M%S", t).encode('utf8')
-	b32 = base36encode(int(datestr))
-	name = "{}_{}_{}".format(b32,a,b)
+	b36 = base36encode(int(datestr))
+	name = "{}_{}_{}".format(b36,a,b)
 	return name.upper()
 
 

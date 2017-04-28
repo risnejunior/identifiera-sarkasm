@@ -36,25 +36,30 @@ def clean_tweets_detector(source_name, sid_i):
     
     csv_file_object = csv.reader(open(source_name, 'r', encoding='utf8'), 
                                 delimiter='\t', 
-                                quoting=csv.QUOTE_NONE)
+                                quoting=csv.QUOTE_NONE,
+                                quotechar=None,
+                                strict=True,
+                                escapechar=None,
+                                doublequote=None)
     for row in csv_file_object:
         #skip empty rows
         if not row:
             skipped['empty'] += 1
             continue
 
-        #poria has tweets id, 4 columns and shouldn't be unescaped
-        if len(row) > 1:
+        #poria has tweets id, 6 columns and shouldn't be unescaped
+        #detector has no id, one column and should be unescaped
+        if len(row) == 6:
             sid = row[0]
             temp = row[2]
             unescape = False
-        
-        #detector has no id, one column and should be unescaped
-        else:
+        elif len(row) == 1:
             sid = sid_i 
             temp = row[0]
             unescape = True
-        
+        else:
+            raise Exception("Wrong number of columns in file")
+
         logger.log((sid, temp), logname='before',  maxlogs=5)
 
         if unescape:
@@ -105,7 +110,6 @@ def clean_tweets_detector(source_name, sid_i):
 def create_tweets(data, target_folder):
     pb = Progress_bar( len(data)-1 )
     for i, row in data:
-       # print ("Index is: " + str(i))
         out_file_name = os.path.join(target_folder, str(i) + ".txt")
         out_file = open(out_file_name, 'w', encoding='utf8')
         out_file.write(row)
@@ -119,7 +123,8 @@ hashtags = re.compile(r'#[^\s.,;]*')
 friendtag = re.compile(r'\S*@[^\s.,;]*')
 retweet = re.compile(r'\A@|RT')
 sarcasmtag = re.compile(r'#sarcasm|sarcastic\b', re.IGNORECASE)
-url = re.compile(r'\bhttps?:\S+', re.IGNORECASE) 
+url = re.compile(r'\bhttps?:\S+', re.IGNORECASE)
+pattern_newline = re.compile(r"\n|\r")
 
 dataset_proto = datasets[dataset_name]
 arghandler = Arg_handler()
@@ -140,6 +145,7 @@ if not (os.path.isdir(target_folder)):
     os.makedirs(target_folder)
 print( "Cleaning:" + dataset["rel_path"]+"/"+dataset_proto["neg_source"])
 negdata = clean_tweets_detector(dataset["rel_path"]+"/"+dataset_proto["neg_source"], sid_i)
+sid_i = len(negdata) + 1
 print ("Normal tweets: " + str(len(negdata)))
 create_tweets(negdata, target_folder)
 
