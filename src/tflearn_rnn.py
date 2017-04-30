@@ -20,7 +20,6 @@ import tensorflow as tf
 from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell
 
 import common_funs
-import settings
 from common_funs import Binary_confusion_matrix
 from common_funs import Logger
 from common_funs import reverse_lookup
@@ -28,9 +27,17 @@ from common_funs import Hyper
 from common_funs import Arg_handler
 from common_funs import FileBackedCSVBuffer
 from common_funs import boxString
-from settings import *
+
 from networks import Networks
 from networks import NetworkNotFoundError
+
+from common_funs import ProcessedData
+from common_funs import Dataset
+from common_funs import Setpart
+from common_funs import pos_label
+from common_funs import neg_label
+
+from config import Config
 
 #suppress tf logging
 sys.stdout = sys.__stdout__
@@ -106,68 +113,54 @@ class EarlyStoppingMonitor():
 		self._buff.flush()
 
 def _arg_callback_trouble(file_name):
-	global predictions_filename
-	predictions_filename = file_name
+	cfg.predictions_filename = file_name
 
 def _arg_callback_pt():
-	global print_test
-	print_test = True
+	cfg.print_test = True
 
 def _arg_callback_ds(ds_name):
 	"""
 	Select dataset
 	"""
-	global dataset_proto
-	dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
+	cfg.dataset_name = ds_name
 	print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_pretrained(path):
-	global save_the_model, pretrained_model, training, pretrained_path
-	save_the_model = False
-	pretrained_model = True
-	training = False
-
-	models_path = os.path.join("models")
-	if not (os.path.isdir(models_path)):
-		os.makedirs(models_path)
-	pretrained_path = os.path.join(models_path, path + ".tfl")
-
-	print("<Using pretrained model " + path + " for results only.")
+def _arg_callback_pretrained(file_name):
+	cfg.save_the_model = False
+	cfg.pretrained_model = True
+	cfg.training = False
+	cfg.pretrained_file = file_name + ".tfl"
+	print("<Using pretrained model " + pretrained_path + " for results only.")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
-	global epochs, run_count, batch_size, training
-	epochs = int(nr_epochs)
-	run_count = int(count)
-	batch_size = int(batchsize)
-	training = True
+	cfg.epochs = int(nr_epochs)
+	cfg.run_count = int(count)
+	cfg.batch_size = int(batchsize)
+	cfg.training = True
 	print("<Training for, epochs: {}, runs:{}, batchsize: {}>".format(nr_epochs, count, batchsize))
 
 def _arg_callback_net(name):
-	global network_name
-	network_name = name
+	cfg.network_name = name
 	print("<Using network: {}>".format(name))
 
 def _arg_callback_in(file_name):
 	"""
 	Take preprocessed samples from the selected file
 	"""
-	global dataset_proto
-	dataset_proto['ps_file_name'] = file_name
-	print("<Using processed samples from: {}>".format(file_name))
+	cfg.ps_file_name = file_name
+	print("<Using processed samples from: {}>".format(cfg.samples_path))
 
 def _arg_callback_ss(s_step = None, s_epoch = 'False'):
 	"""
 	Set the snapshot step
 	"""
-	global snapshot_step, snapshot_epoch
 	if isinstance(s_step, str) and s_step.lower() == 'none':
 		s_step = None
-	snapshot_step = int(s_step) if s_step is not None else None
-	snapshot_epoch = True if s_epoch.lower() == 'true' else False
+	cfg.snapshots_per_epoch = int(s_step) if s_step is not None else None
+	cfg.snapshot_epoch = True if s_epoch.lower() == 'true' else False
 	print("<Snapshot step: {}, Snaphot epoch end: {}>".format(s_step, s_epoch))
 
 def build_network(name, hyp, pd):
-
 	params = {'hyp': hypers, 'pd': pd}
 	nets = Networks()
 	net = nets.get_network(name=name, params=params)
@@ -175,10 +168,7 @@ def build_network(name, hyp, pd):
 	return net
 
 def create_model(net, hyp, this_run_id, log_run):
-	checkpoint_path = os.path.join("checkpoints")
-	if not (os.path.isdir(checkpoint_path)):
-		os.makedirs(checkpoint_path)
-	checkpoint_path = os.path.join("checkpoints",this_run_id + ".ckpt")
+	checkpoint_path = os.path.join(cfg.checkpoints_path,this_run_id + ".ckpt")
 	model = tflearn.DNN(net,
 					    tensorboard_verbose=3,
 					    checkpoint_path=checkpoint_path,
@@ -186,14 +176,14 @@ def create_model(net, hyp, this_run_id, log_run):
 					    best_val_accuracy=0.75)
 
 	#Load pretrained model
-	if pretrained_model:
+	if cfg.pretrained_model:
 		print("Attempting to load model")
-		model.load(pretrained_path)
+		model.load(cfg.pretrained_path)
 		print("Successfully loaded model")
 		return model
 
 	#set embeddings
-	if use_embeddings:
+	if cfg.use_embeddings:
 		emb = np.array(pd.embeddings[:pd.vocab_size], dtype=np.float32)
 	else:
 		emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
@@ -212,8 +202,8 @@ def train_model(model, hyp, this_run_id, log_run):
 
 	perflog.write([
 		strftime('%Y-%m-%d %H:%M', time.localtime()),
-		network_name,
-		os.path.basename(samples_path),
+		cfg.network_name,
+		cfg.ps_file_name,
 		'-',
 		'-',
 		this_run_id,
@@ -225,21 +215,17 @@ def train_model(model, hyp, this_run_id, log_run):
 			  Y_targets=ps.train.ys,
 			  validation_set=(ps.valid.xs, ps.valid.ys),
 			  show_metric=True,
-	          batch_size=batch_size,
-	          n_epoch=epochs,
+	          batch_size=cfg.batch_size,
+	          n_epoch=cfg.epochs,
 	          shuffle=False,
 	          run_id=this_run_id,
-			  snapshot_step=snapshot_steps,
-			  snapshot_epoch=snapshot_epoch,
+			  snapshot_step=cfg.snapshot_steps,
+			  snapshot_epoch=cfg.snapshot_epoch,
 	          callbacks=monitorCallback)
 
 	# save model
-	if save_the_model:
-		models_path = os.path.join("models")
-		if not (os.path.isdir(models_path)):
-			os.makedirs(models_path)
-
-		model_file_path = os.path.join(models_path,this_run_id + ".tfl")
+	if cfg.save_the_model:
+		model_file_path = os.path.join(cfg.models_path,this_run_id + ".tfl")
 		model.save(model_file_path)
 
 	return model
@@ -260,13 +246,13 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	predictions = flatten(fun_chunks(model.predict, ps.valid.xs))
 	cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
 
-	if print_test:
+	if cfg.print_test:
 		predictions = flatten(fun_chunks(model.predict, ps.test.xs))
 		cm.calc(ps.test.ids , predictions, ps.test.ys, 'test-set')
 
 	cm.print_tables()
-	cm.save_predictions(predictions_filename,
-						directory = 'logs',
+	cm.save_predictions(cfg.predictions_filename,
+						directory = cfg.logs_path,
 						sets=['training-set','validation-set','test-set'],
 						update = True)
 
@@ -274,13 +260,13 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
 	the_list = [
 		strftime('%Y-%m-%d %H:%M', time.localtime()),
-		network_name,
-		os.path.basename(samples_path),
+		cfg.network_name,
+		cfg.ps_file_name,
 		cm.metrics['validation-set']['accuracy'],
 		cm.metrics['validation-set']['f1_score'],
 		this_run_id,
 		]
-	if print_test:
+	if cfg.print_test:
 		the_list.append(cm.metrics['test-set']['accuracy'])
 		the_list.append(cm.metrics['test-set']['f1_score'])
 
@@ -289,12 +275,10 @@ def do_prediction(model, hyp, this_run_id, log_run):
 ################################################################################
 
 # affected by flags, need to be before consume_flags()
-snapshot_epoch = True
-print_debug = True
-predictions_filename = 'predictions.pickle'
-
-# sdasd
-dataset_proto = datasets[dataset_name]
+cfg = Config()
+cfg.snapshot_epoch = True
+cfg.print_debug = True
+cfg.predictions_filename = 'predictions.pickle'
 
 # Handles command arguments, usefull for debugging
 # usage: tflearn_rnn.py --pf debug_processed.pickle
@@ -308,32 +292,28 @@ arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate t
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
 arghandler.register_flag('trouble', _arg_callback_trouble, [], "File name to save/read for trouble makers predictions. Args: <filename>")
-print("\n")
 arghandler.consume_flags()
 
-#hack to get ds flag to work with in flag
-dataset = settings.set_rel_paths(dataset_proto)
-samples_path = dataset["samples_path"]
 
 debug_log = Logger()
 perflog = FileBackedCSVBuffer(
 	"training_performance.csv",
-	"logs",
+	cfg.logs_path,
 	header=['Time', 'Network name', 'data file', 'Val acc', 'Val f1', 'Run id','Status'],
 	padding=17)
 
 # Load processed data from file
-with open(samples_path, 'rb') as handle:
+with open(cfg.samples_path, 'rb') as handle:
     pd = pickle.load( handle )
 ps = pd.dataset #processed samples
 
 # debug print tweets
-if print_debug:
+if cfg.print_debug:
 	for s_id, s_y, s_x in zip(ps.train.ids, ps.train.ys, ps.train.xs):
 		ispos = np.array_equal(s_y, pos_label)
 		label = "Positive (Sarcastic)" if ispos else "Negative (Not sarcastic)"
 		logstring = "Sample id: {}, {}: {:<5}".format(s_id, label, "\n")
-		logstring += " ".join( reverse_lookup(s_x, pd.rev_vocab, ascii_console ))
+		logstring += " ".join( reverse_lookup(s_x, pd.rev_vocab, cfg.ascii_console ))
 		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 10, step = 2500)
 	print("\nLogged sample values:\n")
 	debug_log.print_log(logname="reverse_lookup")
@@ -342,7 +322,7 @@ if print_debug:
 
 # 'sönderhaxad' class that generates random hyperparamters in the range provided
 
-hypers = Hyper(run_count,
+hypers = Hyper(cfg.run_count,
 	lstm = {'dropout': (0.4, 0.8)},
 	middle= {'weight_decay': (0.01, 0.06)},
 	dropout = {'dropout': (0.4, 0.8)},
@@ -356,8 +336,8 @@ for hyp in hypers:
 	this_run_id = common_funs.generate_name()
 	log_run.log(hyp.get_hypers(), logname='hypers', aslist = False)
 	log_run.log(this_run_id, logname='run_id', aslist = False)
-	log_run.log(network_name, logname='network_name', aslist = False)
-	log_run.log(dataset_proto['ps_file_name'], logname='Dataset', aslist = False)
+	log_run.log(cfg.network_name, logname='network_name', aslist = False)
+	log_run.log(cfg.ps_file_name, logname='Dataset', aslist = False)
 
 	tf.reset_default_graph()
 	with tf.Graph().as_default(), tf.Session() as sess:
@@ -366,9 +346,9 @@ for hyp in hypers:
 		stop_reason = ["Other error"]
 
 		try:
-			net = build_network(network_name, hyp, pd)
+			net = build_network(cfg.network_name, hyp, pd)
 			model = create_model(net, hyp, this_run_id, log_run)
-			if training:
+			if cfg.training:
 				model = train_model(model, hyp, this_run_id, log_run)
 		except NetworkNotFoundError as e:
 			print("The network name provided din't match any defined network")

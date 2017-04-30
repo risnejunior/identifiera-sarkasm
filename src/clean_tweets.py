@@ -7,24 +7,23 @@
 import os
 import csv
 import re
-import settings
 import json
-from common_funs import Progress_bar
-from common_funs import Arg_handler
-from settings import *
 from collections import OrderedDict
+
+from common_funs import Arg_handler
+from common_funs import Progress_bar
 from common_funs import Logger
 from common_funs import Open_Dataset
 
+from config import Config
+
 def _arg_callback_ds(ds_name):
-    global dataset_name
-    dataset_name = ds_name
+    cfg.dataset_name = ds_name
     print("<Using dataset: {}>".format(ds_name))
 
 def _arg_callback_strict():
-    global strict, includetags
-    strict = True
-    includetags = False
+    cfg.strict = True
+    cfg.includetags = False
     print("<Using strict cleaning>")
 
 def clean_tweets(ds_name, s_class, s_format):
@@ -55,9 +54,9 @@ def clean_tweets(ds_name, s_class, s_format):
             temp=url.sub('', temp)
             temp=hashtags.sub('',temp)
         else:
-            temp=friendtag.sub(settings.tags[0], temp)
-            temp=url.sub(settings.tags[1], temp)
-            temp=hashtags.sub(settings.tags[2],temp)
+            temp=friendtag.sub(cfg.tags[0], temp)
+            temp=url.sub(cfg.tags[1], temp)
+            temp=hashtags.sub(cfg.tags[2],temp)
 
         # always remove hashtags
         temp=sarcasmtag.sub('', temp)
@@ -81,8 +80,10 @@ def clean_tweets(ds_name, s_class, s_format):
     return ordered_data.values()
 
 def write_clean(data, ds_name, s_class):
+    # write to table 'cleaned', 'wc' - flag means that samples of the same type
+    #   will first be deleted (write-clean) so that old writes don't remain
     pb = Progress_bar( len(data)-1 )
-    with Open_Dataset(ds_name, 'cleaned', 'w', sample_class=s_class) as ds:
+    with Open_Dataset(ds_name, 'cleaned', 'wc', sample_class=s_class) as ds:
         for i, row in data:
             ds.write(i, row)
             pb.tick()
@@ -97,34 +98,34 @@ url = re.compile(r'\bhttps?:\S+', re.IGNORECASE)
 logger = Logger()
 decoder = json.JSONDecoder()
 
+cfg = Config()
 arghandler = Arg_handler()
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('strict', _arg_callback_strict, [''], "If flag is set, clean the dataset with strict settings.")
 arghandler.consume_flags()
 
-#check if the database is initialized, if not, load the missing dataset(s)
-Open_Dataset.check_init_db()
+#check if the database is initialized, if not, load the missing dataset
+datasets_config = [      
+(cfg.dataset_name, cfg.pos_source_path, cfg.source_format, 1 ),
+(cfg.dataset_name, cfg.neg_source_path, cfg.source_format, 0 )]
+Open_Dataset.check_init_db(datasets_config, cfg.sqlite_file)
 
 restrictions = []
-if not includetags: 
+if not cfg.includetags: 
     restrictions.append('remove_tags')
-if strict: 
+if cfg.strict: 
     restrictions.extend(['skip_url', 'skip_replies', 'skip_short'])
 
-# Description in settings of how the source file looks, here it's used to 
-#  determine if the text should be unicode unescaped (detector)
-source_format = settings.datasets[dataset_name]['source_format']
-
 #normal
-print("Cleaning normal from: " + dataset_name)
-negdata = clean_tweets(dataset_name, 0, source_format)
+print("Cleaning normal from: " + cfg.dataset_name)
+negdata = clean_tweets(cfg.dataset_name, 0, cfg.source_format)
 print ("Normal tweets: " + str(len(negdata)))
-write_clean(negdata, dataset_name, 0)
+write_clean(negdata, cfg.dataset_name, 0)
 
 #sarcastic
-print("Cleaning positive from: " + dataset_name)
-posdata = clean_tweets(dataset_name, 1, source_format)
+print("Cleaning positive from: " + cfg.dataset_name)
+posdata = clean_tweets(cfg.dataset_name, 1, cfg.source_format)
 print ("Sarcastic tweets: " + str(len(posdata)))
-write_clean(posdata, dataset_name, 1)
+write_clean(posdata, cfg.dataset_name, 1)
 
 logger.save()

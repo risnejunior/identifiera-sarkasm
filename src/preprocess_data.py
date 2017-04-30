@@ -26,23 +26,25 @@ from common_funs import Working_animation
 from common_funs import Progress_bar
 from common_funs import DebugLoop
 from common_funs import Arg_handler
-#from common_funs import ProcessedData
-#from common_funs import Dataset
-#from common_funs import Setpart
-#from common_funs import pos_label
-#from common_funs import neg_label
-import settings
-from settings import *
+from common_funs import Open_Dataset
+
+from common_funs import ProcessedData
+from common_funs import Dataset
+from common_funs import Setpart
+from common_funs import pos_label
+from common_funs import neg_label
+
+from config import Config
 
 #### functions ###############################################################################
 
 def _arg_callback_sp(train, cross, test):
 	global partition_training, partition_validation, partition_test
-	partition_training = float(train)
-	partition_validation = float(cross)
-	partition_test = float(test)
+	cfg.partition_training = float(train)
+	cfg.partition_validation = float(cross)
+	cfg.partition_test = float(test)
 	
-	if (partition_training + partition_validation + partition_test > 1):
+	if (cfg.partition_training + cfg.partition_validation + cfg.partition_test > 1):
 		print("Sum of partitions cannot exceed 1.")
 		sys.exit(0)
 		
@@ -54,52 +56,46 @@ def _arg_callback_ds(ds_name):
 	"""
 	Select dataset
 	"""
-	global dataset_proto
-	dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
+	cfg.dataset_name = ds_name
 	print("<Using dataset: {}>".format(ds_name))
 
 def _arg_callback_reverse():
 	"""
 	Reverse samples
 	"""
-	global reverse_samples
-	reverse_samples = True
+	cfg.reverse_samples = True
 	print("<Reversing samples..>")
 
 def _arg_callback_scramble():
 	"""
 	Scramble the samples (tweets) to see if the network takes word order in account
 	"""
-	global scramble_samples
-	scramble_samples = True
+	cfg.scramble_samples = True
 	print("<scrambling samples..>")
 
 def _arg_callback_sd():
 	"""
 	save json files with vocabulary, samples etc. for debugging
 	"""
-	global save_debug
-	save_debug = True
+	cfg.save_debug = True
 	print("<Will save debug files..>")
 
 def _arg_callback_nltk():
 	"""
 	Download nltk packages if missing
 	"""
-	global nltk_dowload
-	nltk_dowload = True
+	cfg.nltk_dowload = True
 	print("<checking nltk...>")
 
 def _arg_callback_ms():
 	"""
 	Create a minisample for debugging; will run quickly
 	"""
-	global sample_count, embeddings_maxloop, vocabulary_size, embedding_size, max_sequence
-	sample_count = 1000
-	embeddings_maxloop = 10000
-	vocabulary_size = 5000
-	embedding_size = 25
-	max_sequence = 30
+	cfg.sample_count = 1000
+	cfg.embeddings_maxloop = 10000
+	cfg.vocabulary_size = 5000
+	cfg.embedding_size = 25
+	cfg.max_sequence = 30
 
 	print("<using mini-sample>")
 
@@ -107,32 +103,27 @@ def _arg_callback_re():
 	"""
 	Skip fitting embeddings, all will be set to random
 	"""
-	global embeddings_maxloop
-	embeddings_maxloop = 0
-
+	cfg.embeddings_maxloop = 0
 	print("<using random-embeddings>")
 
 def _arg_callback_ls(s_count=5000):
 	"""
 	Limit the samples used (how many teewts to preprocess)
 	"""
-	global sample_count
-	sample_count = int(s_count)
-
+	cfg.sample_count = int(s_count)
 	print("<using limited sample count: {}>".format(s_count))
 
 def _arg_callback_pf(file_name):
 	"""
 	Save preprocessed samples under a different file name
 	"""
-	global dataset_proto
-	dataset_proto['ps_file_name'] = file_name
+	cfg.ps_file_name = file_name
 	print("<Saving processed samples as: {}>".format(file_name))
 
 def build_vocabulary( words, max_size ):	
 	vocab_instances = 0
 	unique_counts = Counter(words)
-	d = dict(unique_counts.most_common(vocabulary_size-2) )
+	d = dict(unique_counts.most_common(cfg.vocabulary_size-2) )
 	pb = Progress_bar(len(d) - 1) 
 	vocabulary = OrderedDict( sorted(d.items(), key=lambda t: t[1],  reverse=True) )
 
@@ -142,47 +133,45 @@ def build_vocabulary( words, max_size ):
 		vocabulary[key] = i
 		pb.tick()
 			
-	vocabulary[padding_char] = 0
-	vocabulary[placeholder_char] = 1
+	vocabulary[cfg.padding_char] = 0
+	vocabulary[cfg.placeholder_char] = 1
 
 	#reverse the vocbulary (for reverse lookup)
 	rev_vocabulary = {v: k for k, v in vocabulary.items()}
 	
 	return len(unique_counts), vocab_instances, vocabulary, rev_vocabulary
 
-def tokenize_text( file_path ):
+def tokenize_text( sample_text ):
 	global sequence_lengths	
 	processed_text = []
-	with open(file_path, 'r', encoding='utf8') as f:
-		for line in f:
-			
-			if remove_punctuation:
-				cleaned = line.lower().translate( t_table ) 	
-			else:
-				cleaned = line
+	
+	if cfg.remove_punctuation:
+		cleaned = sample_text.lower().translate( t_table ) 	
+	else:
+		cleaned = sample_text
 
-			if use_casual_tokenizer:
-				tokens = tknzr.tokenize( cleaned ) 
-			else:
-				tokens = nltk.word_tokenize( cleaned, language='english') 	
-						
-			if remove_stopwords:
-				tokens = [w for w in tokens if not w in stopwords.words('english')] 	
+	if cfg.use_casual_tokenizer:
+		tokens = tknzr.tokenize( cleaned ) 
+	else:
+		tokens = nltk.word_tokenize( cleaned, language='english') 	
+				
+	if cfg.remove_stopwords:
+		tokens = [w for w in tokens if not w in stopwords.words('english')] 	
 
-			sequence_lengths.append( len( tokens ) )
-			processed_text.extend( tokens )		
+	sequence_lengths.append( len( tokens ) )
+	processed_text.extend( tokens )	
+	
 	return processed_text
 
-def tokenize_helper(path_name, file_list, samples, all_words, sarcastic):
+def tokenize_helper(file_list, samples, all_words, sarcastic):
 	file_count = len(file_list)
 	print("Tokenizing %i %s samples (tweets)" 
 		%(file_count, "positive (sarcastic)" if sarcastic else "negative (normal)" ) )
 	pb = common_funs.Progress_bar( file_count-1 )
 	for file_name in file_list:
-		file_path = os.path.join(path_name, file_name)
-		text_tokens = tokenize_text( file_path )
+		text_tokens = tokenize_text( file_name['sample_text'] )
 		all_words.extend(text_tokens)
-		file_name, _ = file_name.split('.')
+		file_name = file_name['sample_id']
 		samples[file_name] = {'sarcastic': sarcastic, 'text': text_tokens, 'int_vector':[]}
 		pb.tick()
 
@@ -201,30 +190,25 @@ def make_index_vectors( samples, vocabulary ):
 			else:
 				int_vector.append( 1 ) # 1 - used for masking samples
 		
-		if reverse_samples:
+		if cfg.reverse_samples:
 			int_vector.reverse()
 
-		if scramble_samples:
+		if cfg.scramble_samples:
 			random.shuffle(int_vector)
 
 		samples[key]['int_vector'] = int_vector
 
-def reverse_lookup( index_vector, rev_vocabulary ):
-	text = []
-	for i in index_vector:
-		text.append( rev_vocabulary[i] )
-	return text
 
 def fit_embeddings(vocabulary, source_path):	
 	debug_logger = Logger(enable = False)
 	
 	found = notfound = masks = randvecs = nulls = 0
-	rs_embeddings = [[] for _ in range(vocabulary_size)]
+	rs_embeddings = [[] for _ in range(cfg.vocabulary_size)]
 	minmax = MinMax()
 	wa = Working_animation("Fit embeddings to vocabulary", 50)
 	try:
 		with open(source_path, 'r', encoding="utf8") as emb_file:
-			dl = DebugLoop(maxloops = embeddings_maxloop)
+			dl = DebugLoop(maxloops = cfg.embeddings_maxloop)
 			for i, line in enumerate(dl.loop(emb_file)):		
 				(word, *vector) = line.split()
 				vector = list(map(float, vector))
@@ -239,7 +223,7 @@ def fit_embeddings(vocabulary, source_path):
 						continue
 					elif voc_index == 0:
 						nulls += 1
-						rs_embeddings[voc_index] = [0.0 for _ in range(embedding_size)]
+						rs_embeddings[voc_index] = [0.0 for _ in range(cfg.embedding_size)]
 					else:				
 						rs_embeddings[voc_index] = vector
 						minmax.add(vector)
@@ -257,7 +241,7 @@ def fit_embeddings(vocabulary, source_path):
 			if not vector:
 				randvecs += 1
 				rs_embeddings[i] = [
-					round(rt(minval, maxval), 5) for _ in range(embedding_size)]
+					round(rt(minval, maxval), 5) for _ in range(cfg.embedding_size)]
 			pb.tick()
 
 	except IndexError as e:
@@ -273,7 +257,7 @@ def fit_embeddings(vocabulary, source_path):
 	print("Null vectors written to embedding: {:,}".format(nulls))
 	print("Word vectors copied to embedding: {:,}".format(found - masks))
 	print("Word vectors coverage of vocabulary: {:1.0%}"
-		.format((found - masks) / vocabulary_size))
+		.format((found - masks) / cfg.vocabulary_size))
 	print("Random word vectors written to embedding: {:,}".format(randvecs))
 	print("Range for random embedding (min/max): {}".format((minval, maxval)))
 	print("Total written: {:,}".format(randvecs + found - masks))
@@ -283,12 +267,12 @@ def fit_embeddings(vocabulary, source_path):
 ###########################################################################################
 
 # affected by flags, need to be set before consume_flags()
-embeddings_maxloop = None
-nltk_dowload = False
-save_debug = False
-scramble_samples = False
-reverse_samples = False
-dataset_proto = datasets[dataset_name]
+cfg = Config()
+cfg.embeddings_maxloop = None
+cfg.nltk_dowload = False
+cfg.save_debug = False
+cfg.scramble_samples = False
+cfg.reverse_samples = False
 
 arghandler = Arg_handler()
 arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run, with few samples, small vocab, seq. length and few embeddings used.")
@@ -303,11 +287,8 @@ arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], 
 arghandler.register_flag('sp', _arg_callback_sp, ['set-partition'], "Set the partition sizes.")
 arghandler.consume_flags()
 
-dataset = settings.set_rel_paths(dataset_proto)
-path_name_neg = dataset["path_name_neg"]
-path_name_pos = dataset["path_name_pos"]
-samples_path = dataset["samples_path"]
-rel_data_path = ds_paths["rel_path"]
+samples_path = cfg.samples_path # <- remove!!!
+sample_count = cfg.sample_count# <- remove!!!
 
 logger = common_funs.Logger()
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
@@ -317,21 +298,21 @@ j_indent = 4
 #t_table = dict( ( ord(char), None) for char in string.punctuation ) #translation tabler  for puctuation
 t_table = dict( ( ord(char), None) for char in ['.','_'] ) #translation tabler  for puctuation
 # If you don't have the packages installed..
-if nltk_dowload: nltk.download("stopwords"); nltk.download("punkt")
+if cfg.nltk_dowload: nltk.download("stopwords"); nltk.download("punkt")
+file_list_normal = Open_Dataset(cfg.dataset_name, 'cleaned', 'r', sample_class = 0).getRows()
+file_list_sarcastic = Open_Dataset(cfg.dataset_name, 'cleaned', 'r', sample_class = 1).getRows()
 
-file_list_normal = os.listdir(path_name_neg)
-file_list_sarcastic = os.listdir(path_name_pos)
 pos_files = len(file_list_sarcastic)
 neg_files = len(file_list_normal)
 print()
 print("Sample files found, total: {}, positive: {}, negative: {}"
 	.format(pos_files + neg_files, pos_files, neg_files))
 
-if set_balance:
-	positive_count = math.ceil(set_balance * sample_count)
-	negative_count = math.floor((1 - set_balance) * sample_count) 
+if cfg.set_balance:
+	positive_count = math.ceil(set_balance * cfg.sample_count)
+	negative_count = math.floor((1 - set_balance) * cfg.sample_count) 
 else:
-	positive_count = negative_count = sample_count
+	positive_count = negative_count = cfg.sample_count
 
 file_list_sarcastic = file_list_sarcastic[:positive_count]
 file_list_normal = file_list_normal[:negative_count]
@@ -345,20 +326,19 @@ samples = {}
 all_words = []
 sequence_lengths = []
 
-tokenize_helper(path_name_neg, file_list_normal, samples, all_words, False)
-tokenize_helper(path_name_pos,file_list_sarcastic, samples, all_words, True)
+tokenize_helper(file_list_normal, samples, all_words, False)
+tokenize_helper(file_list_sarcastic, samples, all_words, True)
 
 # build vocabulary
 print("Building vocabulary..")
 unique_words, vocab_instances, vocabulary, rev_vocabulary = \
-	build_vocabulary(all_words, vocabulary_size)
+	build_vocabulary(all_words, cfg.vocabulary_size)
 
 #load and fit embeddings to vocabulary
-if use_embeddings:
+if cfg.use_embeddings:
 	print()
 	print("Fitting embeddings to vocabulary...")
-	raw_emb_path = get_raw_embeddings_path(embedding_size)
-	embeddings = fit_embeddings(vocabulary, raw_emb_path)
+	embeddings = fit_embeddings(vocabulary, cfg.raw_embeddings_path)
 	logger.log(getsizeof(embeddings), logname="embedding_bytes")
 
 # print word stats
@@ -374,7 +354,7 @@ print("3-sigma: " + str(math.ceil( seq_mean + 3 * seq_std) ) )
 print("Words in corpus: {:0}, Unique words in corpus: {:1}" \
 	.format( len(all_words), unique_words ) )
 print("Vocabulary size: {:0}, Vocabulary coverage of corpus {:1.0%}" \
-	.format(vocabulary_size, vocab_instances / len(all_words) ) ) 
+	.format(cfg.vocabulary_size, vocab_instances / len(all_words) ) ) 
 print()
 
 # make index vectors
@@ -390,15 +370,15 @@ sample_count = len(samples)
 # assign category labels
 print("Assigning category labels...")
 for key, val in samples.items():
-	if random_labels:
+	if cfg.random_labels:
 		if random.randint(1,2) == 1:
 			labels.append( pos_label )
 		else:
 			labels.append( neg_label )
 	elif val['sarcastic'] == True:
 		labels.append( pos_label )
-		if add_snitch: val['int_vector'].extend( 
-			[vocabulary_size-1] )
+		if cfg.add_snitch: val['int_vector'].extend( 
+			[cfg.vocabulary_size-1] )
 	else:
 		labels.append( neg_label )
 
@@ -415,8 +395,8 @@ random.Random(1).shuffle( labeld_samples )
 
 #calculate  training and validation set size
 sample_size = len( labeld_samples )
-training_size = math.floor( partition_training * sample_size )
-validation_size = math.floor( partition_validation * sample_size )
+training_size = math.floor( cfg.partition_training * sample_size )
+validation_size = math.floor( cfg.partition_validation * sample_size )
 
 # slice data into training, validation & test sets
 train_samples = labeld_samples[:training_size]
@@ -440,27 +420,31 @@ validate_Y = t_validation_s[2]
 test_Y = t_test_s[2]
 
 # use random data (random tweets)
-if random_data:
+if cfg.random_data:
 	print("Using random data")
 	tmp_X = []
 	for _ in range( len(train_X) ):
 		row = np.random.randint(
 			1,
-			(vocabulary_size - 1), 
-			size=max_sequence, 
+			(cfg.vocabulary_size - 1), 
+			size=cfg.max_sequence
+, 
 			dtype=np.int32)
 		tmp_X.append(row)
 	train_X = np.array(tmp_X, dtype=np.int32)
 
 train_X = common_funs.pad_sequences( np.array( t_train_s[1] ), 
-	padding=padding_pos, 
-	maxlen=max_sequence, value=0.)
+	padding=cfg.padding_pos, 
+	maxlen=cfg.max_sequence
+, value=0.)
 validate_X = common_funs.pad_sequences( np.array( t_validation_s[1] ), 
-	padding=padding_pos, 
-	maxlen=max_sequence, value=0.)
+	padding=cfg.padding_pos, 
+	maxlen=cfg.max_sequence
+, value=0.)
 test_X = common_funs.pad_sequences( np.array( t_test_s[1] ), 
-	padding=padding_pos,
-	 maxlen=max_sequence, value=0.)
+	padding=cfg.padding_pos,
+	 maxlen=cfg.max_sequence
+, value=0.)
 
 # package it all in a named touple
 spt_train = Setpart('training set', len(train_ids), train_ids, train_X, train_Y)
@@ -480,7 +464,8 @@ print ("Samples partitioning; training: {}, validation: {}, test: {}"
 
 # All processed data in one named touple
 pd = ProcessedData(
-	ds, embeddings, vocabulary, rev_vocabulary, embedding_size, vocabulary_size, max_sequence)
+	ds, embeddings, vocabulary, rev_vocabulary, cfg.embedding_size, cfg.vocabulary_size, cfg.max_sequence
+)
 
 print ("Saving to disk at: {}".format(samples_path))
 with open(samples_path, 'wb') as handle:
@@ -488,8 +473,8 @@ with open(samples_path, 'wb') as handle:
 
 
 # saves readable versions of the data for debugging
-if save_debug:
-	debug_path = os.path.join(rel_data_path, "debug_") 
+if cfg.save_debug:
+	debug_path = os.path.join(cfg.dataset_path, "debug_") 
 
 	all_samples= json.dumps(samples, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
 	with open(debug_path + 'samples.json', 'w', encoding='utf8') as out_file:

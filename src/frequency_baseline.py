@@ -14,20 +14,17 @@ from numpy import mean
 import common_funs
 from common_funs import Binary_confusion_matrix
 from common_funs import Arg_handler
-from settings import *
 
+from common_funs import ProcessedData
+from common_funs import Dataset
+from common_funs import Setpart
+from common_funs import pos_label
+from common_funs import neg_label
+
+from config import Config
 
 class FubarException(Exception):
     pass
-
-#####settings #########
-max_len = None # None = take all
-snitch = False # None = don't add
-#######################
-
-pos_label = np.array([0., 1.], dtype="float32")
-neg_label = np.array([1., 0.], dtype="float32")
-logger = common_funs.Logger(enable=use_logger)
 
 def predict(int_vectors, word_dicts, max_len=None):
 	predictions = []
@@ -108,18 +105,31 @@ def _arg_callback_in(file_name):
 	"""
 	Take preprocessed samples from the selected file
 	"""
-	global samples_path
-	samples_path = os.path.join(rel_data_path, file_name)
-	print("<Using processed samples from: {}>".format(samples_path))
+	cfg.ps_file_name = file_name
+	print("<Using processed samples from: {}>".format(cfg.samples_path))
 
+def _arg_callback_ds(ds_name):
+	"""
+	Select dataset
+	"""
+	cfg.dataset_name = ds_name
+	print("<Using dataset: {}>".format(ds_name))
 ##################################################################################
 
+
+cfg = Config()
+cfg.max_len = None # None = take all
+cfg.snitch = False # None = don't add
+
+logger = common_funs.Logger(enable=cfg.use_logger)
+
 arghandler = Arg_handler()
+arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which file to take samples from. args: <filename>")
 arghandler.consume_flags()
 
 # load processed samples
-with open(samples_path, 'rb') as handle:
+with open(cfg.samples_path, 'rb') as handle:
     ps = (pickle.load(handle)).dataset
 
 all_words = []
@@ -136,7 +146,7 @@ for sentence, label in training_samples:
 	is_pos = np.array_equal(label,pos_label)
 
 	if (is_pos):
-		if snitch: sentence = np.append(sentence, snitch)
+		if cfg.snitch: sentence = np.append(sentence, snitch)
 
 		pos_words.extend(sentence)
 		pos += 1
@@ -173,10 +183,10 @@ print("Running prediction...\n")
 cm = Binary_confusion_matrix()
 
 # print confusion matrix for the different sets
-predictions = predict(ps.train.xs, word_dicts, max_len)
+predictions = predict(ps.train.xs, word_dicts, cfg.max_len)
 cm.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
 
-predictions = predict(ps.valid.xs, word_dicts, max_len)
+predictions = predict(ps.valid.xs, word_dicts, cfg.max_len)
 cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
 
 cm.print_tables()

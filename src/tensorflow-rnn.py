@@ -32,16 +32,16 @@ from tensorflow.contrib import learn
 import numpy as np
 
 # Importing Settings
-from settings import *
+from config import Config
 
-
+cfg = Config()
 n_classes = 2
-chunk_size = embedding_size
-n_chunks = max_sequence
+chunk_size = cfg.embedding_size
+n_chunks = cfg.max_sequence
 rnn_size = 64
 roundform = "{0:.5f}"
 
-data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,max_sequence])
+data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,cfg.max_sequence])
 labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
 keep_prob_placeholder = tf.placeholder('float')
 
@@ -52,46 +52,36 @@ def _arg_callback_pt():
 	print_test = True
 
 def _arg_callback_ds(ds_name):
-	"""
-	Select dataset
-	"""
-	global dataset_proto
-	dataset_proto['rel_path'] = datasets[ds_name]['rel_path']
-	print("<Using dataset: {}>".format(ds_name))
+    """
+    Select dataset
+    """
+    cfg.dataset_name = ds_name
+    print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_pretrained(path):
-	global save_the_model, pretrained_model, training, pretrained_path
-	save_the_model = False
-	pretrained_model = True
-	training = False
-
-	models_path = os.path.join("models")
-	if not (os.path.isdir(models_path)):
-		os.makedirs(models_path)
-	pretrained_path = os.path.join(models_path, path + ".tfl")
-
-	print("<Using pretrained model " + path + " for results only.")
+def _arg_callback_pretrained(file_name):
+    cfg.save_the_model = False
+    cfg.pretrained_model = True
+    cfg.training = False
+    cfg.pretrained_file = file_name + ".tfl"
+    print("<Using pretrained model " + pretrained_path + " for results only.")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
-	global epochs, run_count, batch_size, training
-	epochs = int(nr_epochs)
-	run_count = int(count)
-	batch_size = int(batchsize)
-	training = True
-	print("<Training for, epochs: {}, runs:{}, batchsize: {}>".format(nr_epochs, count, batchsize))
+    cfg.epochs = int(nr_epochs)
+    cfg.run_count = int(count)
+    cfg.batch_size = int(batchsize)
+    cfg.training = True
+    print("<Training for, epochs: {}, runs:{}, batchsize: {}>".format(nr_epochs, count, batchsize))
 
 def _arg_callback_net(name):
-	global network_name
-	network_name = name
+	cfg.network_name = name
 	print("<Using network: {}>".format(name))
 
 def _arg_callback_in(file_name):
-	"""
-	Take preprocessed samples from the selected file
-	"""
-	global samples_path
-	samples_path = os.path.join(rel_data_path, file_name)
-	print("<Using processed samples from: {}>".format(samples_path))
+    """
+    Take preprocessed samples from the selected file
+    """
+    cfg.ps_file_name = file_name
+    print("<Using processed samples from: {}>".format(cfg.samples_path))
 
 def _arg_callback_trainemb(trainable = True):
     global trainable_embeddings
@@ -155,14 +145,14 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
     date = time.strftime("%b%d%y-%H%M%S")
     summary_op = tf.summary.merge_all()
     sess = tf.Session()
-    xs_split,ys_split = split_chunks(ps.train.xs,batch_size, np.array(ps.train.ys))
+    xs_split,ys_split = split_chunks(ps.train.xs,cfg.batch_size, np.array(ps.train.ys))
     with sess.as_default():
         sess.run(tf.global_variables_initializer())
         set_embedding(sess,emb_init,emb_placeholder,emb)
         loops = len(xs_split)
         writer = tf.summary.FileWriter(logs_path + "/" + network_name + "-" + date,sess.graph)
         print("Tensorboard log path:",logs_path)
-        for epoch in range(epochs):
+        for epoch in range(cfg.epochs):
             epoch_loss = 0
             print("\n=== BEGIN EPOCH",epoch+1, "===\n")
             for batch_i in range(loops):
@@ -177,7 +167,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
             print("\033[2B")
             print("VALIDATING TRAINING:...")
             val_accuracy = accuracy.eval(feed_dict={data_placeholder: ps.valid.xs,labels_placeholder: np.array(ps.valid.ys), keep_prob_placeholder: 1.0})
-            print('Epoch', epoch+1, 'completed out of', epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy))
+            print('Epoch', epoch+1, 'completed out of', cfg.epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy))
 
             saver = tf.train.Saver()
             save_path = saver.save(sess, "./models/tfcheckpoint.ckpt")
@@ -279,19 +269,19 @@ arghandler.register_flag('trainemb', _arg_callback_trainemb, ['trainable'], "Set
 arghandler.consume_flags()
 
 
-with open(samples_path, 'rb') as handle:
+with open(cfg.samples_path, 'rb') as handle:
     pd = pickle.load( handle )
 
 ps = pd.dataset #Processed Samples
 
-if use_embeddings:
+if cfg.use_embeddings:
     emb = np.array(pd.embeddings[:pd.vocab_size], dtype=np.float32)
 else:
     emb = np.random.randn(pd.vocab_size, pd.emb_size).astype(np.float32)
 
 
 emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size, trainable_embeddings)
-train_neural_network(ps,emb_init,W,emb_placeholder,network_name)
+train_neural_network(ps,emb_init,W,emb_placeholder,cfg.network_name)
 
 
 

@@ -15,26 +15,19 @@ from prettytable import PrettyTable, ALL
 from colorama import Fore, Back, Style
 import numpy as np
 
-import settings
+from config import Config
 
 class Open_Dataset:
-	modes = {'w':'write','r':'read'}
+	modes = {'wr':'write-replace', 'wc':'write-clean', 'r':'read'}
 
 	@staticmethod
-	def check_init_db():
+	def check_init_db(datasets_config, sqlite_file):
 		"""
 		Check if DB file has tables and some data, else create and populate tables 
-		"""
-		datasets_config = []
-		for ds_name, ds_config in settings.datasets.items():
-			if ds_name == 'imdb': #temporay hax!!!!!!
-				continue
-			ds_paths = settings.set_rel_paths(ds_config)
-			datasets_config.append((ds_name, ds_paths['pos_source_path'], ds_config['source_format'], 1 ))
-			datasets_config.append((ds_name, ds_paths['neg_source_path'], ds_config['source_format'], 0 ))
+		"""		
 
 		#check if DB has tables raw & cleaned
-		db = DB_Handler(settings.sqlite_file)
+		db = DB_Handler(sqlite_file)
 		db._c.execute("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name='raw' OR name='cleaned';")
 		count = db._c.fetchone()
 		if count and count['count'] < 2:
@@ -109,10 +102,11 @@ class Open_Dataset:
 		if mode not in Open_Dataset.modes:
 			raise ValueError("mode not recognized")
 
+		cfg = Config()
+		self._db = DB_Handler(cfg.sqlite_file)
 		self._dataset = dataset
 		self._table = table
 		self._mode = mode
-		self._db = DB_Handler(settings.sqlite_file)
 		self._where = where
 		self._rows = ()
 		self._i = 0
@@ -124,14 +118,18 @@ class Open_Dataset:
 						   sample_id=sample_id,
 						   **self._where)
 
-	def _enter_w(self):
+	def _enter_wc(self):
+		self._db.deleteRows(self._table, dataset = self._dataset, **self._where)
+		return self
+
+	def _enter_wr(self):
 		return self
 
 	def _enter_r(self):
-		for row in self._getRows():
+		for row in self.getRows():
 			yield row
 
-	def _getRows(self):
+	def getRows(self):
 		where = dict(dataset = self._dataset)
 		where.update(self._where)
 		return self._db.getRows(self._table, **where)
@@ -139,8 +137,12 @@ class Open_Dataset:
 	def __enter__(self):
 		if self._mode == 'r':
 			return self._enter_r()
+		elif self._mode == 'wr':
+			return self._enter_wr()
+		elif self._mode == 'wc':
+			return self._enter_wc()
 		else:
-			return self._enter_w()
+			raise ValueError('Mode not implemented')
 
 	def __exit__(self, type, value, trackback):
 		self._db.close()
@@ -154,7 +156,7 @@ class Open_Dataset:
 			raise StopIteration
 
 	def __iter__(self):
-		self._rows = self._getRows()
+		self._rows = self.getRows()
 		return self
 
 class DB_Handler:
@@ -163,7 +165,7 @@ class DB_Handler:
 		self._conn = sqlite3.connect(sqlite_file)
 		self._conn.row_factory = sqlite3.Row
 		self._c = self._conn.cursor()
-		#atexit.register(self.close)
+		#atexit.register(self.c
 
 	def close(self):
 		#commit and close
@@ -190,6 +192,15 @@ class DB_Handler:
 
 	def commit(self):
 		self._conn.commit()
+
+	def deleteRows(self, table_name, **where):
+		whereSql = ""
+		for i, clause in enumerate(where.keys()):		
+			cmd =  'WHERE' if i == 0 else 'AND'
+			whereSql += " {0:} {1:} = :{1:}".format(cmd, clause)
+
+		self._c.execute("DELETE FROM {}{}"
+			.format(table_name, whereSql), where)
 
 	def getRows(self, table_name, **where):
 
@@ -1103,3 +1114,15 @@ def boxString(bare_string):
 		vert_bar, horiz_bar, bare_string, "\n")
 
 	return boxed_string
+
+ProcessedData = namedtuple('ProcessedData',['dataset',
+											'embeddings',
+											'vocab',
+											'rev_vocab',
+											'emb_size',
+											'vocab_size',
+											'max_sequence'])
+Dataset = namedtuple('Dataset', ['train', 'valid', 'test'])
+Setpart = namedtuple('Setpart', ['names', 'length', 'ids', 'xs','ys'])
+pos_label = np.array([0., 1.], dtype="float32")
+neg_label = np.array([1., 0.], dtype="float32")

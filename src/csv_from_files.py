@@ -1,6 +1,11 @@
-from settings import *
 import os
 import random
+from config import Config
+
+
+print("File structure changed, this file no longer works off the shelf")
+quit()
+
 
 file_lists = { 
 	'negative': (path_name_neg, os.listdir(path_name_neg)),

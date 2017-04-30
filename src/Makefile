@@ -6,15 +6,15 @@ test:
 
 # CLEAN NORMAL DATASET #
 balanced:
-	python3 clean_tweets_detector.py --ds poria-balanced
+	python3 clean_tweets.py --ds poria-balanced
 	python3 preprocess_data.py --ds poria-balanced --of balanced.pickle
 
 ratio:
-	python3 clean_tweets_detector.py --ds poria-ratio
+	python3 clean_tweets.py --ds poria-ratio
 	python3 preprocess_data.py --ds poria-ratio --of ratio.pickle
 
 detector:
-	python3 clean_tweets_detector.py --ds detector
+	python3 clean_tweets.py --ds detector
 	python3 preprocess_data.py --ds detector --of detector.pickle
 
 # TRAIN ON NORMAL DATASET #
@@ -29,15 +29,15 @@ train-detector:
 
 # SCRAMBLE THE DATASET #
 scramble-balanced:
-	python3 clean_tweets_detector.py --ds poria-balanced
+	python3 clean_tweets.py --ds poria-balanced
 	python3 preprocess_data.py --scramble --ds poria-balanced --of scrambled_balanced.pickle
 
 scramble-ratio:
-	python3 clean_tweets_detector.py --ds poria-ratio
+	python3 clean_tweets.py --ds poria-ratio
 	python3 preprocess_data.py --scramble --ds poria-ratio --of scrambled_ratio.pickle
 
 scramble-detector:
-	python3 clean_tweets_detector.py --ds detector
+	python3 clean_tweets.py --ds detector
 	python3 preprocess_data.py --scramble --ds detector --of scrambled_detector.pickle
 
 # TRAIN SCRAMBLED DATASET "
@@ -52,15 +52,15 @@ train-scramble-detector:
 
 # CLEAN DATASET STRICT AND SCRAMBLE #
 strict-scramble-balanced:
-	python3 clean_tweets_detector.py --ds poria-balanced --strict
+	python3 clean_tweets.py --ds poria-balanced --strict
 	python3 preprocess_data.py --scramble --ds poria-balanced --of strict_scrambled_balanced.pickle
 
 strict-scramble-ratio:
-	python3 clean_tweets_detector.py --ds poria-ratio --strict
+	python3 clean_tweets.py --ds poria-ratio --strict
 	python3 preprocess_data.py --scramble --ds poria-ratio --of strict_scrambled_ratio.pickle
 
 strict-scramble-detector:
-	python3 clean_tweets_detector.py --ds detector --strict
+	python3 clean_tweets.py --ds detector --strict
 	python3 preprocess_data.py --scramble --ds detector --of strict_scrambled_detector.pickle
 
 # TRAIN STRICT SCRAMBLED DATASET #
@@ -75,11 +75,16 @@ train-strict-scramble-detector:
 
 # STRICT VS PORIA #
 strict-clean-detector:
-	python3 clean_tweets_detector.py --ds detector --strict
+	python3 clean_tweets.py --ds detector --strict
 	python3 preprocess_data.py --ds detector --of strict_detector.pickle
 	python3 tflearn_rnn.py --ds detector --in strict_detector.pickle
 
 poria-clean-detector:
-	python3 clean_tweets_detector.py --ds detector --poria
+	python3 clean_tweets.py --ds detector --poria
 	python3 preprocess_data.py --ds detector --of poria_detector.pickle
 	python3 tflearn_rnn.py --ds detector --in poria_detector.pickle
+
+all-detector:
+	python3 clean_tweets.py --ds detector --strict
+	python3 preprocess_data.py --ds detector --out strict.pickle
+	python3 tflearn_rnn.py --ds detector --in strict.pickle
