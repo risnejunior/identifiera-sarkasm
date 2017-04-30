@@ -237,7 +237,7 @@ def do_prediction(model, hyp, this_run_id, log_run):
 
 	cm = Binary_confusion_matrix()
 	from common_funs import chunks
-	fun_chunks = lambda fun, parts: [fun(part) for part in chunks(parts, 100)]	
+	fun_chunks = lambda fun, parts: [fun(part) for part in chunks(parts, 1000)]	
 	flatten = lambda l: [x for xs in l for x in xs]
 
 	predictions = flatten(fun_chunks(model.predict, ps.train.xs))

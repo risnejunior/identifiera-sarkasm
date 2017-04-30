@@ -369,21 +369,23 @@ sample_count = len(samples)
 
 # assign category labels
 print("Assigning category labels...")
-for key, val in samples.items():
+pb = Progress_bar(sample_count-1)
+for i, (key, val) in enumerate(samples.items()):
 	if cfg.random_labels:
 		if random.randint(1,2) == 1:
 			labels.append( pos_label )
 		else:
 			labels.append( neg_label )
-	elif val['sarcastic'] == True:
+	elif val['sarcastic'] == True:		
 		labels.append( pos_label )
-		if cfg.add_snitch: val['int_vector'].extend( 
-			[cfg.vocabulary_size-1] )
+		if cfg.add_snitch: 
+			val['int_vector'].extend( [cfg.vocabulary_size-1] )
 	else:
 		labels.append( neg_label )
 
 	int_vectors.append( np.array( val['int_vector'], dtype="int32" ) )
 	ids.append( key )
+	pb.tick()
 
 
 #zip the list shuffle them and unzip
@@ -451,13 +453,13 @@ spt_train = Setpart('training set', len(train_ids), train_ids, train_X, train_Y)
 spt_val = Setpart('validation set', len(validate_ids), validate_ids, validate_X, validate_Y)
 spt_test = Setpart('test set', len(test_ids), test_ids, test_X, test_Y)
 ds = Dataset(spt_train, spt_val, spt_test)
-logger.log("sample size", sample_size, aslist=False)
+logger.log(sample_size, "sample size", aslist=False)
 
 for setpart in ds:
 	for i in range(setpart.length - 1):
 		name, _, ids, xs, ys = setpart
 		line = "name: {} id:{} x:{} y:{}".format(name, ids[i], xs[i], ys[i])
-		logger.log("processed", line, 1000, 5)
+		logger.log(line, "processed", 1000, 5)
 
 print ("Samples partitioning; training: {}, validation: {}, test: {}"
 	.format(ds.train.length, ds.valid.length, ds.test.length))

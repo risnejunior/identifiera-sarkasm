@@ -106,7 +106,7 @@ while True:
 	for tweet in downloaded_tweets:
 		#replace newlines in text
 		tweet_text = tweet.text
-		tweet_text = re.sub(pattern_replace_text,' ', tweet_text)
+		tweet_text = pattern_replace_text.sub(' ', tweet_text)
 
 		#extract hashtag indices
 		entities = tweet.entities

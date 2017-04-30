@@ -33,6 +33,7 @@ def clean_tweets(ds_name, s_class, s_format):
     for row in Open_Dataset(ds_name, 'raw', 'r', sample_class=s_class):
         temp = row['sample_text']
         sid = row['sample_id']
+
         logger.log((sid, temp), logname='before',  maxlogs=5)
 
         if s_format['unescape']:
@@ -93,7 +94,8 @@ hashtags = re.compile(r'#[^\s.,;]*')
 friendtag = re.compile(r'\S*@[^\s.,;]*')
 retweet = re.compile(r'\A@|RT')
 sarcasmtag = re.compile(r'#sarcasm|sarcastic\b', re.IGNORECASE)
-url = re.compile(r'\bhttps?:\S+', re.IGNORECASE) 
+url = re.compile(r'\bhttps?:\S+', re.IGNORECASE)
+pattern_newline = re.compile(r"\n|\r")
 
 logger = Logger()
 decoder = json.JSONDecoder()
