@@ -27,6 +27,7 @@ from common_funs import Progress_bar
 from common_funs import DebugLoop
 from common_funs import Arg_handler
 from common_funs import Open_Dataset
+from common_funs import balance
 
 from common_funs import ProcessedData
 from common_funs import Dataset
@@ -51,6 +52,11 @@ def _arg_callback_sp(train, cross, test):
 	#print("Train partition = {}, Evaluation partition = {:%}, Test partition = {}."
 	#	.format(partition_training, partition_validation, partition_test))
 
+def	_arg_callback_sb(set_balance):
+	cfg.set_balance = float(set_balance)
+
+def	_arg_callback_le(embeddings_count):
+	cfg.embeddings_maxloop = int(embeddings_count)
 
 def _arg_callback_ds(ds_name):
 	"""
@@ -110,7 +116,7 @@ def _arg_callback_ls(s_count=5000):
 	"""
 	Limit the samples used (how many teewts to preprocess)
 	"""
-	cfg.sample_count = int(s_count)
+	cfg.limit_samples = int(s_count)
 	print("<using limited sample count: {}>".format(s_count))
 
 def _arg_callback_pf(file_name):
@@ -285,10 +291,9 @@ arghandler.register_flag('ls', _arg_callback_ls, ['limit', 'limit-samples'], "Li
 arghandler.register_flag('re', _arg_callback_re, ['random-embeddings'], "Use random embeddings")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('sp', _arg_callback_sp, ['set-partition'], "Set the partition sizes.")
+arghandler.register_flag('sb', _arg_callback_sb, ['set-balance'], "Choose the set-balance. Args: <set-balance>")
+arghandler.register_flag('le', _arg_callback_le, ['limit-embeddings'], "Limits how many embeddings are fitted. Args: <embedding count>")
 arghandler.consume_flags()
-
-samples_path = cfg.samples_path # <- remove!!!
-sample_count = cfg.sample_count# <- remove!!!
 
 logger = common_funs.Logger()
 # the nltk casual toeknizer, reduce_len keeps repeating chars to 3 max
@@ -299,28 +304,35 @@ j_indent = 4
 t_table = dict( ( ord(char), None) for char in ['.','_'] ) #translation tabler  for puctuation
 # If you don't have the packages installed..
 if cfg.nltk_dowload: nltk.download("stopwords"); nltk.download("punkt")
+
 file_list_normal = Open_Dataset(cfg.dataset_name, 'cleaned', 'r', sample_class = 0).getRows()
 file_list_sarcastic = Open_Dataset(cfg.dataset_name, 'cleaned', 'r', sample_class = 1).getRows()
 
-pos_files = len(file_list_sarcastic)
-neg_files = len(file_list_normal)
-print()
+pos_samples_count = len(file_list_sarcastic)
+neg_samples_count= len(file_list_normal)
+samples_count = pos_samples_count + neg_samples_count
+
+
 print("Sample files found, total: {}, positive: {}, negative: {}"
-	.format(pos_files + neg_files, pos_files, neg_files))
+	.format(samples_count, pos_samples_count, neg_samples_count))
 
-if cfg.set_balance:
-	positive_count = math.ceil(set_balance * cfg.sample_count)
-	negative_count = math.floor((1 - set_balance) * cfg.sample_count) 
-else:
-	positive_count = negative_count = cfg.sample_count
+if not cfg.limit_samples is None:
+	pos_samples_count = cfg.limit_samples if cfg.limit_samples < pos_samples_count  else pos_samples_count
+	neg_samples_count = cfg.limit_samples if cfg.limit_samples < neg_samples_count else neg_samples_count
 
-file_list_sarcastic = file_list_sarcastic[:positive_count]
-file_list_normal = file_list_normal[:negative_count]
-pos_files = len(file_list_sarcastic)
-neg_files = len(file_list_normal)
-print("After applying sample limit and set balance, total: {}, positive: {}, negative: {}"
-	.format(pos_files + neg_files, pos_files, neg_files))
-print()
+if not cfg.set_balance is None:
+	pos_samples_count, neg_samples_count = balance(pos_samples_count, neg_samples_count, cfg.set_balance)
+	 
+# limit count
+file_list_sarcastic = file_list_sarcastic[:pos_samples_count]
+file_list_normal = file_list_normal[:neg_samples_count]
+
+# actual count
+pos_samples_count = len(file_list_sarcastic)
+neg_samples_count = len(file_list_normal)
+
+print("After set limiting, total: {}, positive: {}, negative: {}\n"
+	.format(pos_samples_count +neg_samples_count, pos_samples_count,neg_samples_count))
 
 samples = {}
 all_words = []
@@ -429,37 +441,40 @@ if cfg.random_data:
 		row = np.random.randint(
 			1,
 			(cfg.vocabulary_size - 1), 
-			size=cfg.max_sequence
-, 
+			size=cfg.max_sequence, 
 			dtype=np.int32)
 		tmp_X.append(row)
 	train_X = np.array(tmp_X, dtype=np.int32)
 
-train_X = common_funs.pad_sequences( np.array( t_train_s[1] ), 
+#pad the data
+train_X = common_funs.pad_sequences( 
+	np.array( t_train_s[1] ), 
 	padding=cfg.padding_pos, 
-	maxlen=cfg.max_sequence
-, value=0.)
-validate_X = common_funs.pad_sequences( np.array( t_validation_s[1] ), 
+	maxlen=cfg.max_sequence,
+	value=0.)
+validate_X = common_funs.pad_sequences( 
+	np.array( t_validation_s[1] ), 
 	padding=cfg.padding_pos, 
-	maxlen=cfg.max_sequence
-, value=0.)
-test_X = common_funs.pad_sequences( np.array( t_test_s[1] ), 
+	maxlen=cfg.max_sequence, 
+	value=0.)
+test_X = common_funs.pad_sequences( 
+	np.array( t_test_s[1] ), 
 	padding=cfg.padding_pos,
-	 maxlen=cfg.max_sequence
-, value=0.)
+	maxlen=cfg.max_sequence, 
+	value=0.)
 
 # package it all in a named touple
 spt_train = Setpart('training set', len(train_ids), train_ids, train_X, train_Y)
 spt_val = Setpart('validation set', len(validate_ids), validate_ids, validate_X, validate_Y)
 spt_test = Setpart('test set', len(test_ids), test_ids, test_X, test_Y)
 ds = Dataset(spt_train, spt_val, spt_test)
-logger.log(sample_size, "sample size", aslist=False)
+#logger.log(sample_size, "sample size", aslist=False)
 
 for setpart in ds:
 	for i in range(setpart.length - 1):
 		name, _, ids, xs, ys = setpart
 		line = "name: {} id:{} x:{} y:{}".format(name, ids[i], xs[i], ys[i])
-		logger.log(line, "processed", 1000, 5)
+		#logger.log(line, "processed", 1000, 5)
 
 print ("Samples partitioning; training: {}, validation: {}, test: {}"
 	.format(ds.train.length, ds.valid.length, ds.test.length))
@@ -469,8 +484,8 @@ pd = ProcessedData(
 	ds, embeddings, vocabulary, rev_vocabulary, cfg.embedding_size, cfg.vocabulary_size, cfg.max_sequence
 )
 
-print ("Saving to disk at: {}".format(samples_path))
-with open(samples_path, 'wb') as handle:
+print ("Saving to disk at: {}".format(cfg.samples_path))
+with open(cfg.samples_path, 'wb') as handle:
     pickle.dump(pd, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 

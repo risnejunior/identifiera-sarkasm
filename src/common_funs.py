@@ -1128,6 +1128,50 @@ def boxString(bare_string):
 
 	return boxed_string
 
+
+def balance(a, b, fa):
+	"""
+	Returns a and b such that: a = fa * total, and: b = (1 - fa) * total, 
+	  while making sure that: total < a + b
+	"""
+	if fa > 1 or fa < 0:
+		raise ValueError("fa should be a float between 0 and 1")
+
+	from math import floor, ceil
+	fb = (1.0 - fa)  #fraction b
+	m = min(a, b)
+
+	assert_tot = lambda a, b: a + b == tot
+	assert_frac = lambda fa, fb: fa + fb == 1
+
+	if a <= b:
+		tot = floor(a/fa)
+		ao = a
+		bo = tot-ao
+	else: 
+		tot = floor(b/fb)
+		bo = b
+		ao = tot-bo
+
+	if  ao > a:
+		tot -= ceil(tot * 1-(a/fa))
+		ao = floor(tot * fa)
+		bo = ceil(tot * fb)
+
+	if bo > b:
+		tot -= ceil(tot * 1-(b/fb))
+		ao = floor(tot * fa)
+		bo = ceil(tot * fb)
+
+
+	if not assert_tot(ao,bo):
+		raise Exception("Total wrong")
+
+	if not assert_frac(fa,fb):
+		raise Exception("Fraction wrong")
+
+	return ao, bo
+
 ProcessedData = namedtuple('ProcessedData',['dataset',
 											'embeddings',
 											'vocab',

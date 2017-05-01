@@ -15,11 +15,13 @@ class Config:
 		remove_punctuation = True,
 		remove_stopwords = False,
 		use_casual_tokenizer = True, 	# doens't remove special chars
-		sample_count = 100000, # set to the smallest (27131) of the both classes to get an even nr of samples
+		sample_count = None, 
 		partition_training = 0.7,
 		partition_validation = 0.15,
 		partition_test = 0.15,
-		set_balance = None, # proportion of sarcastic samples (0.0 - 0.1). Not used if None
+
+		limit_samples = None, # [int] if you want to limit the samples from each class
+		set_balance = None, # [float] proportion of sarcastic samples, Not used if None
 		placeholder_char = '_', # placeholder char for words not in vocabulary
 		padding_char = '.',
 		padding_pos = "post", #pad at the start or at the end of the sample (pre/post)
@@ -34,10 +36,10 @@ class Config:
 		
 		#used in training
 		network_name = 'little_pony',
-		run_count = 1,
+		run_count = 1, # how many hyperparamter permutations to iterate over
 		epochs = 1,
 		batch_size = 90,
-		snapshots_per_epoch = 1,# n = checkpoints per epoch
+		snapshots_per_epoch = 1, #checkpoints per epoch
 
 		#For loading and saving models
 		save_the_model = True, # If true, save the model to path specified in tflearn_rnn
@@ -86,6 +88,8 @@ class Config:
 
 	def __init__(self, own_settings = 'settings.json'):
 		self._root_datasets_path = os.path.join(".", "..","datasets")
+
+		# set default settings
 		self.__dict__.update(Config.standard_settings)		
 
 		# make sure these paths exist
@@ -102,9 +106,8 @@ class Config:
 
 	def get_raw_embeddings_path(self):
 		if self.embedding_size not in Config.allowed_emb_sizes:
-			print("Wrong embedding size provided, quiting.")
-			print("Allowed sizes: {0:s}".format(Config.allowed_emb_sizes))
-			quit()
+			raise ValueException("Wrong embedding size provided, allowed {0:s}"
+				.format(Config.allowed_emb_sizes))
 		else:
 			return os.path.join(
 				self._root_datasets_path,"glove_twitter_embeddings",
