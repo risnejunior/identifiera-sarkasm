@@ -54,9 +54,11 @@ def _arg_callback_sp(train, cross, test):
 
 def	_arg_callback_sb(set_balance):
 	cfg.set_balance = float(set_balance)
+	print("<using set balance: {}>".format(set_balance))
 
 def	_arg_callback_le(embeddings_count):
 	cfg.embeddings_maxloop = int(embeddings_count)
+	print("<limiting embeddings: {}>".format(set_balance))
 
 def _arg_callback_ds(ds_name):
 	"""
@@ -97,7 +99,7 @@ def _arg_callback_ms():
 	"""
 	Create a minisample for debugging; will run quickly
 	"""
-	cfg.sample_count = 1000
+	cfg.limit_samples = 1000
 	cfg.embeddings_maxloop = 10000
 	cfg.vocabulary_size = 5000
 	cfg.embedding_size = 25
@@ -404,7 +406,7 @@ for i, (key, val) in enumerate(samples.items()):
 #the seed should be kept the same so we 
 # always get the same shuffle
 labeld_samples =  list( zip(ids, int_vectors, labels) ) 
-random.Random(1).shuffle( labeld_samples ) 
+#random.Random(1).shuffle( labeld_samples ) 
 #ids, int_vectors, labels = zip(*labeld_samples)
 
 #calculate  training and validation set size

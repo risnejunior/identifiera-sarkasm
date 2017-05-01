@@ -84,7 +84,77 @@ poria-clean-detector:
 	python3 preprocess_data.py --ds detector --of poria_detector.pickle
 	python3 tflearn_rnn.py --ds detector --in poria_detector.pickle
 
-all-detector:
-	python3 clean_tweets.py --ds detector --strict
-	python3 preprocess_data.py --ds detector --out strict.pickle
-	python3 tflearn_rnn.py --ds detector --in strict.pickle
+#cleans all 3 datasets with the 4 different types of cleaning, balanced
+compare-strictness:
+	
+	python3 clean_tweets.py --ds detector --strict false false
+	python3 preprocess_data.py --ds detector --out all-notags-balanced.pickle --sb 0.5
+	python3 clean_tweets.py --ds detector --strict true false
+	python3 preprocess_data.py --ds detector --out strict-notags-balanced.pickle --sb 0.5	
+	python3 clean_tweets.py --ds detector --strict false true
+	python3 preprocess_data.py --ds detector --out all-tags-balanced.pickle --sb 0.5
+	python3 clean_tweets.py --ds detector --strict true true
+	python3 preprocess_data.py --ds detector --out strict-tags-balanced.pickle --sb 0.5
+	
+	
+	python3 clean_tweets.py --ds poria-balanced --strict false false
+	python3 preprocess_data.py --ds poria-balanced --out all-notags-balanced.pickle --sb 0.5
+	python3 clean_tweets.py --ds poria-balanced --strict true false
+	python3 preprocess_data.py --ds poria-balanced --out strict-notags-balanced.pickle --sb 0.5	
+	python3 clean_tweets.py --ds poria-balanced --strict false true
+	python3 preprocess_data.py --ds poria-balanced --out all-tags-balanced.pickle --sb 0.5
+	python3 clean_tweets.py --ds poria-balanced --strict true true
+	python3 preprocess_data.py --ds poria-balanced --out strict-tags-balanced.pickle --sb 0.5
+
+	
+	python3 clean_tweets.py --ds poria-ratio --strict false false
+	python3 preprocess_data.py --ds poria-ratio --out all-notags-balanced.pickle --sb 0.5
+	python3 clean_tweets.py --ds poria-ratio --strict true false
+	python3 preprocess_data.py --ds poria-ratio --out strict-notags-balanced.pickle --sb 0.5	
+	python3 clean_tweets.py --ds poria-ratio --strict false true
+	python3 preprocess_data.py --ds poria-ratio --out all-tags-balanced.pickle --sb 0.5
+	python3 clean_tweets.py --ds poria-ratio --strict true true
+	python3 preprocess_data.py --ds poria-ratio --out strict-tags-balanced.pickle --sb 0.5
+
+
+	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds detector --train 20 1 1200
+	
+	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds detector --train 20 1 1200
+
+	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds detector --train 20 1 1200
+
+clean-process-all:
+	python3 clean_tweets.py --ds detector --strict false false
+	python3 preprocess_data.py --ds detector --out all-notags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds detector --out all-notags-ratio.pickle --sb 0.25
+	python3 clean_tweets.py --ds detector --strict  true true
+	python3 preprocess_data.py --ds detector --out strict-tags-balanced.pickle --sb 0.5	
+	python3 preprocess_data.py --ds detector --out strict-tags-ratio.pickle --sb 0.25	
+
+	python3 clean_tweets.py --ds poria-balanced --strict false false
+	python3 preprocess_data.py --ds poria-balanced --out all-notags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds poria-balanced --out all-notags-ratio.pickle --sb 0.25
+	python3 clean_tweets.py --ds poria-balanced --strict  true true
+	python3 preprocess_data.py --ds poria-balanced --out strict-tags-balanced.pickle --sb 0.5	
+	python3 preprocess_data.py --ds poria-balanced --out strict-tags-ratio.pickle --sb 0.25	
+
+	python3 clean_tweets.py --ds poria-ratio --strict false false
+	python3 preprocess_data.py --ds poria-ratio --out all-notags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds poria-ratio --out all-notags-ratio.pickle --sb 0.25
+	python3 clean_tweets.py --ds poria-ratio --strict  true true
+	python3 preprocess_data.py --ds poria-ratio --out strict-tags-balanced.pickle --sb 0.5	
+	python3 preprocess_data.py --ds poria-ratio --out strict-tags-ratio.pickle --sb 0.25	
+	
+test-hyper:
+	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds detector --train 100 100 2400
+	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds poria-balanced --train 100 100 2400
+	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds poria-ratio --train 100 100 2400

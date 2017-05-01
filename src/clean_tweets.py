@@ -21,10 +21,10 @@ def _arg_callback_ds(ds_name):
     cfg.dataset_name = ds_name
     print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_strict():
-    cfg.strict = True
-    cfg.includetags = False
-    print("<Using strict cleaning>")
+def _arg_callback_strict(strict = True, includetags = False):
+    cfg.strict = strict = True if str(strict).lower() == 'true' else False
+    cfg.includetags = includetags = True if str(includetags).lower() == 'true' else False
+    print("<Applying strictness, strict: {0:}, include tags: {1:}> ".format(strict, includetags))
 
 def clean_tweets(ds_name, s_class, s_format):
     ordered_data = OrderedDict()    
@@ -119,7 +119,7 @@ if cfg.strict:
     restrictions.extend(['skip_url', 'skip_replies', 'skip_short'])
 
 #normal
-print("Cleaning normal from: " + cfg.dataset_name)
+print("Cleaning normal tweets from: {}".format(cfg.dataset_name))
 negdata = clean_tweets(cfg.dataset_name, 0, cfg.source_format)
 print ("Normal tweets: " + str(len(negdata)))
 write_clean(negdata, cfg.dataset_name, 0)

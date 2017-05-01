@@ -17,6 +17,44 @@ import numpy as np
 
 from config import Config
 
+class DB_backed_log:
+	def __init__(self, sqlite_file, table_name, **cols):
+		self._db = DB_Handler(sqlite_file)
+		self._table_name = table_name
+		self._row = {}
+		self.check_init_db(table_name, **cols)
+
+	def log(self, **cols):
+		self._row.update(cols)
+
+	def peek(self):
+		return self._row
+
+	def flush(self):
+		self._db.insertRow(self._table_name, **self._row)
+		self._db.commit()
+
+	def check_init_db(self, table_name, **cols):
+		if not self._db.exists(table_name):
+			print("creating table: {}".format(table_name))
+			self._db._c.executescript("""
+				CREATE TABLE IF NOT EXISTS {} (
+					`id`	INTEGER PRIMARY KEY AUTOINCREMENT,
+					`time`	TEXT,
+					`run_id`	TEXT,
+					`network`	TEXT,
+					`dataset`	TEXT,
+					`samples_file`	TEXT,
+					`val_acc`	REAL,
+					`val_f1`	REAL,
+					`best_acc`	REAL,
+					`test_acc`	REAL,
+					`test_f1`	REAL,
+					`status`	TEXT
+				);
+			""".format(table_name))			
+			self._db.commit()
+
 class Open_Dataset:
 	modes = {'wr':'write-replace', 'wc':'write-clean', 'r':'read'}
 
@@ -152,7 +190,7 @@ class Open_Dataset:
 			row = self._rows[self._i]
 			self._i += 1
 			return row 
-		else:
+		else:			
 			raise StopIteration
 
 	def __iter__(self):
@@ -171,6 +209,11 @@ class DB_Handler:
 		#commit and close
 		self._conn.commit()
 		self._conn.close()
+
+	def exists(self, table_name):
+		self._c.execute("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name=':tn';", dict(tn=table_name))
+		return self._c.fetchone() is None
+
 
 	def createTable(self, table_name):
 		try:

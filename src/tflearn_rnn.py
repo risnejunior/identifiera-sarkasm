@@ -27,6 +27,7 @@ from common_funs import Hyper
 from common_funs import Arg_handler
 from common_funs import FileBackedCSVBuffer
 from common_funs import boxString
+from common_funs import DB_backed_log
 
 from networks import Networks
 from networks import NetworkNotFoundError
@@ -70,7 +71,7 @@ class EarlyStoppingMonitor():
 	avgLimitPercent -- percentage of the average that sets the limit
 	"""
 
-	def __init__(self, avgOverNrEpochs = 3, avgLimitPercent = 1.1):
+	def __init__(self, perflog, avgOverNrEpochs = 3, avgLimitPercent = 1.1):
 		self.epoch = 0
 		self.losses = []
 		self.avgOverNrEpochs = avgOverNrEpochs
@@ -104,6 +105,7 @@ class EarlyStoppingMonitor():
 
 		if val_loss > avg_limit:
 			self._buff.append(["Stopped due to loss average"])
+			perflog.log(best_acc = state['best_accuracy'])
 			raise EarlyStoppingError("Early stopping due to loss average")
 		else:
 			m = "Loss delta to limit: {}, continuing...".format(round(avg_limit-val_loss,3))
@@ -196,30 +198,20 @@ def create_model(net, hyp, this_run_id, log_run):
 
 	return model
 
-def train_model(model, hyp, this_run_id, log_run):
-	api = EarlyStoppingMonitor(avgOverNrEpochs = 3, avgLimitPercent = 1.05)
+def train_model(model, hyp, this_run_id, log_run, perflog):
+	api = EarlyStoppingMonitor(perflog, avgOverNrEpochs = 3, avgLimitPercent = 1.05)
 	monitorCallback = MonitorCallback(api)
 
-	perflog.write([
-		strftime('%Y-%m-%d %H:%M', time.localtime()),
-		cfg.network_name,
-		cfg.ps_file_name,
-		'-',
-		'-',
-		this_run_id,
-		'Starting',
-		]
-	)
-
+	snapshot_step = math.floor(ps.train.length / (cfg.snapshots_per_epoch * cfg.batch_size))
 	model.fit(X_inputs=ps.train.xs,
 			  Y_targets=ps.train.ys,
 			  validation_set=(ps.valid.xs, ps.valid.ys),
 			  show_metric=True,
 	          batch_size=cfg.batch_size,
 	          n_epoch=cfg.epochs,
-	          shuffle=False,
+	          shuffle=True,
 	          run_id=this_run_id,
-			  snapshot_step=cfg.snapshot_steps,
+			  snapshot_step=snapshot_step,
 			  snapshot_epoch=cfg.snapshot_epoch,
 	          callbacks=monitorCallback)
 
@@ -230,7 +222,7 @@ def train_model(model, hyp, this_run_id, log_run):
 
 	return model
 
-def do_prediction(model, hyp, this_run_id, log_run):
+def do_prediction(model, hyp, this_run_id, log_run, perflog):
 	# print confusion matrix for the different sets
 	print("\nRunning prediction...")
 	print(boxString("Run id: " + this_run_id))
@@ -249,29 +241,31 @@ def do_prediction(model, hyp, this_run_id, log_run):
 	if cfg.print_test:
 		predictions = flatten(fun_chunks(model.predict, ps.test.xs))
 		cm.calc(ps.test.ids , predictions, ps.test.ys, 'test-set')
+		perflog.log(
+			test_acc = cm.metrics['test-set']['accuracy'],
+			test_f1 = cm.metrics['test-set']['f1_score']
+		)
 
 	cm.print_tables()
-	cm.save_predictions(cfg.predictions_filename,
-						directory = cfg.logs_path,
-						sets=['training-set','validation-set','test-set'],
-						update = True)
 
-	#cm.save(this_run_id + '.res', content='metrics')
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
-	the_list = [
-		strftime('%Y-%m-%d %H:%M', time.localtime()),
-		cfg.network_name,
-		cfg.ps_file_name,
-		cm.metrics['validation-set']['accuracy'],
-		cm.metrics['validation-set']['f1_score'],
-		this_run_id,
-		]
-	if cfg.print_test:
-		the_list.append(cm.metrics['test-set']['accuracy'])
-		the_list.append(cm.metrics['test-set']['f1_score'])
+	perflog.log(
+		time = strftime('%Y-%m-%d %H:%M', time.localtime()),
+		network = cfg.network_name,
+		dataset = cfg.dataset_name,
+		samples_file = cfg.ps_file_name,
+		val_acc = cm.metrics['validation-set']['accuracy'],
+		val_f1 = cm.metrics['validation-set']['f1_score'],
+		run_id = this_run_id
+	)
 
-	perflog.replace(the_list)
-
+	# for troublemaker analysis
+	cm.save_predictions(
+		cfg.predictions_filename,
+		directory = cfg.logs_path,
+		sets=['training-set','validation-set','test-set'],
+		update = True
+	)
 ################################################################################
 
 # affected by flags, need to be before consume_flags()
@@ -296,11 +290,8 @@ arghandler.consume_flags()
 
 
 debug_log = Logger()
-perflog = FileBackedCSVBuffer(
-	"training_performance.csv",
-	cfg.logs_path,
-	header=['Time', 'Network name', 'data file', 'Val acc', 'Val f1', 'Run id','Status'],
-	padding=17)
+perflog = DB_backed_log(cfg.sqlite_file, 'training_performance')
+
 
 # Load processed data from file
 with open(cfg.samples_path, 'rb') as handle:
@@ -343,25 +334,25 @@ for hyp in hypers:
 	with tf.Graph().as_default(), tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
 		tflearn.config.init_training_mode()
-		stop_reason = ["Other error"]
+		stop_reason = "Other error"
 
 		try:
 			net = build_network(cfg.network_name, hyp, pd)
 			model = create_model(net, hyp, this_run_id, log_run)
 			if cfg.training:
-				model = train_model(model, hyp, this_run_id, log_run)
+				model = train_model(model, hyp, this_run_id, log_run, perflog)
 		except NetworkNotFoundError as e:
 			print("The network name provided din't match any defined network")
 		except EarlyStoppingError as e:
-			stop_reason = ["early stopping"]
-			do_prediction(model, hyp, this_run_id, log_run)
+			stop_reason = "early stopping"
+			do_prediction(model, hyp, this_run_id, log_run, perflog)
 		else:
-			stop_reason = ["epoch limit"]
-			do_prediction(model, hyp, this_run_id, log_run)
+			stop_reason = "epoch limit"
+			do_prediction(model, hyp, this_run_id, log_run, perflog)
 		finally:
-			#do_prediction(model, hyp, this_run_id, log_run)
-			perflog.append(stop_reason)
-			perflog.flush()
+			perflog.log(status = stop_reason)
+			if cfg.training and len(perflog.peek()) > 0: 
+				perflog.flush()
 
 	log_run.save(this_run_id + '.log')
 
