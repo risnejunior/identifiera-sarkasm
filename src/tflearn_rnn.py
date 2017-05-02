@@ -127,12 +127,14 @@ def _arg_callback_ds(ds_name):
 	cfg.dataset_name = ds_name
 	print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_pretrained(file_name):
+def _arg_callback_pretrained(file_name, checkpoint = False):
+	cfg.checkpoint = checkpoint
 	cfg.save_the_model = False
 	cfg.pretrained_model = True
 	cfg.training = False
-	cfg.pretrained_file = file_name + ".tfl"
-	print("<Using pretrained model " + pretrained_path + " for results only.")
+	cfg.pretrained_file = file_name #Make sure to include name including '.tfl' or '.ckpt-number'
+
+	print("<Using pretrained model " + cfg.pretrained_path + " for results only.")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
 	cfg.epochs = int(nr_epochs)
@@ -174,12 +176,11 @@ def create_model(net, hyp, this_run_id, log_run):
 	model = tflearn.DNN(net,
 					    tensorboard_verbose=3,
 					    checkpoint_path=checkpoint_path,
-					    best_checkpoint_path=checkpoint_path,
 					    best_val_accuracy=0.75)
 
 	#Load pretrained model
 	if cfg.pretrained_model:
-		print("Attempting to load model")
+		print("Attempting to load model from "+str(cfg.pretrained_path))
 		model.load(cfg.pretrained_path)
 		print("Successfully loaded model")
 		return model
