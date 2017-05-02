@@ -58,7 +58,7 @@ class Config:
 	# constants
 	tags = ["<user>", "<url>", "<hashtag>"]
 	allowed_emb_sizes = [25,50,100,200]
-	ensure_paths = {'models_path':'models', 'logs_path':'logs', 'checkpoints_path':'checkpoints'}
+	ensure_paths = {'models_path':'models', 'logs_path':'logs', 'checkpoints_path':'checkpoints', 'best_path':'best_checkpoints'}
 
 	datasets = {
 		"poria-balanced": {

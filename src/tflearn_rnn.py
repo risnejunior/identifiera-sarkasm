@@ -177,6 +177,7 @@ def create_model(net, hyp, this_run_id, log_run):
 	model = tflearn.DNN(net,
 					    tensorboard_verbose=3,
 					    checkpoint_path=checkpoint_path,
+					    best_chekcpoint_path=best_path,
 					    best_val_accuracy=0.75)
 
 	#Load pretrained model
