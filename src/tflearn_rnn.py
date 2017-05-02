@@ -132,7 +132,7 @@ def _arg_callback_pretrained(file_name):
 	cfg.pretrained_model = True
 	cfg.training = False
 	cfg.pretrained_file = file_name + ".tfl"
-	print("<Using pretrained model " + pretrained_path + " for results only.")
+	print("<Using pretrained model " + pretrained_path + " for results only.>")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
 	cfg.epochs = int(nr_epochs)
@@ -206,7 +206,7 @@ def train_model(model, hyp, this_run_id, log_run, perflog):
 		snapshot_step = math.floor(ps.train.length / (cfg.snapshots_per_epoch * cfg.batch_size))
 	else:
 		snapshot_step = None
-		
+
 	model.fit(X_inputs=ps.train.xs,
 			  Y_targets=ps.train.ys,
 			  validation_set=(ps.valid.xs, ps.valid.ys),
@@ -233,7 +233,7 @@ def do_prediction(model, hyp, this_run_id, log_run, perflog):
 
 	cm = Binary_confusion_matrix()
 	from common_funs import chunks
-	fun_chunks = lambda fun, parts: [fun(part) for part in chunks(parts, 1000)]	
+	fun_chunks = lambda fun, parts: [fun(part) for part in chunks(parts, 1000)]
 	flatten = lambda l: [x for xs in l for x in xs]
 
 	predictions = flatten(fun_chunks(model.predict, ps.train.xs))
@@ -355,7 +355,7 @@ for hyp in hypers:
 			do_prediction(model, hyp, this_run_id, log_run, perflog)
 		finally:
 			perflog.log(status = stop_reason)
-			if cfg.training and len(perflog.peek()) > 0: 
+			if cfg.training and len(perflog.peek()) > 0:
 				perflog.flush()
 
 	log_run.save(this_run_id + '.log')

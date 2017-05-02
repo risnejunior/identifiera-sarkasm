@@ -23,11 +23,11 @@ def _arg_callback_ds(ds_name):
 
 def _arg_callback_strict(strict):
     cfg.strict = strict = True if str(strict).lower() == 'true' else False
-    print("<using strict: {}>".format(strict))
+    print("<Using strict: {}>".format(strict))
 
 def _arg_callback_tags(include):
     cfg.includetags = includetags = True if str(include).lower() == 'true' else False
-    print("<including tags: {}".format(includetags))
+    print("<Including tags: {}>".format(includetags))
 
 def clean_tweets(ds_name, s_class, s_format):
     ordered_data = OrderedDict()
