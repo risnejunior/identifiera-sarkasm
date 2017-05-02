@@ -49,9 +49,11 @@ keep_prob_placeholder = tf.placeholder('float')
 trainable_embeddings = False
 logs_path = tempfile.gettempdir() + "/tfnetwork/"
 shuffle_training = False
+batch_size = cfg.batch_size
 
+network_name = cfg.network_name
 date_stamp = time.strftime("%d%b")
-run_id = date_stamp + "-" + cfg.network_name
+run_id = date_stamp + "-" + network_name
 def _arg_callback_pt():
 	global print_test
 	print_test = True
@@ -254,7 +256,7 @@ def run_test_print_cm(ps,network_op,log_run):
     cm.calc(ps.train.ids , pred1, ps.train.ys, 'training-set')
     pred2 = batchpredict(90,ps.valid.xs,network_op)
     cm.calc(ps.valid.ids , pred2, ps.valid.ys, 'validation-set')
-    if print_test:
+    if cfg.print_test:
         pred3 = sess.run(network_op, feed_dict={data_placeholder: ps.test.xs, keep_prob_placeholder: 1.0})
         cm.calc(ps.test.ids , pred3, ps.test.ys, 'test-set')
     cm.print_tables()
@@ -329,7 +331,7 @@ emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size, traina
 log_run = Logger()
 
 log_run.log(network_name, logname='network_name', aslist = False)
-log_run.log(dataset_proto['ps_file_name'], logname='Dataset', aslist = False)
+log_run.log(cfg.ps_file_name, logname='Dataset', aslist = False)
 
 train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run)
 
