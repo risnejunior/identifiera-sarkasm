@@ -320,17 +320,13 @@ else:
 
 
 emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size, trainable_embeddings)
-<<<<<<< HEAD
-train_neural_network(ps,emb_init,W,emb_placeholder,cfg.network_name)
-=======
+
 log_run = Logger()
 
 log_run.log(network_name, logname='network_name', aslist = False)
 log_run.log(dataset_proto['ps_file_name'], logname='Dataset', aslist = False)
 
 train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run)
->>>>>>> Ported more code from tflearn_rnn.py to ease up some stuff
-
 
 
 print ("=== Code ran Successfully ===")
