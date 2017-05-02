@@ -21,10 +21,13 @@ def _arg_callback_ds(ds_name):
     cfg.dataset_name = ds_name
     print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_strict(strict = True, includetags = False):
-    cfg.strict = strict = True if str(strict).lower() == 'true' else False
-    cfg.includetags = includetags = True if str(includetags).lower() == 'true' else False
-    print("<Applying strictness, strict: {0:}, include tags: {1:}> ".format(strict, includetags))
+def _arg_callback_tags():
+    cfg.includetags = True
+    print("<including tags>")
+
+def _arg_callback_strict():
+    cfg.strict = True
+    print("<using strict>")
 
 def clean_tweets(ds_name, s_class, s_format):
     ordered_data = OrderedDict()    
@@ -104,6 +107,7 @@ cfg = Config()
 arghandler = Arg_handler()
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('strict', _arg_callback_strict, [''], "If flag is set, clean the dataset with strict settings.")
+arghandler.register_flag('tags', _arg_callback_tags, [''], "If flag is set, preserve tags")
 arghandler.consume_flags()
 
 #check if the database is initialized, if not, load the missing dataset

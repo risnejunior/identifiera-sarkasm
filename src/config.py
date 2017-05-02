@@ -32,7 +32,7 @@ class Config:
 
 		#clean tweets
 		strict = False, #option to chose strict cleansing of tweets or non-strict
-		includetags = True, #option to include tags or not
+		includetags = False, #option to include tags or not
 		
 		#used in training
 		network_name = 'little_pony',
