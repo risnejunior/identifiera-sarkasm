@@ -202,7 +202,11 @@ def train_model(model, hyp, this_run_id, log_run, perflog):
 	api = EarlyStoppingMonitor(perflog, avgOverNrEpochs = 3, avgLimitPercent = 1.05)
 	monitorCallback = MonitorCallback(api)
 
-	snapshot_step = math.floor(ps.train.length / (cfg.snapshots_per_epoch * cfg.batch_size))
+	if cfg.snapshots_per_epoch is not None:
+		snapshot_step = math.floor(ps.train.length / (cfg.snapshots_per_epoch * cfg.batch_size))
+	else:
+		snapshot_step = None
+		
 	model.fit(X_inputs=ps.train.xs,
 			  Y_targets=ps.train.ys,
 			  validation_set=(ps.valid.xs, ps.valid.ys),
