@@ -21,15 +21,11 @@ def _arg_callback_ds(ds_name):
     cfg.dataset_name = ds_name
     print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_tags():
-    cfg.includetags = True
-    print("<including tags>")
-
 def _arg_callback_strict(strict):
     cfg.strict = strict = True if str(strict).lower() == 'true' else False
     print("<using strict: {}>".format(strict))
 
-def _arg_callback_includetags(include):
+def _arg_callback_tags(include):
     cfg.includetags = includetags = True if str(include).lower() == 'true' else False
     print("<including tags: {}".format(includetags))
 
@@ -112,6 +108,7 @@ arghandler = Arg_handler()
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('strict', _arg_callback_strict, [''], "If flag is set, clean the dataset with strict settings.")
 arghandler.register_flag('tags', _arg_callback_tags, [''], "If flag is set, preserve tags")
+arghandler.
 arghandler.consume_flags()
 
 #check if the database is initialized, if not, load the missing dataset
