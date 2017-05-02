@@ -51,7 +51,7 @@ logs_path = tempfile.gettempdir() + "/tfnetwork/"
 shuffle_training = False
 
 date_stamp = time.strftime("%d%b")
-run_id = date_stamp + "-" + network_name
+run_id = date_stamp + "-" + cfg.network_name
 def _arg_callback_pt():
 	global print_test
 	print_test = True
@@ -91,6 +91,10 @@ def _arg_callback_in(file_name):
 def _arg_callback_trainemb(trainable = True):
     global trainable_embeddings
     trainable_embeddings = trainable
+
+def _arg_callback_eshuffle(truth = True):
+	global shuffle_training
+	shuffle_training = truth
 
 #def _arg_callback_ss(s_step = None, s_epoch = 'False'):
 #	"""
@@ -298,9 +302,10 @@ arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], 
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
 print("\n")
 arghandler.register_flag('trainemb', _arg_callback_trainemb, ['trainable'], "Set trainable embeddings")
+arghandler.register_flag('eshuffle', _arg_callback_eshuffle, ['truth'], "Want to shuffle per epoch?")
+
 arghandler.consume_flags()
 predictions_filename = 'predictions.pickle'
-dataset_proto = datasets[dataset_name]
 
 perflog = FileBackedCSVBuffer(
 	"training_performance.csv",
