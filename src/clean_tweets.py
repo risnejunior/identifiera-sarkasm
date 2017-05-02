@@ -25,9 +25,13 @@ def _arg_callback_tags():
     cfg.includetags = True
     print("<including tags>")
 
-def _arg_callback_strict():
-    cfg.strict = True
-    print("<using strict>")
+def _arg_callback_strict(strict):
+    cfg.strict = strict = True if str(strict).lower() == 'true' else False
+    print("<using strict: {}>".format(strict))
+
+def _arg_callback_includetags(include):
+    cfg.includetags = includetags = True if str(include).lower() == 'true' else False
+    print("<including tags: {}".format(includetags))
 
 def clean_tweets(ds_name, s_class, s_format):
     ordered_data = OrderedDict()    
