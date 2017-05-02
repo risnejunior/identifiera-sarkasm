@@ -49,6 +49,9 @@ keep_prob_placeholder = tf.placeholder('float')
 trainable_embeddings = False
 logs_path = tempfile.gettempdir() + "/tfnetwork/"
 shuffle_training = False
+
+date_stamp = time.strftime("%d%b")
+run_id = date_stamp + "-" + network_name
 def _arg_callback_pt():
 	global print_test
 	print_test = True
@@ -125,7 +128,7 @@ def word_embedding_layer(word,embedding_tensor):
 
 #Defining and building the Neural Network
 
-def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
+def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 	# Defining all the operations
 	embeddings = word_embedding_layer(data_placeholder,W)
 	network = tfnetworks.fetch_network(network_name,n_classes,params = {'rnn_size': rnn_size})
@@ -187,7 +190,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name):
 		date = time.strftime("%m%d%y-%H%M%S")
 		saver_path = saver.save(sess, "./models/tfrnn_model-%s.ckpt" % date)
 		print("Model saved at %s" % saver_path )
-		run_test_print_cm(ps,prediction)
+		run_test_print_cm(ps,prediction,log_run)
 		sess.close()
 
 def split_chunks(xs,size,ys=None):
@@ -239,7 +242,7 @@ def run_test(ps,path,network_name):
         accuracy = test_network_run(ps.train.xs,np.array(ps.train.ys),output)
         print("Test accuracy of this network is: ", accuracy)
 
-def run_test_print_cm(ps,network_op):
+def run_test_print_cm(ps,network_op,log_run):
 
     sess = tf.get_default_session()
     cm = Binary_confusion_matrix()
@@ -251,6 +254,25 @@ def run_test_print_cm(ps,network_op):
         pred3 = sess.run(network_op, feed_dict={data_placeholder: ps.test.xs, keep_prob_placeholder: 1.0})
         cm.calc(ps.test.ids , pred3, ps.test.ys, 'test-set')
     cm.print_tables()
+    cm.save_predictions(predictions_filename,
+						directory = 'logs',
+						sets=['training-set','validation-set','test-set'],
+						update = True)
+
+	#cm.save(this_run_id + '.res', content='metrics')
+    log_run.log(cm.metrics, logname="metrics", aslist = False)
+    the_list = [
+    time.strftime('%Y-%m-%d %H:%M', time.localtime()),
+    network_name,
+    os.path.basename(samples_path),
+    cm.metrics['validation-set']['accuracy'],
+    cm.metrics['validation-set']['f1_score'],
+    run_id
+    ]
+    if print_test:
+    	the_list.append(cm.metrics['test-set']['accuracy'])
+    	the_list.append(cm.metrics['test-set']['f1_score'])
+    perflog.replace(the_list)
 
 def batchpredict(batch_size,data,network_op):
 
@@ -277,7 +299,14 @@ arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce result
 print("\n")
 arghandler.register_flag('trainemb', _arg_callback_trainemb, ['trainable'], "Set trainable embeddings")
 arghandler.consume_flags()
+predictions_filename = 'predictions.pickle'
+dataset_proto = datasets[dataset_name]
 
+perflog = FileBackedCSVBuffer(
+	"training_performance.csv",
+	"logs",
+	header=['Time', 'Network name', 'data file', 'Val acc', 'Val f1', 'Run id','Status'],
+	padding=17)
 
 with open(cfg.samples_path, 'rb') as handle:
     pd = pickle.load( handle )
@@ -291,7 +320,16 @@ else:
 
 
 emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size, trainable_embeddings)
+<<<<<<< HEAD
 train_neural_network(ps,emb_init,W,emb_placeholder,cfg.network_name)
+=======
+log_run = Logger()
+
+log_run.log(network_name, logname='network_name', aslist = False)
+log_run.log(dataset_proto['ps_file_name'], logname='Dataset', aslist = False)
+
+train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run)
+>>>>>>> Ported more code from tflearn_rnn.py to ease up some stuff
 
 
 
