@@ -108,7 +108,6 @@ arghandler = Arg_handler()
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('strict', _arg_callback_strict, [''], "If flag is set, clean the dataset with strict settings.")
 arghandler.register_flag('tags', _arg_callback_tags, [''], "If flag is set, preserve tags")
-arghandler.
 arghandler.consume_flags()
 
 #check if the database is initialized, if not, load the missing dataset
