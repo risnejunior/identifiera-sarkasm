@@ -174,11 +174,12 @@ def build_network(name, hyp, pd):
 
 def create_model(net, hyp, this_run_id, log_run):
 	checkpoint_path = os.path.join(cfg.checkpoints_path,this_run_id + ".ckpt")
+	best_path = os.path.join(cfg.best_path,this_run_id + ".ckpt")
 	model = tflearn.DNN(net,
 					    tensorboard_verbose=3,
 					    checkpoint_path=checkpoint_path,
 					    best_chekcpoint_path=best_path,
-					    best_val_accuracy=0.75)
+					    best_val_accuracy=0.5)
 
 	#Load pretrained model
 	if cfg.pretrained_model:
