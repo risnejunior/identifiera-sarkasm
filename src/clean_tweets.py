@@ -30,7 +30,7 @@ def _arg_callback_tags(include):
     print("<including tags: {}".format(includetags))
 
 def clean_tweets(ds_name, s_class, s_format):
-    ordered_data = OrderedDict()    
+    ordered_data = OrderedDict()
     skipped = dict(empty = 0, url = 0, reply = 0, short = 0, duplicate=0)
 
     for row in Open_Dataset(ds_name, 'raw', 'r', sample_class=s_class):
@@ -53,6 +53,9 @@ def clean_tweets(ds_name, s_class, s_format):
             skipped['reply'] += 1
             continue
 
+        # always remove hashtags
+        temp=sarcasmtag.sub('', temp)
+
         if 'remove_tags' in restrictions:
             temp=friendtag.sub('', temp)
             temp=url.sub('', temp)
@@ -62,10 +65,8 @@ def clean_tweets(ds_name, s_class, s_format):
             temp=url.sub(cfg.tags[1], temp)
             temp=hashtags.sub(cfg.tags[2],temp)
 
-        # always remove hashtags
-        temp=sarcasmtag.sub('', temp)
-        
-        if 'skip_short' in restrictions and len(temp.split()) < 3:  
+
+        if 'skip_short' in restrictions and len(temp.split()) < 3:
             skipped['short'] += 1
             continue
 
@@ -78,7 +79,7 @@ def clean_tweets(ds_name, s_class, s_format):
         if sample_hash not in ordered_data:
             ordered_data[sample_hash] = (sid, temp)
         else:
-            skipped['duplicate'] += 1            
+            skipped['duplicate'] += 1
 
     print("Tweets skipped/reason: " + str(skipped))
     return ordered_data.values()
@@ -111,15 +112,15 @@ arghandler.register_flag('tags', _arg_callback_tags, [''], "If flag is set, pres
 arghandler.consume_flags()
 
 #check if the database is initialized, if not, load the missing dataset
-datasets_config = [      
+datasets_config = [
 (cfg.dataset_name, cfg.pos_source_path, cfg.source_format, 1 ),
 (cfg.dataset_name, cfg.neg_source_path, cfg.source_format, 0 )]
 Open_Dataset.check_init_db(datasets_config, cfg.sqlite_file)
 
 restrictions = []
-if not cfg.includetags: 
+if not cfg.includetags:
     restrictions.append('remove_tags')
-if cfg.strict: 
+if cfg.strict:
     restrictions.extend(['skip_url', 'skip_replies', 'skip_short'])
 
 #normal
