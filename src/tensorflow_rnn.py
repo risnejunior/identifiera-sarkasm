@@ -265,17 +265,17 @@ def run_test_print_cm(ps,network_op,log_run):
 						sets=['training-set','validation-set','test-set'],
 						update = True)
 
-	#cm.save(this_run_id + '.res', content='metrics')
+    cm.save(run_id + '.res', content='metrics')
     log_run.log(cm.metrics, logname="metrics", aslist = False)
     the_list = [
     time.strftime('%Y-%m-%d %H:%M', time.localtime()),
     network_name,
-    os.path.basename(samples_path),
+    os.path.basename(cfg.samples_path),
     cm.metrics['validation-set']['accuracy'],
     cm.metrics['validation-set']['f1_score'],
     run_id
     ]
-    if print_test:
+    if cfg.print_test:
     	the_list.append(cm.metrics['test-set']['accuracy'])
     	the_list.append(cm.metrics['test-set']['f1_score'])
     perflog.replace(the_list)
