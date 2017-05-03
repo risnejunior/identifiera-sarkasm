@@ -9,6 +9,7 @@ from random import triangular as rt
 import atexit
 import sys
 from collections import namedtuple
+from os import listdir
 
 import sqlite3
 from prettytable import PrettyTable, ALL
@@ -211,8 +212,8 @@ class DB_Handler:
 		self._conn.close()
 
 	def exists(self, table_name):
-		self._c.execute("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name=':tn';", dict(tn=table_name))
-		return self._c.fetchone() is None
+		self._c.execute("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name=:tn;", dict(tn=table_name))
+		return self._c.fetchone()['count'] > 0
 
 
 	def createTable(self, table_name):
@@ -1207,13 +1208,16 @@ def balance(a, b, fa):
 
 	return ao, bo
 
-ProcessedData = namedtuple('ProcessedData',['dataset',
-											'embeddings',
-											'vocab',
-											'rev_vocab',
-											'emb_size',
-											'vocab_size',
-											'max_sequence'])
+ProcessedData = namedtuple('ProcessedData',[
+	'dataset',
+    'embeddings',
+	'vocab',
+	'rev_vocab',
+	'emb_size',
+	'vocab_size',
+	'max_sequence'
+	]
+)
 Dataset = namedtuple('Dataset', ['train', 'valid', 'test'])
 Setpart = namedtuple('Setpart', ['names', 'length', 'ids', 'xs','ys'])
 pos_label = np.array([0., 1.], dtype="float32")
@@ -1261,4 +1265,32 @@ def interleave (xs, ys):
 		of = s / l
 
 
-	return out		
+	return out
+
+def clear_console():
+	os.system('cls' if os.name == 'nt' else 'clear')
+
+def file_selector(path):
+	clear_console()	
+	files = list(sorted(listdir(path), reverse=True))
+	max_i = len(files)-1
+	file = ''
+
+	for i, file in enumerate(files):
+		print("{}: {}".format(i, file))
+
+	print("--------------------------------")
+	while True:
+		index = input("Select file by typing the index: ")
+		try:			
+			index = int(index)
+			if index < 0 or index > max_i:
+				raise ValueException("Index not in list")
+			
+			file = files[index]
+		except:
+			print("Must be a number in the list, try again.")
+		else:
+			break
+
+	return file

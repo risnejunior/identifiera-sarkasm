@@ -42,11 +42,9 @@ class Config:
 		snapshots_per_epoch = 1, #checkpoints per epoch
 
 		#For loading and saving models
-		save_the_model = True, # If true, save the model to path specified in tflearn_rnn
-		pretrained_model = False, # If true, create_model will initialize the model specified in pretrained_path
-		training = True, # If false, the modeled will not be trained. Useful for testing pretrained model
-		pretrained_file = '6P8GFZ_FEVERISH_FOXBAT.tfl',
-		checkpoint = False,
+		save_the_model = False, # If true, save the model to path specified in tflearn_rnn
+		pretrained_id = None, # if none then you will select the model from an interactive menu
+		training_mode = 'training', #training, boost, evaluate
 
 		# debug commands
 		print_test = False,
@@ -61,8 +59,6 @@ class Config:
 	ensure_paths = {
 		'models_path':'models', 
 		'logs_path':'logs', 
-		'checkpoints_path':'checkpoints',
-		'best_path':'best_checkpoints'
 	}
 
 	datasets = {
@@ -148,14 +144,22 @@ class Config:
 	def get_source_format(self):
 		return Config.datasets[self.dataset_name]['source_format']
 
-	def get_snapshot_steps(self):
-		return math.floor(self.sample_count / (self.snapshots_per_epoch * self.batch_size))
+	# def get_snapshot_steps(self):
+		# return math.floor(self.sample_count / (self.snapshots_per_epoch * self.batch_size))
 
-	def get_pretrained_path(self):
-		if self.checkpoint:
-			return os.path.join(self.checkpoints_path, self.pretrained_file)
-		else:
-			return os.path.join(self.models_path, self.pretrained_file)
+	# def get_pretrained_file_path(self):
+	# 	from os import listdir
+	# 	pretrained_files = [file.split('.')[0] for file in listdir(self.pretrained_path)]
+
+	# 	if pretrained_files:
+	# 		best_file = sorted(pretrained_files, reverse=True)[0]
+	# 		return os.path.join(self.pretrained_path, best_file)
+	# 	else:
+	# 		raise Exception("path empty")
+
+
+	# def get_pretrained_path(self):
+	# 	return os.path.join(self.models_path, self.pretrained_id)
 
 	# dynamic paths
 	raw_embeddings_path = property(get_raw_embeddings_path)
@@ -166,7 +170,3 @@ class Config:
 	processed_path = property(get_processed_path)
 	samples_path = property(get_ps_path)
 	source_format = property(get_source_format)
-
-	# other dynamic properties
-	snapshot_steps = property(get_snapshot_steps)
-	pretrained_path = property(get_pretrained_path)

@@ -10,15 +10,8 @@ import csv
 import time
 from time import strftime
 import tempfile
-
-#suppress tf logging
-cls_file = open('tmp.txt', 'w')
-sys.stdout = cls_file
-
-import tflearn
-import numpy as np
-import tensorflow as tf
-from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell
+from os import listdir
+from operator import itemgetter
 
 import common_funs
 from common_funs import Binary_confusion_matrix
@@ -29,6 +22,7 @@ from common_funs import Arg_handler
 from common_funs import FileBackedCSVBuffer
 from common_funs import boxString
 from common_funs import DB_backed_log
+from common_funs import file_selector
 
 from networks import Networks
 from networks import NetworkNotFoundError
@@ -42,8 +36,19 @@ from common_funs import neg_label
 from config import Config
 
 #suppress tf logging
+sys.stdout = tempfile.TemporaryFile(mode='w')
+os.environ['TF_CCP_MIN_LOG_LEVEL'] = '3'
+
+import numpy as np
+import tensorflow as tf
+import tflearn
+from tflearn.layers.recurrent import bidirectional_rnn, BasicLSTMCell
+
+#suppress tf logging
+tf.logging.set_verbosity(tf.logging.FATAL)
 sys.stdout = sys.__stdout__
-tf.logging.set_verbosity(tf.logging.ERROR)
+
+
 
 
 class EarlyStoppingError(StopIteration):
@@ -128,21 +133,30 @@ def _arg_callback_ds(ds_name):
 	cfg.dataset_name = ds_name
 	print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_pretrained(file_name, checkpoint = False):
-	cfg.checkpoint = checkpoint
-	cfg.save_the_model = False
-	cfg.pretrained_model = True
-	cfg.training = False
-	cfg.pretrained_file = file_name #Make sure to include name including '.tfl' or '.ckpt-number'
+def _arg_callback_sm():
+	cfg.save_the_model = True
 
-	print("<Using pretrained model " + cfg.pretrained_path + " for results only.")
+def _arg_callback_boost(pretrained_id = None):
+	if pretrained_id is None:
+		pretrained_id = file_selector(cfg.models_path)
 
+	cfg.pretrained_id = pretrained_id
+	cfg.training_mode = 'boost'	
+	print("<Boosting with pretrained model " + cfg.pretrained_id)
+
+def _arg_callback_eval(pretrained_id = None):
+	if pretrained_id is None:
+		pretrained_id = file_selector(cfg.models_path)
+
+	cfg.pretrained_id = pretrained_id
+	cfg.training_mode = 'evaluate'	
+	print("<Evaluating pretrained model " + cfg.pretrained_id + " for results only.")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
 	cfg.epochs = int(nr_epochs)
 	cfg.run_count = int(count)
 	cfg.batch_size = int(batchsize)
-	cfg.training = True
+	cfg.training_mode = 'training'
 	print("<Training for, epochs: {}, runs:{}, batchsize: {}>".format(nr_epochs, count, batchsize))
 
 def _arg_callback_net(name):
@@ -173,22 +187,17 @@ def build_network(name, hyp, pd):
 
 	return net
 
-def create_model(net, hyp, this_run_id, log_run):
-	best_path = os.path.join(cfg.best_path,this_run_id + ".ckpt")	
-	cfg.checkpoint_path = os.path.join(temp_dir.name,this_run_id + ".ckpt")
-	
-	model = tflearn.DNN(net,
-					    tensorboard_verbose=3,
-					    checkpoint_path=cfg.checkpoint_path,
-					    best_checkpoint_path=best_path,
-					    best_val_accuracy=0.7)
+def create_model(net):
+	best_path = os.path.join(temp_dir_best.name, 'checkpoint-best-')
+	chkpt_path = os.path.join(temp_dir_checkpoints.name, 'checkpoint-')
 
-	#Load pretrained model
-	if cfg.pretrained_model:
-		print("Attempting to load model from "+str(cfg.pretrained_path))
-		model.load(cfg.pretrained_path)
-		print("Successfully loaded model")
-		return model
+	model = tflearn.DNN(
+		net,
+		tensorboard_verbose=3,
+		checkpoint_path=chkpt_path,
+		best_checkpoint_path=best_path,
+		best_val_accuracy=0.0
+	)
 
 	#set embeddings
 	if cfg.use_embeddings:
@@ -225,14 +234,9 @@ def train_model(model, hyp, this_run_id, log_run, perflog):
 			  snapshot_epoch=cfg.snapshot_epoch,
 	          callbacks=monitorCallback)
 
-	# save model
-	if cfg.save_the_model:
-		model_file_path = os.path.join(cfg.models_path,this_run_id + ".tfl")
-		model.save(model_file_path)
-
 	return model
 
-def do_prediction(model, hyp, this_run_id, log_run, perflog):
+def do_prediction(model, hyp, this_run_id, log_run, perflog, net):
 	# print confusion matrix for the different sets
 	print("\nRunning prediction...")
 	print(boxString("Run id: " + this_run_id))
@@ -277,6 +281,33 @@ def do_prediction(model, hyp, this_run_id, log_run, perflog):
 		sets=['training-set','validation-set','test-set'],
 		update = True
 	)
+
+def get_model_magic_path(path):
+	"""
+	Return the path to the file that is last when alphabeticly sorted	
+	Gets a list of touple of (name, file) where name is the filename 
+	 with magic nrs, but without extensions
+	"""
+	best_name_path = None
+	names_files = [(file.split('.')[0], file) for file in listdir(path) if file != "checkpoint"]
+
+	if names_files:
+		best_name_file = sorted(names_files, reverse=True, key = itemgetter(0))[0]
+		best_name = best_name_file[0]
+		best_name_path = os.path.join(path, best_name)
+	
+	return best_name_path
+
+def save_model(model, run_id):
+	this_model_path = os.path.join(cfg.models_path, this_run_id)
+	try:
+		os.mkdir(this_model_path)
+	except FileExistsError:
+		 raise Exception("error: models path already exist")
+	else:
+		magic_path = os.path.join(this_model_path, 'model')		
+		model.save(magic_path)
+
 ################################################################################
 
 # affected by flags, need to be before consume_flags()
@@ -293,12 +324,13 @@ arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which fi
 arghandler.register_flag('net', _arg_callback_net, ['network'], "Which network to use. args: <network name>")
 arghandler.register_flag('train', _arg_callback_train, helptext = "Use settings for training. Args: <epochs> <run_count> <batch size>")
 arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set snapshots. No arguments means no snapshots. Args: <snapshot step> <epoch end>")
-arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
+arghandler.register_flag('eval', _arg_callback_eval, [], "Evaluate the network performance of a pre-trained model specified by run id. args: <run_id>")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
 arghandler.register_flag('trouble', _arg_callback_trouble, [], "File name to save/read for trouble makers predictions. Args: <filename>")
+arghandler.register_flag('sm', _arg_callback_sm, ['save-model'], "Save the trained model. Will be saved in dir with it's run id")
+arghandler.register_flag('boost', _arg_callback_boost, [], "Load a saved model and continue training. Args <model id>")
 arghandler.consume_flags()
-
 
 debug_log = Logger()
 perflog = DB_backed_log(cfg.sqlite_file, 'training_performance')
@@ -335,19 +367,15 @@ hypers = Hyper(cfg.run_count,
 	lstm = {'dropout': (0.51, 0.51)},
 	middle= {'weight_decay': (0.038, 0.038)},
 	dropout = {'dropout': (0.63, 0.63)},
-	regression = {'learning_rate': (0.00056, 0.00056)},
+	regression = {'learning_rate': (0.0015, 0.0015)},
 	output = {'weight_decay': (0.038, 0.038)}
 )
 
 # training loop, every loop trains a network with different hyperparameters
 for hyp in hypers:
-	log_run = Logger()
-	this_run_id = common_funs.generate_name()
-	log_run.log(hyp.get_hypers(), logname='hypers', aslist = False)
-	log_run.log(this_run_id, logname='run_id', aslist = False)
-	log_run.log(cfg.network_name, logname='network_name', aslist = False)
-	log_run.log(cfg.ps_file_name, logname='Dataset', aslist = False)
-
+	log_run = Logger()	
+	do_predict = False
+		
 	tf.reset_default_graph()
 	with tf.Graph().as_default(), tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
@@ -355,25 +383,73 @@ for hyp in hypers:
 		stop_reason = "Other error"
 
 		try:			
-			temp_dir = tempfile.TemporaryDirectory()
+			this_run_id = common_funs.generate_name() 
+			temp_dir_checkpoints = tempfile.TemporaryDirectory()
+			temp_dir_best = tempfile.TemporaryDirectory()
+
 			net = build_network(cfg.network_name, hyp, pd)
-			model = create_model(net, hyp, this_run_id, log_run)
-			if cfg.training:
+
+			if cfg.training_mode == 'training':
+				model = create_model(net)
 				model = train_model(model, hyp, this_run_id, log_run, perflog)
+
+			elif cfg.training_mode == 'evaluate':
+				model = tflearn.DNN(net)
+				this_run_id = cfg.pretrained_id
+				path = os.path.join(cfg.models_path, cfg.pretrained_id)
+				magic_path = get_model_magic_path(path)
+				model.load(magic_path)
+
+			elif cfg.training_mode == 'boost':
+				model = tflearn.DNN(net)
+				path = os.path.join(cfg.models_path, cfg.pretrained_id)
+				magic_path = get_model_magic_path(path)
+				model.load(magic_path)
+				model = train_model(model, hyp, this_run_id, log_run, perflog)
+
+			else:
+				raise Exception("training mode not recognized")			
+
 		except NetworkNotFoundError as e:
 			print("The network name provided din't match any defined network")
 		except EarlyStoppingError as e:
 			stop_reason = "early stopping"
-			do_prediction(model, hyp, this_run_id, log_run, perflog)
+			do_predict = True
+		except Exception as e:
+			print('error: ' + str(e))
+			stop_reason = str(e)[:100]
+			do_predict = False
 		else:
 			stop_reason = "epoch limit"
-			do_prediction(model, hyp, this_run_id, log_run, perflog)
+			do_predict = True
+
+			log_run.log(hyp.get_hypers(), logname='hypers', aslist = False)
+			log_run.log(this_run_id, logname='run_id', aslist = False)
+			log_run.log(cfg.network_name, logname='network_name', aslist = False)
+			log_run.log(cfg.ps_file_name, logname='Dataset', aslist = False)
+
 		finally:
-			temp_dir.cleanup()
-			if cfg.training and len(perflog.peek()) > 0:
+			# do prediction from best checkpoint
+			if do_predict:
+				magic_path = get_model_magic_path(temp_dir_best.name)				
+				if magic_path and cfg.training_mode != 'evaluate':
+					print("\nloading best checkpoint...")
+					model.load(magic_path)
+				do_prediction(model, hyp, this_run_id, log_run, perflog, net)
+
+			# save model
+			if cfg.save_the_model and not cfg.training_mode == 'evaluate':
+				save_model(model, this_run_id)
+
+			# cleanup tempfiles
+			temp_dir_best.cleanup()
+			temp_dir_checkpoints.cleanup()
+
+			# write logs
+			if (cfg.training_mode == 'training' or
+				cfg.training_mode == 'boost') and len(perflog.peek()) > 0:
 				perflog.log(status = stop_reason)
 				perflog.flush()
-
-	log_run.save(this_run_id + '.log')
-
+				log_run.save(this_run_id + '.log')
+	
 debug_log.save("training_debug.log")
