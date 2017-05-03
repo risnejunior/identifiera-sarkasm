@@ -30,6 +30,7 @@ from common_funs import Open_Dataset
 from common_funs import balance
 from common_funs import pad_sequences
 from common_funs import interleave
+from common_funs import reverse_lookup
 
 from common_funs import ProcessedData
 from common_funs import Dataset
@@ -413,7 +414,6 @@ if cfg.random_data or cfg.add_snitch or cfg.random_labels:
 								  cfg.add_snitch, 
 								  cfg.random_labels)
 
-
 #calculate how to partition samples in training, validation & test set
 sample_count = len(mixed_samples)
 training_index = math.floor(cfg.partition_training * sample_count)
@@ -453,6 +453,14 @@ with open(cfg.samples_path, 'wb') as handle:
 
 # saves readable versions of the data for debugging
 if cfg.save_debug:
+
+	print ("Saving json debug files..")
+	
+	#make sure debug files tokens show what's up after scramble etc
+	for sample in mixed_samples:
+		text_tokens = reverse_lookup( sample['int_vector'], rev_vocabulary)
+		sample['text_tokens'] = text_tokens
+	
 	debug_path = cfg.samples_path
 
 	all_samples= json.dumps(mixed_samples, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
