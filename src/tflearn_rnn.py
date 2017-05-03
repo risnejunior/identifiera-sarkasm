@@ -127,12 +127,15 @@ def _arg_callback_ds(ds_name):
 	cfg.dataset_name = ds_name
 	print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_pretrained(file_name):
+def _arg_callback_pretrained(file_name, checkpoint = False):
+	cfg.checkpoint = checkpoint
 	cfg.save_the_model = False
 	cfg.pretrained_model = True
 	cfg.training = False
-	cfg.pretrained_file = file_name + ".tfl"
-	print("<Using pretrained model " + pretrained_path + " for results only.")
+	cfg.pretrained_file = file_name #Make sure to include name including '.tfl' or '.ckpt-number'
+
+	print("<Using pretrained model " + cfg.pretrained_path + " for results only.")
+
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
 	cfg.epochs = int(nr_epochs)
@@ -171,15 +174,16 @@ def build_network(name, hyp, pd):
 
 def create_model(net, hyp, this_run_id, log_run):
 	checkpoint_path = os.path.join(cfg.checkpoints_path,this_run_id + ".ckpt")
+	best_path = os.path.join(cfg.best_path,this_run_id + ".ckpt")
 	model = tflearn.DNN(net,
 					    tensorboard_verbose=3,
 					    checkpoint_path=checkpoint_path,
-					    best_checkpoint_path=checkpoint_path,
-					    best_val_accuracy=0.75)
+					    best_checkpoint_path=best_path,
+					    best_val_accuracy=0.5)
 
 	#Load pretrained model
 	if cfg.pretrained_model:
-		print("Attempting to load model")
+		print("Attempting to load model from "+str(cfg.pretrained_path))
 		model.load(cfg.pretrained_path)
 		print("Successfully loaded model")
 		return model
@@ -206,7 +210,7 @@ def train_model(model, hyp, this_run_id, log_run, perflog):
 		snapshot_step = math.floor(ps.train.length / (cfg.snapshots_per_epoch * cfg.batch_size))
 	else:
 		snapshot_step = None
-		
+
 	model.fit(X_inputs=ps.train.xs,
 			  Y_targets=ps.train.ys,
 			  validation_set=(ps.valid.xs, ps.valid.ys),
@@ -233,7 +237,7 @@ def do_prediction(model, hyp, this_run_id, log_run, perflog):
 
 	cm = Binary_confusion_matrix()
 	from common_funs import chunks
-	fun_chunks = lambda fun, parts: [fun(part) for part in chunks(parts, 1000)]	
+	fun_chunks = lambda fun, parts: [fun(part) for part in chunks(parts, 1000)]
 	flatten = lambda l: [x for xs in l for x in xs]
 
 	predictions = flatten(fun_chunks(model.predict, ps.train.xs))
@@ -355,7 +359,7 @@ for hyp in hypers:
 			do_prediction(model, hyp, this_run_id, log_run, perflog)
 		finally:
 			perflog.log(status = stop_reason)
-			if cfg.training and len(perflog.peek()) > 0: 
+			if cfg.training and len(perflog.peek()) > 0:
 				perflog.flush()
 
 	log_run.save(this_run_id + '.log')

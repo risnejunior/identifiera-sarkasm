@@ -45,17 +45,17 @@ def _arg_callback_sp(train, cross, test):
 	cfg.partition_training = float(train)
 	cfg.partition_validation = float(cross)
 	cfg.partition_test = float(test)
-	
+
 	if (cfg.partition_training + cfg.partition_validation + cfg.partition_test > 1):
 		raise ValueException("Sum of partitions cannot exceed 1.")
 
 def	_arg_callback_sb(set_balance):
 	cfg.set_balance = float(set_balance)
-	print("<using set balance: {}>".format(set_balance))
+	print("<Using set balance: {}>".format(set_balance))
 
 def	_arg_callback_le(embeddings_count):
 	cfg.embeddings_maxloop = int(embeddings_count)
-	print("<limiting embeddings: {}>".format(set_balance))
+	print("<Limiting embeddings: {}>".format(set_balance))
 
 def _arg_callback_ds(dataset_name):
 	cfg.dataset_name = dataset_name
@@ -67,7 +67,7 @@ def _arg_callback_reverse():
 
 def _arg_callback_scramble():
 	cfg.scramble_samples = True
-	print("<scrambling samples..>")
+	print("<Scrambling samples..>")
 
 def _arg_callback_sd():
 	cfg.save_debug = True
@@ -91,14 +91,14 @@ def _arg_callback_re():
 	Skip fitting embeddings, all will be set to random
 	"""
 	cfg.embeddings_maxloop = 0
-	print("<using random-embeddings>")
+	print("<Using random-embeddings>")
 
 def _arg_callback_ls(s_count=5000):
 	"""
 	Limit the samples used (how many teewts to preprocess)
 	"""
 	cfg.limit_samples = int(s_count)
-	print("<using limited sample count: {}>".format(s_count))
+	print("<Using limited sample count: {}>".format(s_count))
 
 def _arg_callback_pf(file_name):
 	"""
@@ -107,7 +107,7 @@ def _arg_callback_pf(file_name):
 	cfg.ps_file_name = file_name
 	print("<Saving processed samples as: {}>".format(file_name))
 
-def build_vocabulary( words, max_size ):	
+def build_vocabulary( words, max_size ):
 	vocab_instances = 0
 	unique_counts = Counter(words)
 	d = dict(unique_counts.most_common(cfg.vocabulary_size-2) )
@@ -119,7 +119,7 @@ def build_vocabulary( words, max_size ):
 		vocab_instances += value
 		vocabulary[key] = i
 		pb.tick()
-			
+
 	vocabulary[cfg.padding_char] = 0
 	vocabulary[cfg.placeholder_char] = 1
 	#reverse the vocbulary (for reverse lookup)
@@ -131,23 +131,23 @@ def build_vocabulary( words, max_size ):
 def tokenize_text( sample_text ):
 	global sequence_lengths
 	processed_text = []
-	
+
 	if cfg.remove_punctuation:
-		cleaned = sample_text.lower().translate( t_table ) 	
+		cleaned = sample_text.lower().translate( t_table )
 	else:
 		cleaned = sample_text
 
 	if cfg.use_casual_tokenizer:
-		tokens = tknzr.tokenize( cleaned ) 
+		tokens = tknzr.tokenize( cleaned )
 	else:
-		tokens = nltk.word_tokenize( cleaned, language='english') 	
-				
+		tokens = nltk.word_tokenize( cleaned, language='english')
+
 	if cfg.remove_stopwords:
-		tokens = [w for w in tokens if not w in stopwords.words('english')] 	
+		tokens = [w for w in tokens if not w in stopwords.words('english')]
 
 	sequence_lengths.append( len( tokens ) )
-	processed_text.extend( tokens )	
-	
+	processed_text.extend( tokens )
+
 	return processed_text
 
 def tokenize_helper(sample_list, all_words, sample_class):
@@ -177,7 +177,7 @@ def make_index_vectors( samples, vocabulary ):
 				int_vector.append( vocabulary[word] )
 			else:
 				int_vector.append( 1 ) # 1 - used for masking samples
-		
+
 		if cfg.reverse_samples:
 			int_vector.reverse()
 
@@ -228,9 +228,9 @@ def modify_samples(samples, random_data, add_snitch, random_labels):
 		pb.tick()
 
 
-def fit_embeddings(vocabulary, source_path):	
+def fit_embeddings(vocabulary, source_path):
 	debug_logger = Logger(enable = False)
-	
+
 	found = notfound = masks = randvecs = nulls = 0
 	rs_embeddings = [[] for _ in range(cfg.vocabulary_size)]
 	minmax = MinMax()
@@ -238,10 +238,10 @@ def fit_embeddings(vocabulary, source_path):
 	try:
 		with open(source_path, 'r', encoding="utf8") as emb_file:
 			dl = DebugLoop(maxloops = cfg.embeddings_maxloop)
-			for i, line in enumerate(dl.loop(emb_file)):		
+			for i, line in enumerate(dl.loop(emb_file)):
 				(word, *vector) = line.split()
 				vector = list(map(float, vector))
-			
+
 				if word in vocabulary:
 					found += 1
 					voc_index = vocabulary[word]
@@ -253,7 +253,7 @@ def fit_embeddings(vocabulary, source_path):
 					elif voc_index == 0:
 						nulls += 1
 						rs_embeddings[voc_index] = [0.0 for _ in range(cfg.embedding_size)]
-					else:				
+					else:
 						rs_embeddings[voc_index] = vector
 						minmax.add(vector)
 				else:
@@ -261,9 +261,9 @@ def fit_embeddings(vocabulary, source_path):
 
 				wa.tick("Scanned: {:,}, matched to vocabulary: {:,}".format(i, found))
 			wa.done()
-			
+
 		minval = minmax.get('min') if minmax.get('min') else -6.0
-		maxval = minmax.get('max') if minmax.get('max') else 6.0		
+		maxval = minmax.get('max') if minmax.get('max') else 6.0
 		print("\nGenerating random word vectors for missing words...")
 		pb = Progress_bar(len(rs_embeddings) - 1)
 		for i, vector in enumerate(rs_embeddings):
@@ -279,7 +279,7 @@ def fit_embeddings(vocabulary, source_path):
 	finally:
 		debug_logger.save()
 
-	print()		
+	print()
 	print("Words not found in vocabulary: {:,}".format(notfound))
 	print("Words found in vocabulary: {:,}".format(found))
 	print("Masked words skipped: {:,}".format(masks))
@@ -346,7 +346,7 @@ if not cfg.limit_samples is None:
 
 if not cfg.set_balance is None:
 	pos_samples_count, neg_samples_count = balance(pos_samples_count, neg_samples_count, cfg.set_balance)
-	 
+
 # limit count
 positive_rows = positive_rows[:pos_samples_count]
 negative_rows = negative_rows[:neg_samples_count]
@@ -384,9 +384,9 @@ print("Calculating vocabulary statistics...")
 seq_max = max( sequence_lengths )
 seq_mean = round( np.mean( sequence_lengths ), 2 )
 seq_std = round( np.std( sequence_lengths ), 2 )
-print("Longest sqeuence (words): " + str( seq_max) , end =", ") 
-print("mean: " + str( seq_mean), end =", ") 
-print("std: " + str( seq_std), end =", ") 
+print("Longest sqeuence (words): " + str( seq_max) , end =", ")
+print("mean: " + str( seq_mean), end =", ")
+print("std: " + str( seq_std), end =", ")
 print("3-sigma: " + str(math.ceil( seq_mean + 3 * seq_std) ) )
 print("Words in corpus: {:0}, Unique words in corpus: {:1}" \
 	.format( len(all_words), unique_words ) )

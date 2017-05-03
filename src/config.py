@@ -32,7 +32,7 @@ class Config:
 
 		#clean tweets
 		strict = False, #option to chose strict cleansing of tweets or non-strict
-		includetags = True, #option to include tags or not
+		includetags = False, #option to include tags or not
 		
 		#used in training
 		network_name = 'little_pony',
@@ -46,6 +46,7 @@ class Config:
 		pretrained_model = False, # If true, create_model will initialize the model specified in pretrained_path
 		training = True, # If false, the modeled will not be trained. Useful for testing pretrained model
 		pretrained_file = '6P8GFZ_FEVERISH_FOXBAT.tfl',
+		checkpoint = False,
 
 		# debug commands
 		print_test = False,
@@ -150,7 +151,10 @@ class Config:
 		return math.floor(self.sample_count / (self.snapshots_per_epoch * self.batch_size))
 
 	def get_pretrained_path(self):
-		return os.path.join(self.models_path, self.pretrained_file)
+		if self.checkpoint:
+			return os.path.join(self.checkpoints_path, self.pretrained_file)
+		else:
+			return os.path.join(self.models_path, self.pretrained_file)
 
 	# dynamic paths
 	raw_embeddings_path = property(get_raw_embeddings_path)
