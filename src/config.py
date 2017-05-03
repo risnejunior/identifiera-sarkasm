@@ -15,7 +15,7 @@ class Config:
 		remove_punctuation = True,
 		remove_stopwords = False,
 		use_casual_tokenizer = True, 	# doens't remove special chars
-		sample_count = None, 
+		sample_count = None,
 		partition_training = 0.7,
 		partition_validation = 0.15,
 		partition_test = 0.15,
@@ -33,7 +33,7 @@ class Config:
 		#clean tweets
 		strict = False, #option to chose strict cleansing of tweets or non-strict
 		includetags = False, #option to include tags or not
-		
+
 		#used in training
 		network_name = 'little_pony',
 		run_count = 1, # how many hyperparamter permutations to iterate over
@@ -52,7 +52,7 @@ class Config:
 		add_snitch = False, # adds a word to all positive and another to all negative samples
 		random_data = False, # sets random training data
 	)
-	
+
 	# constants
 	tags = ["<user>", "<url>", "<hashtag>"]
 	allowed_emb_sizes = [25,50,100,200]
@@ -63,13 +63,13 @@ class Config:
 
 	datasets = {
 		"poria-balanced": {
-			"rel_path": ["poria", "en-balanced"],
+			"rel_path": ["balanced"],
 			"neg_source": "normal_tweets.csv",
 			"pos_source": "sarcastic_tweets.csv",
 			"source_format": {'sample_id':0, 'sample_text':2, 'unescape': False}
 		},
 		"poria-ratio": {
-			"rel_path": ["poria", "en-ratio"],
+			"rel_path": ["ratio"],
 			"neg_source": "normal_tweets.csv",
 			"pos_source": "sarcastic_tweets.csv",
 			"source_format": {'sample_id':0, 'sample_text':2, 'unescape': False}
@@ -92,14 +92,14 @@ class Config:
 		self._root_datasets_path = os.path.join(".", "..","datasets")
 
 		# set default settings
-		self.__dict__.update(Config.standard_settings)		
+		self.__dict__.update(Config.standard_settings)
 
-		# make sure these paths exist		
-		self.__dict__.update(Config.ensure_paths)		
+		# make sure these paths exist
+		self.__dict__.update(Config.ensure_paths)
 		for path_name, path in Config.ensure_paths.items():
 			if not (os.path.isdir(path)):
 				os.makedirs(path)
-	
+
 		# load own config file
 		if os.path.exists(own_settings):
 			import json
@@ -120,22 +120,22 @@ class Config:
 		return os.path.join(self._root_datasets_path, "datasets.sqlite")
 
 	def get_dataset_path(self):
-		return os.path.join(self._root_datasets_path, 
+		return os.path.join(self._root_datasets_path,
 							*Config.datasets[self.dataset_name]['rel_path'])
 
 	def get_neg_source_path(self):
-		return os.path.join(self.dataset_path, 
+		return os.path.join(self.dataset_path,
 			                Config.datasets[self.dataset_name]['neg_source'])
 
 	def get_pos_source_path(self):
-		return os.path.join(self.dataset_path, 
+		return os.path.join(self.dataset_path,
 			                Config.datasets[self.dataset_name]['pos_source'])
 
 	def get_processed_path(self):
 		path = os.path.join(self.dataset_path, 'processed')
 		if not (os.path.isdir(path)):
 				os.makedirs(path)
-		
+
 		return path
 
 	def get_ps_path(self):
@@ -143,23 +143,6 @@ class Config:
 
 	def get_source_format(self):
 		return Config.datasets[self.dataset_name]['source_format']
-
-	# def get_snapshot_steps(self):
-		# return math.floor(self.sample_count / (self.snapshots_per_epoch * self.batch_size))
-
-	# def get_pretrained_file_path(self):
-	# 	from os import listdir
-	# 	pretrained_files = [file.split('.')[0] for file in listdir(self.pretrained_path)]
-
-	# 	if pretrained_files:
-	# 		best_file = sorted(pretrained_files, reverse=True)[0]
-	# 		return os.path.join(self.pretrained_path, best_file)
-	# 	else:
-	# 		raise Exception("path empty")
-
-
-	# def get_pretrained_path(self):
-	# 	return os.path.join(self.models_path, self.pretrained_id)
 
 	# dynamic paths
 	raw_embeddings_path = property(get_raw_embeddings_path)
@@ -169,4 +152,7 @@ class Config:
 	pos_source_path = property(get_pos_source_path)
 	processed_path = property(get_processed_path)
 	samples_path = property(get_ps_path)
+
+	#other dynamic properties
 	source_format = property(get_source_format)
+
