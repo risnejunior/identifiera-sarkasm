@@ -57,7 +57,11 @@ class Config:
 	# constants
 	tags = ["<user>", "<url>", "<hashtag>"]
 	allowed_emb_sizes = [25,50,100,200]
-	ensure_paths = {'models_path':'models', 'logs_path':'logs', 'checkpoints_path':'checkpoints'}
+	ensure_paths = {
+		'models_path':'models', 
+		'logs_path':'logs', 
+		'checkpoints_path':'checkpoints'
+	}
 
 	datasets = {
 		"poria-balanced": {
@@ -92,8 +96,8 @@ class Config:
 		# set default settings
 		self.__dict__.update(Config.standard_settings)		
 
-		# make sure these paths exist
-		self.__dict__.update(Config.ensure_paths)
+		# make sure these paths exist		
+		self.__dict__.update(Config.ensure_paths)		
 		for path_name, path in Config.ensure_paths.items():
 			if not (os.path.isdir(path)):
 				os.makedirs(path)
@@ -129,8 +133,15 @@ class Config:
 		return os.path.join(self.dataset_path, 
 			                Config.datasets[self.dataset_name]['pos_source'])
 
+	def get_processed_path(self):
+		path = os.path.join(self.dataset_path, 'processed')
+		if not (os.path.isdir(path)):
+				os.makedirs(path)
+		
+		return path
+
 	def get_ps_path(self):
-		return os.path.join(self.dataset_path, self.ps_file_name)
+		return os.path.join(self.processed_path, self.ps_file_name)
 
 	def get_source_format(self):
 		return Config.datasets[self.dataset_name]['source_format']
@@ -147,6 +158,7 @@ class Config:
 	dataset_path = property(get_dataset_path)
 	neg_source_path = property(get_neg_source_path)
 	pos_source_path = property(get_pos_source_path)
+	processed_path = property(get_processed_path)
 	samples_path = property(get_ps_path)
 	source_format = property(get_source_format)
 

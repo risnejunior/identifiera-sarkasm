@@ -585,14 +585,6 @@ class Hyper:
 		return self
 
 
-class Struct:
-	def __init__(self, **entries):
-		self.__dict__.update(entries)
-
-	def __eq__(self, other):
-		return self.__dict__ == other.__dict__
-
-
 class MinMax():
 	def __init__(self):
 		self.minval = None
@@ -1226,3 +1218,47 @@ Dataset = namedtuple('Dataset', ['train', 'valid', 'test'])
 Setpart = namedtuple('Setpart', ['names', 'length', 'ids', 'xs','ys'])
 pos_label = np.array([0., 1.], dtype="float32")
 neg_label = np.array([1., 0.], dtype="float32")
+
+class Struct:
+	def __init__(self, **entries):
+		self.__dict__.update(entries)
+
+	def __eq__(self, other):
+		return self.__dict__ == other.__dict__
+
+def smaller(xs, ys): 
+	if len(xs) < len(ys): 
+		return (xs, ys) 
+	else:
+		return (ys, xs)
+
+def interleave (xs, ys):
+	"""
+	Copies elements from xs and ys to out while trying to spread the elements
+	  from the smaller list with the elements from the larger list as evenly
+	  as possible. It does this by checking the fraction between their lengths
+	  and then tries to keep this fraction while growing the out list.
+	"""
+	out = []
+	of = l = s = 1
+	small, large = smaller(xs, ys)
+	f = len(small) / len(large)
+	
+	while len(small) + len(large) != 0:
+		if len(small) == 0 and len(large) != 0:
+			l += 1
+			out.append(large.pop())
+		elif len(large) == 0 and len(small) != 0:
+			s += 1
+			out.append(small.pop())
+		elif of >= f:
+			l += 1
+			out.append(large.pop())
+		elif of < f:
+			s += 1
+			out.append(small.pop())
+		
+		of = s / l
+
+
+	return out		
