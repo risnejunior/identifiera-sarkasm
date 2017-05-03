@@ -55,7 +55,7 @@ def	_arg_callback_sb(set_balance):
 
 def	_arg_callback_le(embeddings_count):
 	cfg.embeddings_maxloop = int(embeddings_count)
-	print("<Limiting embeddings: {}>".format(set_balance))
+	print("<Limiting embeddings: {}>".format(embeddings_count))
 
 def _arg_callback_ds(dataset_name):
 	cfg.dataset_name = dataset_name
@@ -161,7 +161,7 @@ def tokenize_helper(sample_list, all_words, sample_class):
 		all_words.extend(text_tokens)
 		tokenized_samples.append({
 			'sample_id': sample['sample_id'], 
-			'sample_class': sample_class, 
+			'sample_class': sample['sample_class'], 
 			'text_tokens': text_tokens, 
 			'int_vector':[]
 		})
@@ -364,8 +364,8 @@ print("After set limiting, total: {}, positive: {}, negative: {}\n"
 # samples are changed from litesql.row to list of dict
 all_words = []
 sequence_lengths = []
-neg_samples = tokenize_helper(negative_rows, all_words, False)
-pos_samples = tokenize_helper(positive_rows, all_words, True)
+neg_samples = tokenize_helper(negative_rows, all_words, 0)
+pos_samples = tokenize_helper(positive_rows, all_words, 1)
 
 
 # build vocabulary

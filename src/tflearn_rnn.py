@@ -9,6 +9,7 @@ import pickle
 import csv
 import time
 from time import strftime
+import tempfile
 
 #suppress tf logging
 cls_file = open('tmp.txt', 'w')
@@ -105,7 +106,7 @@ class EarlyStoppingMonitor():
 
 		if val_loss > avg_limit:
 			self._buff.append(["Stopped due to loss average"])
-			perflog.log(best_acc = state['best_accuracy'])
+			perflog.log(best_acc = round(state['best_accuracy'], 3))
 			raise EarlyStoppingError("Early stopping due to loss average")
 		else:
 			m = "Loss delta to limit: {}, continuing...".format(round(avg_limit-val_loss,3))
@@ -155,14 +156,14 @@ def _arg_callback_in(file_name):
 	cfg.ps_file_name = file_name
 	print("<Using processed samples from: {}>".format(cfg.samples_path))
 
-def _arg_callback_ss(s_step = None, s_epoch = 'False'):
+def _arg_callback_ss(s_step = None, s_epoch = False):
 	"""
 	Set the snapshot step
 	"""
 	if isinstance(s_step, str) and s_step.lower() == 'none':
 		s_step = None
 	cfg.snapshots_per_epoch = int(s_step) if s_step is not None else None
-	cfg.snapshot_epoch = True if s_epoch.lower() == 'true' else False
+	cfg.snapshot_epoch = True if str(s_epoch).lower() == 'true' else False
 	print("<Snapshot step: {}, Snaphot epoch end: {}>".format(s_step, s_epoch))
 
 def build_network(name, hyp, pd):
@@ -173,13 +174,14 @@ def build_network(name, hyp, pd):
 	return net
 
 def create_model(net, hyp, this_run_id, log_run):
-	checkpoint_path = os.path.join(cfg.checkpoints_path,this_run_id + ".ckpt")
-	best_path = os.path.join(cfg.best_path,this_run_id + ".ckpt")
+	best_path = os.path.join(cfg.best_path,this_run_id + ".ckpt")	
+	cfg.checkpoint_path = os.path.join(temp_dir.name,this_run_id + ".ckpt")
+	
 	model = tflearn.DNN(net,
 					    tensorboard_verbose=3,
-					    checkpoint_path=checkpoint_path,
+					    checkpoint_path=cfg.checkpoint_path,
 					    best_checkpoint_path=best_path,
-					    best_val_accuracy=0.5)
+					    best_val_accuracy=0.7)
 
 	#Load pretrained model
 	if cfg.pretrained_model:
@@ -236,6 +238,7 @@ def do_prediction(model, hyp, this_run_id, log_run, perflog):
 	print(boxString("Run id: " + this_run_id))
 
 	cm = Binary_confusion_matrix()
+	# splite the sets in chunks so that predict doesn't use all the memmories
 	from common_funs import chunks
 	fun_chunks = lambda fun, parts: [fun(part) for part in chunks(parts, 1000)]
 	flatten = lambda l: [x for xs in l for x in xs]
@@ -313,7 +316,7 @@ if cfg.print_debug:
 		label = "Positive (Sarcastic)" if ispos else "Negative (Not sarcastic)"
 		logstring = "Sample id: {}, {}: {:<5}".format(s_id, label, "\n")
 		logstring += " ".join( reverse_lookup(s_x, pd.rev_vocab, cfg.ascii_console ))
-		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 10, step = 2500)
+		debug_log.log(logstring, logname="reverse_lookup", maxlogs = 10, step = 3003)
 	print("\nLogged sample values:\n")
 	debug_log.print_log(logname="reverse_lookup")
 	print('', end='\n\n')
@@ -321,12 +324,19 @@ if cfg.print_debug:
 
 # 'sönderhaxad' class that generates random hyperparamters in the range provided
 
+# hypers = Hyper(cfg.run_count,
+# 	lstm = {'dropout': (0.4, 0.8)},
+# 	middle= {'weight_decay': (0.01, 0.06)},
+# 	dropout = {'dropout': (0.4, 0.8)},
+# 	regression = {'learning_rate': (0.0005, 0.0015)},
+# 	output = {'weight_decay': (0.01, 0.06)}
+# )
 hypers = Hyper(cfg.run_count,
-	lstm = {'dropout': (0.4, 0.8)},
-	middle= {'weight_decay': (0.01, 0.06)},
-	dropout = {'dropout': (0.4, 0.8)},
-	regression = {'learning_rate': (0.0005, 0.0015)},
-	output = {'weight_decay': (0.01, 0.06)}
+	lstm = {'dropout': (0.51, 0.51)},
+	middle= {'weight_decay': (0.038, 0.038)},
+	dropout = {'dropout': (0.63, 0.63)},
+	regression = {'learning_rate': (0.00056, 0.00056)},
+	output = {'weight_decay': (0.038, 0.038)}
 )
 
 # training loop, every loop trains a network with different hyperparameters
@@ -344,7 +354,8 @@ for hyp in hypers:
 		tflearn.config.init_training_mode()
 		stop_reason = "Other error"
 
-		try:
+		try:			
+			temp_dir = tempfile.TemporaryDirectory()
 			net = build_network(cfg.network_name, hyp, pd)
 			model = create_model(net, hyp, this_run_id, log_run)
 			if cfg.training:
@@ -358,8 +369,9 @@ for hyp in hypers:
 			stop_reason = "epoch limit"
 			do_prediction(model, hyp, this_run_id, log_run, perflog)
 		finally:
-			perflog.log(status = stop_reason)
+			temp_dir.cleanup()
 			if cfg.training and len(perflog.peek()) > 0:
+				perflog.log(status = stop_reason)
 				perflog.flush()
 
 	log_run.save(this_run_id + '.log')

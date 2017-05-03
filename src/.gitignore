@@ -9,6 +9,7 @@ __pycache__/
 *.json
 models/
 checkpoints/
+best_checkpoints/
 logs/
 *.sublime-workspace
 .DS_Store

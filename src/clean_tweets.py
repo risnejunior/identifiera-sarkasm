@@ -21,13 +21,13 @@ def _arg_callback_ds(ds_name):
     cfg.dataset_name = ds_name
     print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_strict(strict):
-    cfg.strict = strict = True if str(strict).lower() == 'true' else False
+def _arg_callback_strict(strict = True):
+    cfg.strict = True if str(strict).lower() == 'true' else False
     print("<Using strict: {}>".format(strict))
 
-def _arg_callback_tags(include):
-    cfg.includetags = includetags = True if str(include).lower() == 'true' else False
-    print("<Including tags: {}>".format(includetags))
+def _arg_callback_tags(include = True):
+    cfg.includetags = True if str(include).lower() == 'true' else False
+    print("<Including tags: {}>".format(include))
 
 def clean_tweets(ds_name, s_class, s_format):
     ordered_data = OrderedDict()

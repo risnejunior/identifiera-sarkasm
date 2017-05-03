@@ -61,7 +61,8 @@ class Config:
 	ensure_paths = {
 		'models_path':'models', 
 		'logs_path':'logs', 
-		'checkpoints_path':'checkpoints'
+		'checkpoints_path':'checkpoints',
+		'best_path':'best_checkpoints'
 	}
 
 	datasets = {
