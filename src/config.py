@@ -42,7 +42,7 @@ class Config:
 		snapshots_per_epoch = 1, #checkpoints per epoch
 
 		#For loading and saving models
-		save_the_model = False, # If true, save the model to path specified in tflearn_rnn
+		save_the_model = True, # If true, save the model to path specified in tflearn_rnn
 		pretrained_id = None, # if none then you will select the model from an interactive menu
 		training_mode = 'training', #training, boost, evaluate
 
