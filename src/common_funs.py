@@ -309,12 +309,13 @@ class TroubleMakers:
 				self.datapoints[key] = val
 
 	def tallyPredictions(self):
-		Group = namedtuple("group", ['correct','total','length', 'ids'])
+		Group = namedtuple("group", ['correct','total','length', 'ids']) #!not used
 		tally = {}
 		correct = 0
 		total = 0
 		for key, val in self.datapoints.items():
-			true_total = (val.correct, val.total)
+			#true_total = (val.correct, val.total)
+			true_total = round(val.correct / val.total, 2)
 
 			if true_total in tally:
 				tally[true_total] += 1
@@ -1270,7 +1271,11 @@ def interleave (xs, ys):
 def clear_console():
 	os.system('cls' if os.name == 'nt' else 'clear')
 
-def file_selector(path):
+def file_selector(path, menuText = None):
+
+	if menuText is None:
+		menuText = "Choose a file from the list above"
+
 	clear_console()	
 	files = list(sorted(listdir(path), reverse=True))
 	max_i = len(files)-1
@@ -1279,7 +1284,7 @@ def file_selector(path):
 	for i, file in enumerate(files):
 		print("{}: {}".format(i, file))
 
-	print("--------------------------------")
+	print(boxString(menuText))
 	while True:
 		index = input("Select file by typing the index: ")
 		try:			

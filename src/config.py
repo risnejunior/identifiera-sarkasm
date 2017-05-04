@@ -39,10 +39,11 @@ class Config:
 		run_count = 1, # how many hyperparamter permutations to iterate over
 		epochs = 1,
 		batch_size = 90,
-		snapshots_per_epoch = 1, #checkpoints per epoch
+		snapshots_per_epoch = None, #checkpoints per epoch, none for none
+		snapshot_epoch = True,
 
 		#For loading and saving models
-		save_the_model = False, # If true, save the model to path specified in tflearn_rnn
+		save_the_model = True, # If true, save the model to path specified in tflearn_rnn
 		pretrained_id = None, # if none then you will select the model from an interactive menu
 		training_mode = 'training', #training, boost, evaluate
 

@@ -141,7 +141,7 @@ def _arg_callback_sm():
 
 def _arg_callback_boost(pretrained_id = None):
 	if pretrained_id is None:
-		pretrained_id = file_selector(cfg.models_path)
+		pretrained_id = file_selector(cfg.models_path, "Select model for boosting")
 
 	cfg.pretrained_id = pretrained_id
 	cfg.training_mode = 'boost'	
@@ -149,7 +149,7 @@ def _arg_callback_boost(pretrained_id = None):
 
 def _arg_callback_eval(pretrained_id = None):
 	if pretrained_id is None:
-		pretrained_id = file_selector(cfg.models_path)
+		pretrained_id = file_selector(cfg.models_path, "Select model to evaluate")
 
 	cfg.pretrained_id = pretrained_id
 	cfg.training_mode = 'evaluate'	
@@ -166,12 +166,9 @@ def _arg_callback_net(name):
 	cfg.network_name = name
 	print("<Using network: {}>".format(name))
 
-def _arg_callback_in(file_name):
-	"""
-	Take preprocessed samples from the selected file
-	"""
+def _arg_callback_in(file_name = None):
 	cfg.ps_file_name = file_name
-	print("<Using processed samples from: {}>".format(cfg.samples_path))
+	print("<Using processed samples from selected file>")
 
 def _arg_callback_ss(s_step = None, s_epoch = False):
 	"""
@@ -317,7 +314,6 @@ def save_model(model, run_id):
 
 # affected by flags, need to be before consume_flags()
 cfg = Config()
-cfg.snapshot_epoch = True
 cfg.print_debug = True
 cfg.predictions_filename = 'predictions.pickle'
 
@@ -340,6 +336,9 @@ arghandler.consume_flags()
 debug_log = Logger()
 perflog = DB_backed_log(cfg.sqlite_file, 'training_performance')
 
+# show select menu if no file name given
+if cfg.ps_file_name is None:
+	cfg.ps_file_name = file_selector(cfg.processed_path, "Select sample file")
 
 # Load processed data from file
 with open(cfg.samples_path, 'rb') as handle:
