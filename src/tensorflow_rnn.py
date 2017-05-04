@@ -9,6 +9,7 @@ import collections
 import math
 import random
 import os
+import glob
 import json
 import pickle
 import csv
@@ -56,6 +57,7 @@ class EarlyStoppingHelper:
             return flags
 
         self.epochs_since_best += 1
+
         if self.epochs_since_best > self.epoch_threshold :
             flags['early_stop'] = True
             return flags
@@ -91,7 +93,7 @@ shuffle_training = False
 batch_size = cfg.batch_size
 
 network_name = cfg.network_name
-date_stamp = time.strftime("%d%b")
+date_stamp = time.strftime("%d%b-%H:%M")
 run_id = date_stamp + "-" + network_name
 def _arg_callback_pt():
 	global print_test
@@ -104,18 +106,19 @@ def _arg_callback_ds(ds_name):
     cfg.dataset_name = ds_name
     print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_pretrained(file_name):
+def _arg_callback_eval(model_name=None):
     cfg.save_the_model = False
-    cfg.pretrained_model = True
-    cfg.training = False
-    cfg.pretrained_file = file_name + ".tfl"
-    print("<Using pretrained model " + pretrained_path + " for results only.")
+    #cfg.pretrained_model = True
+    cfg.training_mode = "evaluate"
+    cfg.pretrained_file = model_name + ".ckpt" if model_name != None else None
+    if model_name != None:
+        print("<Using pretrained model " + model_name + " for results only.")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
     cfg.epochs = int(nr_epochs)
     cfg.run_count = int(count)
     cfg.batch_size = int(batchsize)
-    cfg.training = True
+    cfg.training_mode = "training"
     print("<Training for, epochs: {}, runs:{}, batchsize: {}>".format(nr_epochs, count, batchsize))
 
 def _arg_callback_net(name):
@@ -200,6 +203,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 	sess = tf.Session()
 	xs_split,ys_split = split_chunks(ps.train.xs,cfg.batch_size, np.array(ps.train.ys))
 	with sess.as_default():
+		print("Current Network Model id: %s" % run_id )
 		sess.run(tf.global_variables_initializer())
 		set_embedding(sess,emb_init,emb_placeholder,emb)
 		early_stop = False
@@ -281,24 +285,27 @@ def test_accuracy(prediction,labels):
     accuracy = tf.reduce_mean(tf.cast(correct,'float'))
     return accuracy
 
-def test_network(ps,network_name,path=None):
+def test_network(ps,W,network_name,path=None):
     if path == None :
         print("No model selected")
+        print("Your network %s have following matching models:" % network_name)
+        print_matching_models(network_name)
+    elif network_name not in path:
+        print("Your selected model %s is not for your selected network: %s" % (path, network_name))
     else:
-        run_test(ps,path,network_name)
+        path = os.path.join(".","models", path)
+        run_test(ps,W,path,network_name)
 
-def run_test(ps,path,network_name):
+def run_test(ps,W,path,network_name):
     network = tfnetworks.fetch_network(network_name,n_classes,params={'rnn_size': rnn_size})
     test_data = ps.test.xs
     test_labels = np.array(ps.test.ys)
-    emb_init, W, emb_placeholder = init_embedding(pd.vocab_size, pd.emb_size)
     embeddings = word_embedding_layer(data_placeholder,W)
     output = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
     with tf.Session().as_default() as sess:
         saver = tf.train.Saver()
         saver.restore(sess, path)
-        accuracy = test_network_run(ps.train.xs,np.array(ps.train.ys),output)
-        print("Test accuracy of this network is: ", accuracy)
+        run_test_print_cm(ps,output,log_run)
 
 def run_test_print_cm(ps,network_op,log_run):
 
@@ -357,6 +364,11 @@ def batchpredict_loss(batch_size,data,network_op,cost=None,labels=None):
 			results = np.concatenate((results,pred))
 		results = np.delete(results, (0), axis = 0)
 		return results,0
+
+def print_matching_models(network_name):
+    for file in os.listdir("models"):
+        if network_name in file:
+            print(file,end="\n")
 # Here starts the program
 
 #Argument handling, Copy paste from tflearn_rnn.py
@@ -365,7 +377,7 @@ arghandler.register_flag('in', _arg_callback_in, ['input', 'in-file'], "Which fi
 arghandler.register_flag('net', _arg_callback_net, ['network'], "Which network to use. args: <network name>")
 arghandler.register_flag('train', _arg_callback_train, helptext = "Use settings for training. Args: <epochs> <run_count> <batch size>")
 #arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set snapshots. No arguments means no snapshots. Args: <snapshot step> <epoch end>")
-arghandler.register_flag('pretrained', _arg_callback_pretrained, [], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
+arghandler.register_flag('eval', _arg_callback_eval, ['model_path'], "Evaluate the network performance of a pre-trained model specified by the name of the argument. args: <path>")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
 print("\n")
@@ -399,7 +411,9 @@ log_run = Logger()
 log_run.log(network_name, logname='network_name', aslist = False)
 log_run.log(cfg.ps_file_name, logname='Dataset', aslist = False)
 
-train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run)
-
+if cfg.training_mode != "evaluate":
+    train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run)
+else:
+    test_network(ps,W,network_name,cfg.pretrained_file)
 
 print ("=== Code ran Successfully ===")
