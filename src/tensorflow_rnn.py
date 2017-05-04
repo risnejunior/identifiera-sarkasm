@@ -249,7 +249,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 
 		if not early_stop:
 			saver = tf.train.Saver()
-			date = time.strftime("%s")
+			date = int(time.time())
 			saver_path = saver.save(sess, os.path.join(".","models","final-%s-%s.ckpt" % (run_id, date) ))
 			print("Model saved at %s" % saver_path )
 
