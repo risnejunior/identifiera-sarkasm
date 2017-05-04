@@ -49,15 +49,16 @@ class EarlyStoppingHelper:
     def test_scorings(self,loss,accuracy):
         flags = {'update': False , 'passing': False, 'early_stop': False}
         # First Check accuracy scoring, if better, than reset counter and set new scores
-        if accuracy > last_best_acc :
+        if accuracy > self.last_best_acc :
             self.epochs_since_best = 0
             self.last_best_acc = accuracy
             flags['update'] = True
-            return flag
-        epochs_since_best += 1
-        if epochs_since_best > epoch_threshold :
+            return flags
+
+        self.epochs_since_best += 1
+        if self.epochs_since_best > self.epoch_threshold :
             flags['early_stop'] = True
-            return flag
+            return flags
         if len(self.losses) < self.epoch_threshold:
             avg_loss = loss
         else:
@@ -69,7 +70,7 @@ class EarlyStoppingHelper:
             flags['early_stop'] = True
         else:
             self.losses.append(loss)
-            flags['passing'] = Tru
+            flags['passing'] = True
         return flags
 
 
@@ -174,14 +175,15 @@ def word_embedding_layer(word,embedding_tensor):
 
 def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 	# Defining all the operations
+	es_handler = EarlyStoppingHelper(epoch_threshold = 3, avg_limit_percent = 1.05)
 	embeddings = word_embedding_layer(data_placeholder,W)
 	network = tfnetworks.fetch_network(network_name,n_classes,params = {'rnn_size': rnn_size})
 	prediction = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
 	accuracy = test_accuracy(tf.nn.softmax(prediction),labels_placeholder)
 	val_accuracy_op = test_accuracy(data_placeholder,labels_placeholder)
 	cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction,
-	labels = labels_placeholder
-	))
+																  labels = labels_placeholder
+	                                                              ))
 
 	l2_loss = network.calc_l2_loss()
 	if trainable_embeddings:
@@ -200,6 +202,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 	with sess.as_default():
 		sess.run(tf.global_variables_initializer())
 		set_embedding(sess,emb_init,emb_placeholder,emb)
+		early_stop = False
 		loops = len(xs_split)
 		writer = tf.summary.FileWriter(logs_path + "/" + network_name + "-" + date,sess.graph)
 		print("Tensorboard log path:",logs_path)
@@ -222,18 +225,29 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 
 			print("\033[2B")
 			print("VALIDATING TRAINING:...")
-			val_predict = batchpredict(batch_size,ps.valid.xs,prediction)
+			val_predict,val_loss = batchpredict_loss(batch_size,ps.valid.xs,prediction,cost,np.array(ps.valid.ys))
 			val_accuracy = val_accuracy_op.eval(feed_dict={data_placeholder: val_predict,labels_placeholder: np.array(ps.valid.ys), keep_prob_placeholder: 1.0})
+
 			print('Epoch', epoch+1, 'completed out of', cfg.epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy))
 
-			saver = tf.train.Saver()
-			save_path = saver.save(sess, "./models/tfcheckpoint.ckpt")
-			print("Checkpoint file saved in %s" % save_path )
+			training_flags = es_handler.test_scorings(val_loss,val_accuracy)
+			if training_flags['update']:
+				saver = tf.train.Saver()
+				save_path = saver.save(sess, "./models/%s_Checkpoint-epoch-%s.ckpt" % (run_id, epoch))
+				print("Checkpoint file saved in %s" % save_path )
 
-		saver = tf.train.Saver()
-		date = time.strftime("%m%d%y-%H%M%S")
-		saver_path = saver.save(sess, "./models/tfrnn_model-%s.ckpt" % date)
-		print("Model saved at %s" % saver_path )
+			elif training_flags['early_stop']:
+				print("Training will stop because of EarlyStopping")
+				print("last save path is %s" % save_path)
+				early_stop = True
+				break
+
+		if not early_stop:
+			saver = tf.train.Saver()
+			date = time.strftime("%s")
+			saver_path = saver.save(sess, "./models/final-%s-%s.ckpt" % (run_id, date) )
+			print("Model saved at %s" % saver_path )
+
 		run_test_print_cm(ps,prediction,log_run)
 		sess.close()
 
@@ -290,9 +304,9 @@ def run_test_print_cm(ps,network_op,log_run):
 
     sess = tf.get_default_session()
     cm = Binary_confusion_matrix()
-    pred1 = batchpredict(90,ps.train.xs,network_op)
+    pred1,_ = batchpredict_loss(90,ps.train.xs,network_op)
     cm.calc(ps.train.ids , pred1, ps.train.ys, 'training-set')
-    pred2 = batchpredict(90,ps.valid.xs,network_op)
+    pred2,_ = batchpredict_loss(90,ps.valid.xs,network_op)
     cm.calc(ps.valid.ids , pred2, ps.valid.ys, 'validation-set')
     if cfg.print_test:
         pred3 = sess.run(network_op, feed_dict={data_placeholder: ps.test.xs, keep_prob_placeholder: 1.0})
@@ -318,17 +332,31 @@ def run_test_print_cm(ps,network_op,log_run):
     	the_list.append(cm.metrics['test-set']['f1_score'])
     perflog.replace(the_list)
 
-def batchpredict(batch_size,data,network_op):
+def batchpredict_loss(batch_size,data,network_op,cost=None,labels=None):
 
 	sess = tf.get_default_session()
-	data_batches, _ = split_chunks(data,batch_size)
+	data_batches, labels_batches = split_chunks(data,batch_size,labels)
 	results = np.array([np.zeros(n_classes)])
-	for batch in data_batches:
-		pred = sess.run(network_op,feed_dict={data_placeholder: batch, keep_prob_placeholder: 1.0})
-		results = np.concatenate((results,pred))
+	if cost != None:
+		if labels == None:
+			raise ValueError("You need labels if cost is set")
 
-	results = np.delete(results, (0), axis = 0)
-	return results
+		total_cost = 0
+		for batch_i in range(len(data_batches)):
+			batch_data = data_batches[batch_i]
+			batch_labels = labels_batches[batch_i]
+			pred,c = sess.run([network_op,cost],feed_dict={data_placeholder: batch_data ,labels_placeholder: batch_labels ,keep_prob_placeholder: 1.0})
+			results = np.concatenate((results,pred))
+			total_cost += c
+		results = np.delete(results, (0), axis = 0)
+		return results,total_cost
+
+	else:
+		for batch in data_batches:
+			pred = sess.run(network_op,feed_dict={data_placeholder: batch, keep_prob_placeholder: 1.0})
+			results = np.concatenate((results,pred))
+		results = np.delete(results, (0), axis = 0)
+		return results,0
 # Here starts the program
 
 #Argument handling, Copy paste from tflearn_rnn.py
