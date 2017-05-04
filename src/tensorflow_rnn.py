@@ -94,7 +94,7 @@ shuffle_training = False
 batch_size = cfg.batch_size
 
 network_name = cfg.network_name
-date_stamp = time.strftime("%d%b-%H:%M")
+date_stamp = time.strftime("%d%b-%H%M")
 run_id = date_stamp + "-" + network_name
 def _arg_callback_pt():
 	global print_test
