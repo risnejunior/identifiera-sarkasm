@@ -424,6 +424,10 @@ train_samples = mixed_samples[:training_index]
 validation_samples = mixed_samples[training_index:validation_index]
 test_samples = mixed_samples[validation_index:]
 
+#shuffle that shiet
+random.shuffle(train_samples)
+random.shuffle(validation_samples)
+
 #transpose the samples, change to numpy arrays, package in setpart
 # package it all in a named touple
 spt_train = transpose_setpart(train_samples, 'training samples')

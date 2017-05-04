@@ -54,6 +54,9 @@ sys.stdout = sys.__stdout__
 class EarlyStoppingError(StopIteration):
 	pass
 
+class EpochLimitException(StopIteration):
+	pass
+
 class MonitorCallback(tflearn.callbacks.Callback):
     def __init__(self, api):
         self.monitor_api = api
@@ -112,7 +115,7 @@ class EarlyStoppingMonitor():
 		if val_loss > avg_limit:
 			self._buff.append(["Stopped due to loss average"])
 			perflog.log(best_acc = round(state['best_accuracy'], 3))
-			raise EarlyStoppingError("Early stopping due to loss average")
+			raise EarlyStoppingError("Early stopping")
 		else:
 			m = "Loss delta to limit: {}, continuing...".format(round(avg_limit-val_loss,3))
 			self._buff.append([m])
@@ -228,11 +231,13 @@ def train_model(model, hyp, this_run_id, log_run, perflog):
 			  show_metric=True,
 	          batch_size=cfg.batch_size,
 	          n_epoch=cfg.epochs,
-	          shuffle=True,
+	          shuffle=False,
 	          run_id=this_run_id,
 			  snapshot_step=snapshot_step,
 			  snapshot_epoch=cfg.snapshot_epoch,
 	          callbacks=monitorCallback)
+
+	raise EpochLimitException("epoch limit")
 
 	return model
 
@@ -303,7 +308,7 @@ def save_model(model, run_id):
 	try:
 		os.mkdir(this_model_path)
 	except FileExistsError:
-		 raise Exception("error: models path already exist")
+		 raise FileExistsError("models path already exist")
 	else:
 		magic_path = os.path.join(this_model_path, 'model')		
 		model.save(magic_path)
@@ -356,25 +361,24 @@ if cfg.print_debug:
 
 # 'sönderhaxad' class that generates random hyperparamters in the range provided
 
-# hypers = Hyper(cfg.run_count,
-# 	lstm = {'dropout': (0.4, 0.8)},
-# 	middle= {'weight_decay': (0.01, 0.06)},
-# 	dropout = {'dropout': (0.4, 0.8)},
-# 	regression = {'learning_rate': (0.0005, 0.0015)},
-# 	output = {'weight_decay': (0.01, 0.06)}
-# )
 hypers = Hyper(cfg.run_count,
-	lstm = {'dropout': (0.51, 0.51)},
-	middle= {'weight_decay': (0.038, 0.038)},
-	dropout = {'dropout': (0.63, 0.63)},
-	regression = {'learning_rate': (0.0015, 0.0015)},
-	output = {'weight_decay': (0.038, 0.038)}
+	lstm = {'dropout': (0.4, 0.8)},
+	middle= {'weight_decay': (0.01, 0.06)},
+	dropout = {'dropout': (0.4, 0.8)},
+	regression = {'learning_rate': (0.0005, 0.0015)},
+	output = {'weight_decay': (0.01, 0.06)}
 )
+# hypers = Hyper(cfg.run_count,
+# 	lstm = {'dropout': (0.51, 0.51)},
+# 	middle= {'weight_decay': (0.038, 0.038)},
+# 	dropout = {'dropout': (0.63, 0.63)},
+# 	regression = {'learning_rate': (0.001, 0.001)},
+# 	output = {'weight_decay': (0.038, 0.038)}
+# )
 
 # training loop, every loop trains a network with different hyperparameters
 for hyp in hypers:
 	log_run = Logger()	
-	do_predict = False
 		
 	tf.reset_default_graph()
 	with tf.Graph().as_default(), tf.Session() as sess:
@@ -382,8 +386,13 @@ for hyp in hypers:
 		tflearn.config.init_training_mode()
 		stop_reason = "Other error"
 
+		this_run_id = common_funs.generate_name() 
+		log_run.log(hyp.get_hypers(), logname='hypers', aslist = False)
+		log_run.log(this_run_id, logname='run_id', aslist = False)
+		log_run.log(cfg.network_name, logname='network_name', aslist = False)
+		log_run.log(cfg.ps_file_name, logname='Dataset', aslist = False)
+		
 		try:			
-			this_run_id = common_funs.generate_name() 
 			temp_dir_checkpoints = tempfile.TemporaryDirectory()
 			temp_dir_best = tempfile.TemporaryDirectory()
 
@@ -399,6 +408,7 @@ for hyp in hypers:
 				path = os.path.join(cfg.models_path, cfg.pretrained_id)
 				magic_path = get_model_magic_path(path)
 				model.load(magic_path)
+				do_prediction(model, hyp, this_run_id, log_run, perflog, net)
 
 			elif cfg.training_mode == 'boost':
 				model = tflearn.DNN(net)
@@ -410,46 +420,26 @@ for hyp in hypers:
 			else:
 				raise Exception("training mode not recognized")			
 
-		except NetworkNotFoundError as e:
-			print("The network name provided din't match any defined network")
-		except EarlyStoppingError as e:
-			stop_reason = "early stopping"
-			do_predict = True
-		except Exception as e:
-			print('error: ' + str(e))
-			stop_reason = str(e)[:100]
-			do_predict = False
-		else:
-			stop_reason = "epoch limit"
-			do_predict = True
+		except (EarlyStoppingError, EpochLimitException) as e:
+			stop_reason = str(e)			
+			magic_path = get_model_magic_path(temp_dir_best.name)
 
-			log_run.log(hyp.get_hypers(), logname='hypers', aslist = False)
-			log_run.log(this_run_id, logname='run_id', aslist = False)
-			log_run.log(cfg.network_name, logname='network_name', aslist = False)
-			log_run.log(cfg.ps_file_name, logname='Dataset', aslist = False)
+			if magic_path:
+				print("\nloading best checkpoint...")
+				model.load(magic_path)
 
-		finally:
-			# do prediction from best checkpoint
-			if do_predict:
-				magic_path = get_model_magic_path(temp_dir_best.name)				
-				if magic_path and cfg.training_mode != 'evaluate':
-					print("\nloading best checkpoint...")
-					model.load(magic_path)
-				do_prediction(model, hyp, this_run_id, log_run, perflog, net)
+			do_prediction(model, hyp, this_run_id, log_run, perflog, net)
 
-			# save model
-			if cfg.save_the_model and not cfg.training_mode == 'evaluate':
+			if cfg.save_the_model:
 				save_model(model, this_run_id)
 
-			# cleanup tempfiles
-			temp_dir_best.cleanup()
-			temp_dir_checkpoints.cleanup()
-
-			# write logs
-			if (cfg.training_mode == 'training' or
-				cfg.training_mode == 'boost') and len(perflog.peek()) > 0:
+			if len(perflog.peek()) > 0:
 				perflog.log(status = stop_reason)
 				perflog.flush()
-				log_run.save(this_run_id + '.log')
+
+		finally:
+			temp_dir_best.cleanup()
+			temp_dir_checkpoints.cleanup()
+			log_run.save(this_run_id + '.log')				
 	
 debug_log.save("training_debug.log")
