@@ -88,7 +88,7 @@ labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
 keep_prob_placeholder = tf.placeholder('float')
 
 trainable_embeddings = False
-logs_path = tempfile.gettempdir() + "/tfnetwork/"
+logs_path = os.path.join(tempfile.gettempdir() ,"tfnetwork")
 shuffle_training = False
 batch_size = cfg.batch_size
 
@@ -208,7 +208,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 		set_embedding(sess,emb_init,emb_placeholder,emb)
 		early_stop = False
 		loops = len(xs_split)
-		writer = tf.summary.FileWriter(logs_path + "/" + network_name + "-" + date,sess.graph)
+		writer = tf.summary.FileWriter(os.path.join(logs_path,run_id),sess.graph)
 		print("Tensorboard log path:",logs_path)
 		for epoch in range(cfg.epochs):
 			epoch_loss = 0
@@ -237,7 +237,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 			training_flags = es_handler.test_scorings(val_loss,val_accuracy)
 			if training_flags['update']:
 				saver = tf.train.Saver()
-				save_path = saver.save(sess, "./models/%s_Checkpoint-epoch-%s.ckpt" % (run_id, epoch))
+				save_path = saver.save(sess, os.path.join(".","models","%s_Checkpoint-epoch-%s.ckpt" % (run_id, epoch)))
 				print("Checkpoint file saved in %s" % save_path )
 
 			elif training_flags['early_stop']:
@@ -249,7 +249,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 		if not early_stop:
 			saver = tf.train.Saver()
 			date = time.strftime("%s")
-			saver_path = saver.save(sess, "./models/final-%s-%s.ckpt" % (run_id, date) )
+			saver_path = saver.save(sess, os.path.join(".","models""final-%s-%s.ckpt" % (run_id, date) ))
 			print("Model saved at %s" % saver_path )
 
 		run_test_print_cm(ps,prediction,log_run)
