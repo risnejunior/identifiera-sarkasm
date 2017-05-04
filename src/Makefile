@@ -134,16 +134,16 @@ compare-strictness:
 
 clean-process-all:
 	python3 clean_tweets.py --ds detector --strict false --tags false
-	python3 preprocess_data.py --ds detector --out poria-clean.pickle --sb 0.5
-	python3 clean_tweets.py --ds detector --strict true  --tags true
-	python3 preprocess_data.py --ds detector --out chalmers-clean.pickle --sb 0.5
+	python3 preprocess_data.py --ds detector --out notags.pickle --sb 0.5 --le 400000
+	python3 clean_tweets.py --ds detector --strict false  --tags true
+	python3 preprocess_data.py --ds detector --out tags.pickle --sb 0.5 --le 400000
 
 	python3 clean_tweets.py --ds poria-balanced --strict false --tags false
-	python3 preprocess_data.py --ds poria-balanced --out poria-clean.pickle --sb 0.5
-	python3 clean_tweets.py --ds poria-balanced --strict true --tags true
-	python3 preprocess_data.py --ds poria-balanced --out chalmers-clean.pickle --sb 0.5	
+	python3 preprocess_data.py --ds poria-balanced --out notags.pickle --sb 0.5 --le 400000
+	python3 clean_tweets.py --ds poria-balanced --strict false --tags true
+	python3 preprocess_data.py --ds poria-balanced --out tags.pickle --sb 0.5 --le 400000
 
 	python3 clean_tweets.py --ds poria-ratio --strict false --tags false
-	python3 preprocess_data.py --ds poria-ratio --out poria-clean.pickle --sb 0.25
-	python3 clean_tweets.py --ds poria-ratio --strict  true --tags true
-	python3 preprocess_data.py --ds poria-ratio --out chalmers-clean.pickle --sb 0.25
+	python3 preprocess_data.py --ds poria-ratio --out notags.pickle --sb 0.25 --le 400000
+	python3 clean_tweets.py --ds poria-ratio --strict  false --tags true
+	python3 preprocess_data.py --ds poria-ratio --out tags.pickle --sb 0.25 --le 400000
