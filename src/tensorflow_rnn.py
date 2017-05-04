@@ -35,6 +35,44 @@ import numpy as np
 # Importing Settings
 from config import Config
 
+#This is 'fulhack'
+class EarlyStoppingHelper:
+
+    def __init__(self, epoch_threshold = 3, avg_limit_percent = 1.1):
+        self.epochs_since_best = 0
+        self.last_avg_loss = 0
+        self.last_best_acc = 0
+        self.losses = []
+        self.epoch_threshold = epoch_threshold
+        self.avg_limit_percent = avg_limit_percent
+
+    def test_scorings(self,loss,accuracy):
+        flags = {'update': False , 'passing': False, 'early_stop': False}
+        # First Check accuracy scoring, if better, than reset counter and set new scores
+        if accuracy > last_best_acc :
+            self.epochs_since_best = 0
+            self.last_best_acc = accuracy
+            flags['update'] = True
+            return flag
+        epochs_since_best += 1
+        if epochs_since_best > epoch_threshold :
+            flags['early_stop'] = True
+            return flag
+        if len(self.losses) < self.epoch_threshold:
+            avg_loss = loss
+        else:
+            avg_loss = sum(self.losses[self.epoch_threshold:])/self.epoch_threshold
+            avg_loss = round(avg_loss,3)
+
+        loss_limit = self.avg_limit_percent * avg_loss
+        if loss > loss_limit:
+            flags['early_stop'] = True
+        else:
+            self.losses.append(loss)
+            flags['passing'] = Tru
+        return flags
+
+
 cfg = Config()
 n_classes = 2
 chunk_size = cfg.embedding_size
