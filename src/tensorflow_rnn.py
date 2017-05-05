@@ -105,6 +105,7 @@ network_name = cfg.network_name
 date_stamp = time.strftime("%d%b-%H%M")
 run_id = date_stamp + "-" + network_name
 slizing = False
+monitor_f1 = False
 
 def _arg_callback_pt():
 	global print_test
@@ -154,6 +155,10 @@ def _arg_callback_eshuffle(truth = True):
 def _arg_callback_slicing(slicing = True):
     global slizing
     slizing = slicing
+
+def _arg_callback_usef1(f1 = True):
+    global monitor_f1
+    monitor_f1 = f1
 #def _arg_callback_ss(s_step = None, s_epoch = 'False'):
 #	"""
 #	Set the snapshot step
@@ -262,8 +267,10 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 			val_accuracy,summary = sess.run([val_accuracy_op,val_summary_op],feed_dict={predict_placeholder: val_predict,labels_placeholder: val_labels, keep_prob_placeholder: 1.0,f1_score_placeholder: val_f1_score})
 			writer.add_summary(summary, epoch*loops)
 			print('Epoch', epoch+1, 'completed out of', cfg.epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy),'| F1-score:',roundform.format(val_f1_score))
-
-			training_flags = es_handler.test_scorings(val_loss,val_accuracy,val_f1_score)
+			if monitor_f1:
+				training_flags = es_handler.test_scorings(val_loss,val_accuracy,val_f1_score)
+			else:
+				training_flags = es_handler.test_scorings(val_loss,val_accuracy)
 			if training_flags['update']:
 				saver = tf.train.Saver()
 				save_path = saver.save(sess, os.path.join(".","models",run_id,"Checkpoint.ckpt"))
@@ -440,7 +447,8 @@ arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce result
 print("\n")
 arghandler.register_flag('trainemb', _arg_callback_trainemb, ['trainable'], "Set trainable embeddings")
 arghandler.register_flag('eshuffle', _arg_callback_eshuffle, ['truth'], "Want to shuffle per epoch?")
-arghandler.register_flag('slicing', _arg_callback_slicing, ['slicing', "Slice out the training accuracy set from the data"])
+arghandler.register_flag('slicing', _arg_callback_slicing, ['slicing'], "Slice out the training accuracy set from the data")
+arghandler.register_flag('usef1', _arg_callback_usef1, ['f1'], "Use F1 as validation matric instead of accuracy")
 arghandler.consume_flags()
 predictions_filename = 'predictions.pickle'
 
