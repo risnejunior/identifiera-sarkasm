@@ -143,6 +143,9 @@ def _arg_callback_eshuffle(truth = True):
 	global shuffle_training
 	shuffle_training = truth
 
+def _arg_callback_slicing(slicing = True):
+    global slizing
+    slizing = slicing
 #def _arg_callback_ss(s_step = None, s_epoch = 'False'):
 #	"""
 #	Set the snapshot step
@@ -402,7 +405,7 @@ arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce result
 print("\n")
 arghandler.register_flag('trainemb', _arg_callback_trainemb, ['trainable'], "Set trainable embeddings")
 arghandler.register_flag('eshuffle', _arg_callback_eshuffle, ['truth'], "Want to shuffle per epoch?")
-
+arghandler.register_flag('slicing', _arg_callback_slicing, ['slicing', "Slice out the training accuracy set from the data"])
 arghandler.consume_flags()
 predictions_filename = 'predictions.pickle'
 
