@@ -144,16 +144,16 @@ def _arg_callback_boost(pretrained_id = None):
 		pretrained_id = file_selector(cfg.models_path, "Select model for boosting")
 
 	cfg.pretrained_id = pretrained_id
-	cfg.training_mode = 'boost'	
-	print("<Boosting with pretrained model " + cfg.pretrained_id)
+	cfg.training_mode = 'boost'
+	print("<Boosting with pretrained model: {}>".format(cfg.pretrained_id))
 
 def _arg_callback_eval(pretrained_id = None):
 	if pretrained_id is None:
 		pretrained_id = file_selector(cfg.models_path, "Select model to evaluate")
 
 	cfg.pretrained_id = pretrained_id
-	cfg.training_mode = 'evaluate'	
-	print("<Evaluating pretrained model " + cfg.pretrained_id + " for results only.")
+	cfg.training_mode = 'evaluate'
+	print("<Evaluating pretrained model " + cfg.pretrained_id + " for results only.>")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
 	cfg.epochs = int(nr_epochs)
@@ -286,8 +286,8 @@ def do_prediction(model, hyp, this_run_id, log_run, perflog, net):
 
 def get_model_magic_path(path):
 	"""
-	Return the path to the file that is last when alphabeticly sorted	
-	Gets a list of touple of (name, file) where name is the filename 
+	Return the path to the file that is last when alphabeticly sorted
+	Gets a list of touple of (name, file) where name is the filename
 	 with magic nrs, but without extensions
 	"""
 	best_name_path = None
@@ -297,7 +297,7 @@ def get_model_magic_path(path):
 		best_name_file = sorted(names_files, reverse=True, key = itemgetter(0))[0]
 		best_name = best_name_file[0]
 		best_name_path = os.path.join(path, best_name)
-	
+
 	return best_name_path
 
 def save_model(model, run_id):
@@ -307,7 +307,7 @@ def save_model(model, run_id):
 	except FileExistsError:
 		 raise FileExistsError("models path already exist")
 	else:
-		magic_path = os.path.join(this_model_path, 'model')		
+		magic_path = os.path.join(this_model_path, 'model')
 		model.save(magic_path)
 
 ################################################################################
@@ -377,21 +377,21 @@ hypers = Hyper(cfg.run_count,
 
 # training loop, every loop trains a network with different hyperparameters
 for hyp in hypers:
-	log_run = Logger()	
-		
+	log_run = Logger()
+
 	tf.reset_default_graph()
 	with tf.Graph().as_default(), tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
 		tflearn.config.init_training_mode()
 		stop_reason = "Other error"
 
-		this_run_id = common_funs.generate_name() 
+		this_run_id = common_funs.generate_name()
 		log_run.log(hyp.get_hypers(), logname='hypers', aslist = False)
 		log_run.log(this_run_id, logname='run_id', aslist = False)
 		log_run.log(cfg.network_name, logname='network_name', aslist = False)
 		log_run.log(cfg.ps_file_name, logname='Dataset', aslist = False)
-		
-		try:			
+
+		try:
 			temp_dir_checkpoints = tempfile.TemporaryDirectory()
 			temp_dir_best = tempfile.TemporaryDirectory()
 
@@ -417,14 +417,14 @@ for hyp in hypers:
 				model = train_model(model, hyp, this_run_id, log_run, perflog)
 
 			else:
-				raise Exception("training mode not recognized")			
+				raise Exception("training mode not recognized")
 
 		except (EarlyStoppingError, EpochLimitException) as e:
-			stop_reason = str(e)			
+			stop_reason = str(e)
 			magic_path = get_model_magic_path(temp_dir_best.name)
 
 			if magic_path:
-				print("\nloading best checkpoint...")
+				print("\nLoading best checkpoint...")
 				model.load(magic_path)
 
 			do_prediction(model, hyp, this_run_id, log_run, perflog, net)
@@ -439,6 +439,8 @@ for hyp in hypers:
 		finally:
 			temp_dir_best.cleanup()
 			temp_dir_checkpoints.cleanup()
-			log_run.save(this_run_id + '.log')				
-	
+			log_run.save(this_run_id + '.log')
+			perflog.log(status = "Evaluation")
+			perflog.flush()
+
 debug_log.save("training_debug.log")
