@@ -88,33 +88,33 @@ poria-clean-detector:
 compare-strictness:
 	
 	python3 clean_tweets.py --ds detector --strict false false
-	python3 preprocess_data.py --ds detector --out all-notags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds detector --out all-notags-balanced.pickle  --le 400000
 	python3 clean_tweets.py --ds detector --strict true false
-	python3 preprocess_data.py --ds detector --out strict-notags-balanced.pickle --sb 0.5	
+	python3 preprocess_data.py --ds detector --out strict-notags-balanced.pickle --le 400000	
 	python3 clean_tweets.py --ds detector --strict false true
-	python3 preprocess_data.py --ds detector --out all-tags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds detector --out all-tags-balanced.pickle --le 400000
 	python3 clean_tweets.py --ds detector --strict true true
-	python3 preprocess_data.py --ds detector --out strict-tags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds detector --out strict-tags-balanced.pickle --le 400000
 	
 	
 	python3 clean_tweets.py --ds poria-balanced --strict false false
-	python3 preprocess_data.py --ds poria-balanced --out all-notags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds poria-balanced --out all-notags-balanced.pickle --le 400000
 	python3 clean_tweets.py --ds poria-balanced --strict true false
-	python3 preprocess_data.py --ds poria-balanced --out strict-notags-balanced.pickle --sb 0.5	
+	python3 preprocess_data.py --ds poria-balanced --out strict-notags-balanced.pickle --le 400000	
 	python3 clean_tweets.py --ds poria-balanced --strict false true
-	python3 preprocess_data.py --ds poria-balanced --out all-tags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds poria-balanced --out all-tags-balanced.pickle --le 400000
 	python3 clean_tweets.py --ds poria-balanced --strict true true
-	python3 preprocess_data.py --ds poria-balanced --out strict-tags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds poria-balanced --out strict-tags-balanced.pickle --le 400000
 
 	
 	python3 clean_tweets.py --ds poria-ratio --strict false false
-	python3 preprocess_data.py --ds poria-ratio --out all-notags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds poria-ratio --out all-notags-balanced.pickle
 	python3 clean_tweets.py --ds poria-ratio --strict true false
-	python3 preprocess_data.py --ds poria-ratio --out strict-notags-balanced.pickle --sb 0.5	
+	python3 preprocess_data.py --ds poria-ratio --out strict-notags-balanced.pickle	
 	python3 clean_tweets.py --ds poria-ratio --strict false true
-	python3 preprocess_data.py --ds poria-ratio --out all-tags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds poria-ratio --out all-tags-balanced.pickle
 	python3 clean_tweets.py --ds poria-ratio --strict true true
-	python3 preprocess_data.py --ds poria-ratio --out strict-tags-balanced.pickle --sb 0.5
+	python3 preprocess_data.py --ds poria-ratio --out strict-tags-balanced.pickle
 
 
 	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds detector --train 20 1 1200
@@ -122,15 +122,15 @@ compare-strictness:
 	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds detector --train 20 1 1200
 	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds detector --train 20 1 1200
 	
-	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds detector --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds detector --train 20 1 1200
-	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds detector --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds poria-balanced --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds poria-balanced --train 20 1 1200
+	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds poria-balanced --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds poria-balanced --train 20 1 1200
 
-	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds detector --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds detector --train 20 1 1200
-	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds detector --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds detector --train 20 1 1200
+	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds poria-ratio --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds poria-ratio --train 20 1 1200
+	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds poria-ratio --train 20 1 1200
+	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds poria-ratio --train 20 1 1200
 
 clean-process-all:
 	python3 clean_tweets.py --ds detector --strict false --tags false
@@ -147,3 +147,7 @@ clean-process-all:
 	python3 preprocess_data.py --ds poria-ratio --out notags.pickle --sb 0.25 --le 400000
 	python3 clean_tweets.py --ds poria-ratio --strict  false --tags true
 	python3 preprocess_data.py --ds poria-ratio --out tags.pickle --sb 0.25 --le 400000
+
+# example of using the beep script to signal when a batch is done. Quit with ctrl + c
+beep:
+	python3 beep.py

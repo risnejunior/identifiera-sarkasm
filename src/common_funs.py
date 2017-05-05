@@ -18,6 +18,28 @@ import numpy as np
 
 from config import Config
 
+class Bad_boys:
+	def __init__(self, sqlite_file):
+		self._db = DB_Handler(sqlite_file)
+		self._table_name = "troublemakers"
+		self.check_init_db(self._table_name)
+
+	def check_init_db(self, table_name):
+		if not self._db.exists(table_name):
+			print("creating table: {}".format(table_name))
+			self._db._c.executescript("""
+				CREATE TABLE IF NOT EXISTS {} (
+					`id`	INTEGER PRIMARY KEY AUTOINCREMENT,
+					`dataset`	TEXT,
+					`samples_file`	TEXT,
+					`samples_id`	INTEGER,
+					`predictions`	INTEGER,
+					`correct_predictions`	INTEGER,
+					`correct_rate`	REAL
+				);
+			""".format(table_name))			
+			self._db.commit()
+
 class DB_backed_log:
 	def __init__(self, sqlite_file, table_name, **cols):
 		self._db = DB_Handler(sqlite_file)

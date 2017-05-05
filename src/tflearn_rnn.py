@@ -211,7 +211,15 @@ def create_model(net):
 	w = model.get_weights(embeddings_tensor)
 	debug_log.log(str(w.shape), "embedding layer shape", aslist=False)
 
+	#debug_embeddingd(model, "fresh", embeddings_log)
+
 	return model
+
+def debug_embeddingd(model, when, logger):	
+	embeddings_tensor = tflearn.variables.get_layer_variables_by_name('embedding')[0]
+	w = model.get_weights(embeddings_tensor)
+	for line in w:
+		logger.log(np.array_str(line), logname=when, maxlogs=10)
 
 def train_model(model, hyp, this_run_id, log_run, perflog):
 	api = EarlyStoppingMonitor(perflog, avgOverNrEpochs = 3, avgLimitPercent = 1.05)
@@ -239,6 +247,9 @@ def train_model(model, hyp, this_run_id, log_run, perflog):
 	return model
 
 def do_prediction(model, hyp, this_run_id, log_run, perflog, net):
+
+	#debug_embeddingd(model, "after_training", embeddings_log)
+	
 	# print confusion matrix for the different sets
 	print("\nRunning prediction...")
 	print(boxString("Run id: " + this_run_id))
@@ -334,6 +345,7 @@ arghandler.register_flag('boost', _arg_callback_boost, [], "Load a saved model a
 arghandler.consume_flags()
 
 debug_log = Logger()
+embeddings_log = Logger()
 perflog = DB_backed_log(cfg.sqlite_file, 'training_performance')
 
 # show select menu if no file name given
@@ -408,6 +420,7 @@ for hyp in hypers:
 				magic_path = get_model_magic_path(path)
 				model.load(magic_path)
 				do_prediction(model, hyp, this_run_id, log_run, perflog, net)
+				stop_reason = "Evaluation"
 
 			elif cfg.training_mode == 'boost':
 				model = tflearn.DNN(net)
@@ -432,15 +445,13 @@ for hyp in hypers:
 			if cfg.save_the_model:
 				save_model(model, this_run_id)
 
-			if len(perflog.peek()) > 0:
-				perflog.log(status = stop_reason)
-				perflog.flush()
-
 		finally:
 			temp_dir_best.cleanup()
 			temp_dir_checkpoints.cleanup()
 			log_run.save(this_run_id + '.log')
-			perflog.log(status = "Evaluation")
-			perflog.flush()
+			if len(perflog.peek()) > 0:
+				perflog.log(status = stop_reason)
+				perflog.flush()
 
 debug_log.save("training_debug.log")
+embeddings_log.save("debug_embeddingd.log")
