@@ -308,6 +308,28 @@ def run_test(ps,W,path,network_name):
         saver.restore(sess, path)
         run_test_print_cm(ps,output,log_run)
 
+def batch_slice(arr,start,size,diff = False):
+    arr_slice = arr[start:start + size]
+    if diff:
+        diff_left = arr[:start]
+        diff_right = arr[start+size:]
+        arr = np.concatenate((diff_left,diff_right))
+
+    return arr, arr_slice
+
+def shuffle_data(xs,ys):
+    if (len(xs) != len(ys)):
+        raise ValueError("Dimensions must match")
+    indices = list(range(len(xs)))
+    random.shuffle(indices)
+    shuffled_xs = []
+    shuffled_ys = []
+    for i in indices:
+        shuffled_xs.append(xs[i])
+        shuffled_ys.append(ys[i])
+
+    return np.array(shuffled_xs),np.array(shuffled_ys)
+
 def run_test_print_cm(ps,network_op,log_run):
 
     sess = tf.get_default_session()
