@@ -96,6 +96,8 @@ batch_size = cfg.batch_size
 network_name = cfg.network_name
 date_stamp = time.strftime("%d%b-%H%M")
 run_id = date_stamp + "-" + network_name
+slizing = False
+
 def _arg_callback_pt():
 	global print_test
 	print_test = True
@@ -201,30 +203,38 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 	date = time.strftime("%b%d%y-%H%M%S")
 	summary_op = tf.summary.merge_all()
 	sess = tf.Session()
-	xs_split,ys_split = split_chunks(ps.train.xs,cfg.batch_size, np.array(ps.train.ys))
+	width, _ = ps.train.xs.shape
+	slice_size = width//cfg.epochs if cfg.epochs > 1 else width//10
+	#xs_split,ys_split = split_chunks(ps.train.xs,cfg.batch_size, np.array(ps.train.ys))
 	with sess.as_default():
 		print("Current Network Model id: %s" % run_id )
 		sess.run(tf.global_variables_initializer())
 		set_embedding(sess,emb_init,emb_placeholder,emb)
 		early_stop = False
-		loops = len(xs_split)
 		writer = tf.summary.FileWriter(os.path.join(logs_path,run_id),sess.graph)
 		print("Tensorboard log path:",logs_path)
 		for epoch in range(cfg.epochs):
-			epoch_loss = 0
-			indices = list(range(loops))
-			#print(indices)
+			train_set,train_test = batch_slice(ps.train.xs,epoch*slice_size , slice_size, slizing)
+			train_lab,train_labtest = batch_slice(np.array(ps.train.ys),epoch*slice_size,slice_size, slizing)
 			if shuffle_training:
-				random.shuffle(indices)
-				#print(indices)
+				train_set,train_lab = shuffle_data(train_set,train_lab)
+
+			xs_split,ys_split = split_chunks(train_set,cfg.batch_size,train_lab)
+			epoch_loss = 0
+			loops = len(xs_split)
+			#print(indices)
 			print("\n=== BEGIN EPOCH",epoch+1, "===\n")
-			for it,batch_i in enumerate(indices):
+			for batch_i in range(loops):
 				batch_x = xs_split[batch_i]
 				batch_y = ys_split[batch_i]
-				_, c,train_acc,summary = sess.run([optimizer,cost,accuracy,summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
+				_, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
 				epoch_loss += c
-				writer.add_summary(summary, epoch*loops + it)
-				print("Optimizer:",optimizer.name, "|", it + 1, "batches completed out of:", loops)
+				if batch_i % 5 == 0:
+					train_acc,summary = sess.run([accuracy,summary_op], feed_dict = {data_placeholder: train_test, labels_placeholder: train_labtest, keep_prob_placeholder: 1.0})
+					writer.add_summary(summary, epoch*loops + batch_i)
+
+
+				print("Optimizer:",optimizer.name, "|", batch_i + 1, "batches completed out of:", loops)
 				print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(train_acc), "",end=" \033[A\r",flush=True)
 
 			print("\033[2B")
