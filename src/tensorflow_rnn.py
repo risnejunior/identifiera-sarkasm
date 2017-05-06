@@ -247,12 +247,9 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 			for batch_i in range(loops):
 				batch_x = xs_split[batch_i]
 				batch_y = ys_split[batch_i]
-				_, c, summary = sess.run([optimizer,cost,train_summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
+				_, c,train_acc ,summary = sess.run([optimizer,cost,accuracy,train_summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
 				writer.add_summary(summary, epoch*loops + batch_i)
 				epoch_loss += c
-				if batch_i % 10 == 0:
-				    train_acc = sess.run(accuracy, feed_dict = {data_placeholder: train_test, labels_placeholder: train_labtest, keep_prob_placeholder: 1.0})
-
 
 				print("Optimizer:",optimizer.name, "|", batch_i + 1, "batches completed out of:", loops)
 				print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(train_acc), "",end=" \033[A\r",flush=True)
@@ -286,7 +283,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 			saver_path = saver.save(sess, os.path.join(".","models",run_id,"final.ckpt"))
 			print("Model saved at %s" % saver_path )
 		elif training_flags['passing']:
-			print("")
+			print("Latest Checkpoint is the best")
 		run_test_print_cm(ps,prediction,log_run)
 		sess.close()
 
