@@ -43,14 +43,21 @@ class EarlyStoppingHelper:
         self.epochs_since_best = 0
         self.last_avg_loss = 0
         self.last_best_acc = 0
+        self.last_best_f1 = 0
         self.losses = []
         self.epoch_threshold = epoch_threshold
         self.avg_limit_percent = avg_limit_percent
 
-    def test_scorings(self,loss,accuracy):
+    def test_scorings(self,loss,accuracy,f1_score = 0):
         flags = {'update': False , 'passing': False, 'early_stop': False}
         # First Check accuracy scoring, if better, than reset counter and set new scores
-        if accuracy > self.last_best_acc :
+        if f1_score and f1_score > self.last_best_f1 :
+            self.epochs_since_best = 0
+            self.last_best_f1 = f1_score
+            flags['update'] = True
+            return flags
+
+        if not f1_score and accuracy > self.last_best_acc :
             self.epochs_since_best = 0
             self.last_best_acc = accuracy
             flags['update'] = True
@@ -87,6 +94,7 @@ data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,None])
 predict_placeholder = tf.placeholder(dtype=tf.float32,shape=[None,None])
 labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
 keep_prob_placeholder = tf.placeholder('float')
+f1_score_placeholder = tf.placeholder('float')
 
 trainable_embeddings = False
 logs_path = os.path.join(tempfile.gettempdir() ,"tfnetwork")
@@ -97,6 +105,7 @@ network_name = cfg.network_name
 date_stamp = time.strftime("%d%b-%H%M")
 run_id = date_stamp + "-" + network_name
 slizing = False
+monitor_f1 = False
 
 def _arg_callback_pt():
 	global print_test
@@ -146,6 +155,10 @@ def _arg_callback_eshuffle(truth = True):
 def _arg_callback_slicing(slicing = True):
     global slizing
     slizing = slicing
+
+def _arg_callback_usef1(f1 = True):
+    global monitor_f1
+    monitor_f1 = f1
 #def _arg_callback_ss(s_step = None, s_epoch = 'False'):
 #	"""
 #	Set the snapshot step
@@ -177,7 +190,7 @@ def set_embedding(sess,init,placeholder,embeddings):
 #Word embedding layer
 def word_embedding_layer(word,embedding_tensor):
 	with tf.device("/cpu:0"):
-		embedding_layer = tf.nn.embedding_lookup(embedding_tensor,word)
+		embedding_layer = tf.nn.embedding_lookup(embedding_tensor,word, validate_indices=False)
 		return embedding_layer #Not sure if this is done yet
 
 #Defining and building the Neural Network
@@ -200,11 +213,14 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 	optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(cost + 0.01 * l2_loss)
 
 	#Defining the summaries
-	tf.summary.scalar("Accuracy:", accuracy)
+	train_acc_sum = tf.summary.scalar("Accuracy:", accuracy)
 	#tf.summary.scalar("Optimizer", optimizer)
-	tf.summary.scalar("Loss:", cost)
+	train_loss_sum = tf.summary.scalar("Loss:", cost)
+	val_acc_sum = tf.summary.scalar("val_accuracy:", val_accuracy_op)
+	val_f1_sum = tf.summary.scalar("val_f1_score:", f1_score_placeholder)
 	date = time.strftime("%b%d%y-%H%M%S")
-	summary_op = tf.summary.merge_all()
+	train_summary_op = tf.summary.merge([train_acc_sum,train_loss_sum])
+	val_summary_op = tf.summary.merge([val_acc_sum,val_f1_sum])
 	sess = tf.Session()
 	width, _ = ps.train.xs.shape
 	slice_size = width//cfg.epochs if cfg.epochs > 1 else width//10
@@ -215,7 +231,9 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 		set_embedding(sess,emb_init,emb_placeholder,emb)
 		early_stop = False
 		writer = tf.summary.FileWriter(os.path.join(logs_path,run_id),sess.graph)
+		os.makedirs(os.path.join(".","models",run_id))
 		print("Tensorboard log path:",logs_path)
+		training_flags = {}
 		for epoch in range(cfg.epochs):
 			train_set,train_test = batch_slice(ps.train.xs,epoch*slice_size , slice_size, slizing)
 			train_lab,train_labtest = batch_slice(np.array(ps.train.ys),epoch*slice_size,slice_size, slizing)
@@ -230,11 +248,11 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 			for batch_i in range(loops):
 				batch_x = xs_split[batch_i]
 				batch_y = ys_split[batch_i]
-				_, c = sess.run([optimizer,cost], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
+				_, c, summary = sess.run([optimizer,cost,train_summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
+				writer.add_summary(summary, epoch*loops + batch_i)
 				epoch_loss += c
-				if batch_i % 5 == 0:
-					train_acc,summary = sess.run([accuracy,summary_op], feed_dict = {data_placeholder: train_test, labels_placeholder: train_labtest, keep_prob_placeholder: 1.0})
-					writer.add_summary(summary, epoch*loops + batch_i)
+				if batch_i % 10 == 0:
+				    train_acc = sess.run(accuracy, feed_dict = {data_placeholder: train_test, labels_placeholder: train_labtest, keep_prob_placeholder: 1.0})
 
 
 				print("Optimizer:",optimizer.name, "|", batch_i + 1, "batches completed out of:", loops)
@@ -242,16 +260,20 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 
 			print("\033[2B")
 			print("VALIDATING TRAINING:...")
+			val_labels = np.array(ps.valid.ys)
 			val_predict = batchpredict(batch_size,ps.valid.xs,prediction)
-			val_loss = val_cost_op.eval(feed_dict={predict_placeholder: val_predict, labels_placeholder: np.array(ps.valid.ys)})
-			val_accuracy = val_accuracy_op.eval(feed_dict={predict_placeholder: val_predict,labels_placeholder: np.array(ps.valid.ys), keep_prob_placeholder: 1.0})
-
-			print('Epoch', epoch+1, 'completed out of', cfg.epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy))
-
-			training_flags = es_handler.test_scorings(val_loss,val_accuracy)
+			val_loss = val_cost_op.eval(feed_dict={predict_placeholder: val_predict, labels_placeholder: val_labels})
+			val_f1_score = calc_f1_score(val_predict,val_labels)
+			val_accuracy,summary = sess.run([val_accuracy_op,val_summary_op],feed_dict={predict_placeholder: val_predict,labels_placeholder: val_labels, keep_prob_placeholder: 1.0,f1_score_placeholder: val_f1_score})
+			writer.add_summary(summary, epoch*loops)
+			print('Epoch', epoch+1, 'completed out of', cfg.epochs, 'loss:', roundform.format(epoch_loss), '| Accuracy:', roundform.format(val_accuracy),'| F1-score:',roundform.format(val_f1_score))
+			if monitor_f1:
+				training_flags = es_handler.test_scorings(val_loss,val_accuracy,val_f1_score)
+			else:
+				training_flags = es_handler.test_scorings(val_loss,val_accuracy)
 			if training_flags['update']:
 				saver = tf.train.Saver()
-				save_path = saver.save(sess, os.path.join(".","models","%s_Checkpoint-epoch-%s.ckpt" % (run_id, epoch)))
+				save_path = saver.save(sess, os.path.join(".","models",run_id,"Checkpoint.ckpt"))
 				print("Checkpoint file saved in %s" % save_path )
 
 			elif training_flags['early_stop']:
@@ -260,12 +282,12 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 				early_stop = True
 				break
 
-		if not early_stop:
-			saver = tf.train.Saver()
-			date = int(time.time())
-			saver_path = saver.save(sess, os.path.join(".","models","final-%s-%s.ckpt" % (run_id, date) ))
+		saver = tf.train.Saver()
+		if training_flags['update']:
+			saver_path = saver.save(sess, os.path.join(".","models",run_id,"final.ckpt"))
 			print("Model saved at %s" % saver_path )
-
+		elif training_flags['passing']:
+			print("")
 		run_test_print_cm(ps,prediction,log_run)
 		sess.close()
 
@@ -392,6 +414,26 @@ def print_matching_models(network_name):
         if network_name in file:
             print(file,end="\n")
 # Here starts the program
+def calc_f1_score(predictions,labels):
+    predictions = np.argmax(predictions,1)
+    labels = np.argmax(labels,1)
+    tp = fp = tn = fn = 0
+    for a,b in zip(predictions,labels):
+        if a == 1:
+            if a == b:
+                tp += 1
+            else:
+                fp += 1
+        else:
+            if a == b:
+                tn += 1
+            else:
+                fn += 1
+
+    precision = ( tp / (tp + fp) ) if (tp + fp) > 0 else 0
+    recall = ( tp / (tp + fn) ) if (tp + fn) > 0 else 0
+    f1_score = 2*((precision * recall) / (precision + recall )) if (precision + recall) > 0 else 0
+    return f1_score
 
 #Argument handling, Copy paste from tflearn_rnn.py
 arghandler = Arg_handler()
@@ -405,7 +447,8 @@ arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce result
 print("\n")
 arghandler.register_flag('trainemb', _arg_callback_trainemb, ['trainable'], "Set trainable embeddings")
 arghandler.register_flag('eshuffle', _arg_callback_eshuffle, ['truth'], "Want to shuffle per epoch?")
-arghandler.register_flag('slicing', _arg_callback_slicing, ['slicing', "Slice out the training accuracy set from the data"])
+arghandler.register_flag('slicing', _arg_callback_slicing, ['slicing'], "Slice out the training accuracy set from the data")
+arghandler.register_flag('usef1', _arg_callback_usef1, ['f1'], "Use F1 as validation matric instead of accuracy")
 arghandler.consume_flags()
 predictions_filename = 'predictions.pickle'
 
