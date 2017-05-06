@@ -115,13 +115,21 @@ class EarlyStoppingMonitor():
 		if val_loss > avg_limit:
 			self._buff.append(["Stopped due to loss average"])
 			perflog.log(best_acc = round(state['best_accuracy'], 3))
-			raise EarlyStoppingError("Early stopping")
+			raise EarlyStoppingError("Early stopping, on epoch: {}".format(self.epoch))
 		else:
 			m = "Loss delta to limit: {}, continuing...".format(round(avg_limit-val_loss,3))
 			self._buff.append([m])
 			self.losses.append(val_loss)
 
 		self._buff.flush()
+
+def _arg_callback_device(device_name):
+	if device_name == 'cpu':
+		cfg.device = '/cpu:0'
+	elif device_name == 'gpu':
+		cfg.device = '/gpu:0'
+	else:
+		raise Exception("device not in list")
 
 def _arg_callback_trouble(file_name):
 	cfg.predictions_filename = file_name
@@ -136,8 +144,9 @@ def _arg_callback_ds(ds_name):
 	cfg.dataset_name = ds_name
 	print("<Using dataset: {}>".format(ds_name))
 
-def _arg_callback_sm():
+def _arg_callback_sm(name = None):
 	cfg.save_the_model = True
+	cfg.model_save_name = name
 
 def _arg_callback_boost(pretrained_id = None):
 	if pretrained_id is None:
@@ -311,8 +320,8 @@ def get_model_magic_path(path):
 
 	return best_name_path
 
-def save_model(model, run_id):
-	this_model_path = os.path.join(cfg.models_path, this_run_id)
+def save_model(model, name):
+	this_model_path = os.path.join(cfg.models_path, name)
 	try:
 		os.mkdir(this_model_path)
 	except FileExistsError:
@@ -327,6 +336,8 @@ def save_model(model, run_id):
 cfg = Config()
 cfg.print_debug = True
 cfg.predictions_filename = 'predictions.pickle'
+cfg.model_save_name = None
+cfg.device = '/cpu:0'
 
 # Handles command arguments, usefull for debugging
 # usage: tflearn_rnn.py --pf debug_processed.pickle
@@ -339,9 +350,10 @@ arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set s
 arghandler.register_flag('eval', _arg_callback_eval, [], "Evaluate the network performance of a pre-trained model specified by run id. args: <run_id>")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
-arghandler.register_flag('trouble', _arg_callback_trouble, [], "File name to save/read for trouble makers predictions. Args: <filename>")
+arghandler.register_flag('trouble', _arg_callback_trouble, [], "save trouble maker prediction to DB under gang name. Args: <gang-name>")
 arghandler.register_flag('sm', _arg_callback_sm, ['save-model'], "Save the trained model. Will be saved in dir with it's run id")
 arghandler.register_flag('boost', _arg_callback_boost, [], "Load a saved model and continue training. Args <model id>")
+arghandler.register_flag('device', _arg_callback_device, [], "Train on gpu or cpu. Args: <'gpu'/'cpu'>")
 arghandler.consume_flags()
 
 debug_log = Logger()
@@ -392,7 +404,7 @@ for hyp in hypers:
 	log_run = Logger()
 
 	tf.reset_default_graph()
-	with tf.Graph().as_default(), tf.Session() as sess:
+	with tf.Graph().as_default(), tf.device(cfg.device), tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
 		tflearn.config.init_training_mode()
 		stop_reason = "Other error"
@@ -443,7 +455,8 @@ for hyp in hypers:
 			do_prediction(model, hyp, this_run_id, log_run, perflog, net)
 
 			if cfg.save_the_model:
-				save_model(model, this_run_id)
+				name = this_run_id if cfg.model_save_name is None else cfg.model_save_name
+				save_model(model, name)
 
 		finally:
 			temp_dir_best.cleanup()
