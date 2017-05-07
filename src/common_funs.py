@@ -313,7 +313,12 @@ class Open_Dataset:
 			yield row
 
 	def getRows(self):
-		where = dict(dataset = self._dataset)
+		where = {}
+		
+		# don't include dataset in where if dataset = all
+		if (self._dataset).lower() != 'all':
+			where = dict(dataset = self._dataset)
+
 		where.update(self._where)
 		return self._db.getRows(self._table, **where)
 

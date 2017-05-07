@@ -132,8 +132,8 @@
                 <h1 class="title">Sarcasm quiz!</h1>
                 <nav id='navbar' hidden=true>
                     <ul>
-                        <li id='hard-link'><a href="#">Hard quiz</a></li>
-                        <li id='easy-link' class='selected'><a href="#">Easy quiz</a></li>
+                        <li id='leaderboard-link' hidden=true><a href="#">Leaderboard</a></li>
+                        <li id='easy-link' class='selected'><a href="#">Quiz</a></li>
                     </ul>
                 </nav>
             </header>
@@ -149,7 +149,14 @@
             	        	<input type='text' name='name'><br>
             	        	<input type='submit' value='Submit' id='submit-name'>
             	        </form>
-            	    </header>        	    
+            	    </header>
+                    <h3>Att tänka på:</h3>
+                    <ul>
+                        <li>Datan du ser är text förbehandlad för maskinell inmatning, där hashtags, länkar och dyligt blivit ersatta med representativa taggar. Detta kan göra vissa tweets svårläsliga för människor, men det är alltid värt ett försök att klassificera rätt!</li>
+                        <li>Alla tweets du ser är helt slumpvist utvalda ur vår databas</li>
+                        <li>Tänk efter en extra gång om du är osäker och svara ärligt</li>
+                        <li>Det var allt! Sidan kommer fortsätta att mata tweets tills du känner dig färdig. Då är det bara att lämna sidan, och du kan komma tillbaka när du vill och fortsätta på ditt resultat &#9786;</li>
+                    </ul>
             	</article>
 
                 <article id='quiz' class='quiz-container' type=''> <!-- style="opacity: 0;">   -->
@@ -185,7 +192,7 @@
         </div>
 
         <script src="js/vendor/jquery-1.11.2.js"></script>
-        <script src="js/main-1.0.js"></script>
+        <script src="js/main-1.1.js"></script>
 
         <!--
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.js"></script>

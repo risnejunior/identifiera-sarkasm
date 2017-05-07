@@ -240,4 +240,11 @@ cm_balanced-tags:
 	python3 tflearn_rnn.py --ds detector --in tags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
 	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
 
+# SCRAMBLE LITTTLE_PONY: 
+# train balanced with tags 
+# test on x with no tags + balanced scramble tags
+slp_balanced-tags:
+	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled.pickle --net little_pony --train 5 1 128 --sm scrambled_little_pony_balanced_tags
+	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled.pickle --net little_pony --eval scrambled_little_pony_balanced_tags --pt
+
 

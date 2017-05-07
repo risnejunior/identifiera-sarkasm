@@ -85,10 +85,15 @@ class EarlyStoppingHelper:
 
 
 cfg = Config()
+cfg = Config()
+cfg.print_debug = True
+cfg.predictions_filename = 'predictions.pickle'
+cfg.model_save_name = None
 n_classes = 2
 chunk_size = cfg.embedding_size
 n_chunks = cfg.max_sequence
 roundform = "{0:.5f}"
+stop_reason = None
 
 data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,cfg.max_sequence])
 predict_placeholder = tf.placeholder(dtype=tf.float32,shape=[None,None])
@@ -106,6 +111,7 @@ date_stamp = time.strftime("%d%b-%H%M")
 run_id = date_stamp + "-" + network_name
 slizing = False
 monitor_f1 = False
+stop_reason = None
 
 def _arg_callback_pt():
 	global print_test
@@ -124,7 +130,7 @@ def _arg_callback_eval(model_name=None):
     cfg.training_mode = "evaluate"
     cfg.pretrained_file = model_name if model_name != None else None
     if model_name != None:
-        print("<Using pretrained model " + model_name + " for results only.")
+        print("<Using pretrained model " + model_name + " for results only >")
 
 def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
     cfg.epochs = int(nr_epochs)
@@ -197,7 +203,7 @@ def word_embedding_layer(word,embedding_tensor):
 
 #Defining and building the Neural Network
 
-def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
+def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run,perflog):
 	# Defining all the operations
 	es_handler = EarlyStoppingHelper(epoch_threshold = 3, avg_limit_percent = 1.05)
 	embeddings = word_embedding_layer(data_placeholder,W)
@@ -281,13 +287,14 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 				early_stop = True
 				break
 
+		stop_reason = "epochs_end" if not early_stop else "early_stop"
 		saver = tf.train.Saver()
 		if training_flags['update']:
 			saver_path = saver.save(sess, os.path.join(".","models",run_id,"final.ckpt"))
 			print("Model saved at %s" % saver_path )
 		elif training_flags['passing']:
 			print("Latest Checkpoint is the best")
-		run_test_print_cm(ps,prediction,log_run)
+		run_test_print_cm(ps,prediction,perflog,log_run)
 		sess.close()
 
 def split_chunks(xs,size,ys=None):
@@ -320,7 +327,7 @@ def test_accuracy(prediction,labels):
     accuracy = tf.reduce_mean(tf.cast(correct,'float'))
     return accuracy
 
-def test_network(ps,W,network_name,model=None):
+def test_network(ps,W,network_name,perflog,model=None):
     if model == None :
         print("No model selected")
         print("Your network %s have following matching models:" % network_name)
@@ -329,9 +336,9 @@ def test_network(ps,W,network_name,model=None):
         print("Your selected model %s is not for your selected network: %s" % (path, network_name))
     else:
         path = os.path.join(".","models", model)
-        run_test(ps,W,path,network_name)
+        run_test(ps,W,path,perflog,network_name)
 
-def run_test(ps,W,model,network_name):
+def run_test(ps,W,model,perflog,network_name):
     network = tfnetworks.fetch_network(network_name,n_classes)
     test_data = ps.test.xs
     test_labels = np.array(ps.test.ys)
@@ -341,7 +348,7 @@ def run_test(ps,W,model,network_name):
     with tf.Session().as_default() as sess:
         saver = tf.train.Saver()
         saver.restore(sess, path)
-        run_test_print_cm(ps,output,log_run)
+        run_test_print_cm(ps,output,perflog,log_run)
 
 def determine_model(model_path):
     files = os.listdir(model_path)
@@ -370,8 +377,9 @@ def shuffle_data(xs,ys):
 
     return np.array(shuffled_xs),np.array(shuffled_ys)
 
-def run_test_print_cm(ps,network_op,log_run):
+def run_test_print_cm(ps,network_op,perflog,log_run):
 
+    stop_reason = "Evaluation"
     sess = tf.get_default_session()
     cm = Binary_confusion_matrix()
     pred1 = batchpredict(90,ps.train.xs,network_op)
@@ -381,26 +389,36 @@ def run_test_print_cm(ps,network_op,log_run):
     if cfg.print_test:
         pred3 = sess.run(network_op, feed_dict={data_placeholder: ps.test.xs, keep_prob_placeholder: 1.0})
         cm.calc(ps.test.ids , pred3, ps.test.ys, 'test-set')
+        perflog.log(
+        test_acc = cm.metrics['test-set']['accuracy'],
+        test_f1 = cm.metrics['test-set']['f1_score']
+        )
+
     cm.print_tables()
     cm.save_predictions(predictions_filename,
-						directory = 'logs',
-						sets=['training-set','validation-set','test-set'],
-						update = True)
+                        directory = 'logs',
+                        sets=['training-set','validation-set','test-set'],
+                        update = True)
 
     cm.save(run_id + '.res', content='metrics')
     log_run.log(cm.metrics, logname="metrics", aslist = False)
-    the_list = [
-    time.strftime('%Y-%m-%d %H:%M', time.localtime()),
-    network_name,
-    os.path.basename(cfg.samples_path),
-    cm.metrics['validation-set']['accuracy'],
-    cm.metrics['validation-set']['f1_score'],
-    run_id
-    ]
-    if cfg.print_test:
-    	the_list.append(cm.metrics['test-set']['accuracy'])
-    	the_list.append(cm.metrics['test-set']['f1_score'])
-    perflog.replace(the_list)
+
+    perflog.log(
+		time = time.strftime('%Y-%m-%d %H:%M', time.localtime()),
+		network = cfg.network_name,
+		dataset = cfg.dataset_name,
+		samples_file = cfg.ps_file_name,
+		val_acc = cm.metrics['validation-set']['accuracy'],
+		val_f1 = cm.metrics['validation-set']['f1_score'],
+		run_id = run_id
+	)
+
+	# for troublemaker analysis
+    cm.save_predictions(cfg.predictions_filename,
+                        directory = cfg.logs_path,
+                        sets=['training-set','validation-set','test-set'],
+                        update = True
+                        )
 
 def batchpredict(batch_size,data,network_op):
 
@@ -457,11 +475,7 @@ arghandler.register_flag('usef1', _arg_callback_usef1, ['f1'], "Use F1 as valida
 arghandler.consume_flags()
 predictions_filename = 'predictions.pickle'
 
-perflog = FileBackedCSVBuffer(
-	"training_performance.csv",
-	"logs",
-	header=['Time', 'Network name', 'data file', 'Val acc', 'Val f1', 'Run id','Status'],
-	padding=17)
+perflog = DB_backed_log(cfg.sqlite_file, 'training_performance')
 
 with open(cfg.samples_path, 'rb') as handle:
     pd = pickle.load( handle )
@@ -482,8 +496,13 @@ log_run.log(network_name, logname='network_name', aslist = False)
 log_run.log(cfg.ps_file_name, logname='Dataset', aslist = False)
 
 if cfg.training_mode != "evaluate":
-    train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run)
+    train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run,perflog)
 else:
-    test_network(ps,W,network_name,cfg.pretrained_file)
+    test_network(ps,W,network_name,perflog,cfg.pretrained_file)
+
+log_run.save(run_id + '.log')
+if len(perflog.peek()) > 0:
+    perflog.log(status = stop_reason)
+    perflog.flush()
 
 print ("=== Code ran Successfully ===")
