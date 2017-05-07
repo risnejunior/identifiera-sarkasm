@@ -414,20 +414,20 @@ if cfg.print_debug:
 
 # 'sönderhaxad' class that generates random hyperparamters in the range provided
 
-hypers = Hyper(cfg.run_count,
-	lstm = {'dropout': (0.4, 0.8)},
-	middle= {'weight_decay': (0.01, 0.06)},
-	dropout = {'dropout': (0.4, 0.8)},
-	regression = {'learning_rate': (0.0005, 0.0015)},
-	output = {'weight_decay': (0.01, 0.06)}
-)
 # hypers = Hyper(cfg.run_count,
-# 	lstm = {'dropout': (0.51, 0.51)},
-# 	middle= {'weight_decay': (0.038, 0.038)},
-# 	dropout = {'dropout': (0.63, 0.63)},
-# 	regression = {'learning_rate': (0.001, 0.001)},
-# 	output = {'weight_decay': (0.038, 0.038)}
+# 	lstm = {'dropout': (0.4, 0.8)},
+# 	middle= {'weight_decay': (0.01, 0.06)},
+# 	dropout = {'dropout': (0.4, 0.8)},
+# 	regression = {'learning_rate': (0.0005, 0.0015)},
+# 	output = {'weight_decay': (0.01, 0.06)}
 # )
+hypers = Hyper(cfg.run_count,
+	lstm = {'dropout': (0.51, 0.51)},
+	middle= {'weight_decay': (0.038, 0.038)},
+	dropout = {'dropout': (0.63, 0.63)},
+	regression = {'learning_rate': (0.001, 0.001)},
+	output = {'weight_decay': (0.038, 0.038)}
+)
 
 # training loop, every loop trains a network with different hyperparameters
 for hyp in hypers:
