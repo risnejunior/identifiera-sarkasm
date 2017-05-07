@@ -21,6 +21,7 @@ sys.path.append("../identifiera-sarkasm/")
 sys.path.append("../identifiera-sarkasm/tfnetworks/")
 
 import tfnetworks
+from tfnetworks.networks import calc_seqlenth
 
 import time
 
@@ -89,7 +90,7 @@ chunk_size = cfg.embedding_size
 n_chunks = cfg.max_sequence
 roundform = "{0:.5f}"
 
-data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,None])
+data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,cfg.max_sequence])
 predict_placeholder = tf.placeholder(dtype=tf.float32,shape=[None,None])
 labels_placeholder = tf.placeholder(dtype=tf.float32, shape=[None,n_classes])
 keep_prob_placeholder = tf.placeholder('float')
@@ -190,6 +191,8 @@ def set_embedding(sess,init,placeholder,embeddings):
 def word_embedding_layer(word,embedding_tensor):
 	with tf.device("/cpu:0"):
 		embedding_layer = tf.nn.embedding_lookup(embedding_tensor,word, validate_indices=False)
+	#	shape = [-1] + embedding_layer.get_shape().as_list()[1:3] + [1]
+	#	embedding_layer.seq_length = calc_seqlenth(tf.reshape(word,shape))
 		return embedding_layer #Not sure if this is done yet
 
 #Defining and building the Neural Network

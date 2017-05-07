@@ -136,18 +136,21 @@ clean-process-all:
 	python3 clean_tweets.py --ds detector --strict false --tags false
 	python3 preprocess_data.py --ds detector --out notags.pickle --sb 0.5 --le 400000
 	python3 preprocess_data.py --ds detector --out notags-scrambled.pickle --scramble --sb 0.5 --le 400000
+	python3 preprocess_data.py --ds detector --out tags-scrambled.pickle --scramble --sb 0.5 --le 400000
 	python3 clean_tweets.py --ds detector --strict false  --tags true
 	python3 preprocess_data.py --ds detector --out tags.pickle --sb 0.5 --le 400000
 
 	python3 clean_tweets.py --ds poria-balanced --strict false --tags false
 	python3 preprocess_data.py --ds poria-balanced --out notags.pickle --sb 0.5 --le 400000
-	python3 preprocess_data.py --ds poria-balanced --out notags-scrambled.pickle --scramble --sb 0.5 --le 400000
+	python3 preprocess_data.py --ds poria-balanced --out notags-scrambled.pickle --scramble --sb 0.5 --le 
+	python3 preprocess_data.py --ds poria-balanced --out tags-scrambled.pickle --scramble --sb 0.5 --le 400000
 	python3 clean_tweets.py --ds poria-balanced --strict false --tags true
 	python3 preprocess_data.py --ds poria-balanced --out tags.pickle --sb 0.5 --le 400000
 
 	python3 clean_tweets.py --ds poria-ratio --strict false --tags false
 	python3 preprocess_data.py --ds poria-ratio --out notags.pickle --sb 0.25 --le 400000
 	python3 preprocess_data.py --ds poria-ratio --out notags-scrambled.pickle --scramble --sb 0.25 --le 400000
+	python3 preprocess_data.py --ds poria-ratio --out tags-scrambled.pickle --scramble --sb 0.25 --le 400000
 	python3 clean_tweets.py --ds poria-ratio --strict  false --tags true
 	python3 preprocess_data.py --ds poria-ratio --out tags.pickle --sb 0.25 --le 400000
 	python3 beep.py
@@ -188,11 +191,53 @@ temp:
 
 
 troublemakers:
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 1 1 1200  --st hells-angels
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 1 1 1200  --ft hells-angels 0.0
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 1 1 1200  --boost hells-angels
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 10 2 1200  --st hells-angels
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 10 1 1200  --tt hells-angels 0.0
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 10 1 1200  --boost hells-angels
 	python3 beep.py
 
 # example of using the beep script to signal when a batch is done. Quit with ctrl + c
 beep:
 	python3 beep.py
+
+
+# LITTTLE_PONY: 
+# train balanced with tags 
+# test on x with no tags + balanced scramble tags
+lp_balanced-tags:
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 10 1 128 --sm little_pony_balanced_tags
+	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle --net little_pony --eval little_pony_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in notags.pickle --net little_pony --eval little_pony_balanced_tags --pt
+	python3 tflearn_rnn.py --ds detector --in notags.pickle --net little_pony --eval little_pony_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --eval little_pony_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in tags.pickle --net little_pony --eval little_pony_balanced_tags --pt
+	python3 tflearn_rnn.py --ds detector --in tags.pickle --net little_pony --eval little_pony_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled.pickle --net little_pony --eval little_pony_balanced_tags --pt
+
+# LITTTLE_GRU: 
+# train balanced with tags 
+# test on x with no tags + balanced scramble tags
+lg_balanced-tags:
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_gru --train 10 1 128 --sm little_gru_balanced_tags
+	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle --net little_gru --eval little_gru_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in notags.pickle --net little_gru --eval little_gru_balanced_tags --pt
+	python3 tflearn_rnn.py --ds detector --in notags.pickle --net little_gru --eval little_gru_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_gru --eval little_gru_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in tags.pickle --net little_gru --eval little_gru_balanced_tags --pt
+	python3 tflearn_rnn.py --ds detector --in tags.pickle --net little_gru --eval little_gru_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled.pickle --net little_gru --eval little_gru_balanced_tags --pt
+
+# CONVOLVE_ME:
+# train balanced with tags
+# test on x with no tags + balanced scramble tags
+cm_balanced-tags:
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net convolve_me --train 10 1 128 --sm convolve_me_balanced_tags
+	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in notags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds detector --in notags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in tags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds detector --in tags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+
+
