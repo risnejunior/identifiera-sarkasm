@@ -15,9 +15,13 @@ class LittlePonyNetwork(net.AbstractNetwork):
         batch_size = dimensions[0]
         weight_dropout = tf.nn.dropout(self._layer_weights, keep_prob)
         rnn_dropout = rnn.core_rnn_cell.DropoutWrapper(self._lstm_cell,output_keep_prob=keep_prob)
-        data = tf.transpose(data,[1,0,2])
-        data = tf.reshape(data,[-1,chunk_size])
-        sequence = tf.split(data, n_chunks, 0)
+
+        # Calculation Begin
+        input_shape = data.get_shape().as_list()
+        ndim = len(input_shape)
+        axis = [1, 0] + list(range(2,ndim))
+        data = tf.transpose(data,(axis))
+        sequence = tf.unstack(data)
         outputs, states = rnn.static_rnn(rnn_dropout, sequence, dtype=tf.float32, sequence_length = sequence_lengths)
         outputs = tf.transpose(tf.stack(outputs), [1, 0, 2])
         output = net.advanced_indexing_op(outputs, sequence_lengths)
