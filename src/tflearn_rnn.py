@@ -137,7 +137,7 @@ def _arg_callback_st(gang_colors):
 	cfg.trouble_type = 'save'
 	print("<saving troublemakers after training>")
 
-def _arg_callback_ft(gang_colors, trouble):
+def _arg_callback_tt(gang_colors, trouble):
 	trouble = float(trouble)
 	cfg.trouble_gang = gang_colors
 	cfg.trouble_level = trouble
@@ -327,14 +327,16 @@ def get_model_magic_path(path):
 	return best_name_path
 
 def save_model(model, name):
+	import shutil
 	this_model_path = os.path.join(cfg.models_path, name)
-	try:
-		os.mkdir(this_model_path)
-	except FileExistsError:
-		 raise FileExistsError("models path already exist")
-	else:
-		magic_path = os.path.join(this_model_path, 'model')
-		model.save(magic_path)
+	
+	# delete folder if it exists
+	if os.path.exists(this_model_path):
+		shutil.rmtree(this_model_path)
+
+	os.mkdir(this_model_path)	
+	magic_path = os.path.join(this_model_path, 'model')
+	model.save(magic_path)
 
 ################################################################################
 
@@ -359,7 +361,7 @@ arghandler.register_flag('eval', _arg_callback_eval, [], "Evaluate the network p
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
 arghandler.register_flag('st', _arg_callback_st, ['save-trouble'], "save trouble maker prediction to DB under gang name. Args: <gang-name>")
-arghandler.register_flag('ft', _arg_callback_ft, ['filter-trouble'], "Filter training set on troublemakers with trouble level. Args: <gang-name> <float trouble>")
+arghandler.register_flag('tt', _arg_callback_tt, ['train-trouble'], "Filter training set on troublemakers with trouble level. Args: <gang-name> <float trouble>")
 arghandler.register_flag('sm', _arg_callback_sm, ['save-model'], "Save the trained model. Will be saved in dir with it's run id")
 arghandler.register_flag('boost', _arg_callback_boost, [], "Load a saved model and continue training. Args <model id>")
 arghandler.register_flag('device', _arg_callback_device, [], "Train on gpu or cpu. Args: <'gpu'/'cpu'>")
