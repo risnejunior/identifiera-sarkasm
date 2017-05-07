@@ -104,6 +104,7 @@ class DbAdapter {
 		  		) AS ids
 			) AS rnd
 		WHERE s.id >= rnd.ids
+		AND `sample_text` NOT LIKE '%Castle/Beckett%'
 		ORDER BY s.id ASC 
 		LIMIT {$size}
 		 ";

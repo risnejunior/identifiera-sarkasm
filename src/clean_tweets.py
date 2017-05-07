@@ -97,7 +97,7 @@ def write_clean(data, ds_name, s_class):
             ds.write(i, row)
             pb.tick()
 
-is_bot = re.compile(r"(\bpoin:|Jawaban|^I've watched|^current <|^I just voted for Castle|^\d{1,2}:\d{1,2}|^\d+\.|Ulixēs|^Current|^Good morning|Staré poledne)",re.IGNORECASE)
+is_bot = re.compile(r"(\bpoin:|Jawaban|^I've watched|^current <|^I just voted for Castle|^\d{1,2}:\d{1,2}|^\d+\.|Ulixēs|^Current|^Good morning|Staré poledne|Castle/Beckett)",re.IGNORECASE)
 is_tag = re.compile(r'<user|url|hashtag>')
 hashtags = re.compile(r'#[^\s.,;]*')
 friendtag = re.compile(r'\S*@[^\s.,;]*')
