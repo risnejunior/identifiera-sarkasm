@@ -87,7 +87,6 @@ cfg = Config()
 n_classes = 2
 chunk_size = cfg.embedding_size
 n_chunks = cfg.max_sequence
-rnn_size = 64
 roundform = "{0:.5f}"
 
 data_placeholder = tf.placeholder(dtype=tf.int32,shape=[None,None])
@@ -122,7 +121,7 @@ def _arg_callback_eval(model_name=None):
     cfg.save_the_model = False
     #cfg.pretrained_model = True
     cfg.training_mode = "evaluate"
-    cfg.pretrained_file = model_name + ".ckpt" if model_name != None else None
+    cfg.pretrained_file = model_name if model_name != None else None
     if model_name != None:
         print("<Using pretrained model " + model_name + " for results only.")
 
@@ -199,7 +198,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 	# Defining all the operations
 	es_handler = EarlyStoppingHelper(epoch_threshold = 3, avg_limit_percent = 1.05)
 	embeddings = word_embedding_layer(data_placeholder,W)
-	network = tfnetworks.fetch_network(network_name,n_classes,params = {'rnn_size': rnn_size})
+	network = tfnetworks.fetch_network(network_name,n_classes)
 	prediction = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
 	accuracy = test_accuracy(tf.nn.softmax(prediction),labels_placeholder)
 	val_accuracy_op = test_accuracy(predict_placeholder,labels_placeholder)
@@ -248,12 +247,9 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 			for batch_i in range(loops):
 				batch_x = xs_split[batch_i]
 				batch_y = ys_split[batch_i]
-				_, c, summary = sess.run([optimizer,cost,train_summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
+				_, c,train_acc ,summary = sess.run([optimizer,cost,accuracy,train_summary_op], feed_dict = {data_placeholder: batch_x, labels_placeholder: batch_y, keep_prob_placeholder: 0.5})
 				writer.add_summary(summary, epoch*loops + batch_i)
 				epoch_loss += c
-				if batch_i % 10 == 0:
-				    train_acc = sess.run(accuracy, feed_dict = {data_placeholder: train_test, labels_placeholder: train_labtest, keep_prob_placeholder: 1.0})
-
 
 				print("Optimizer:",optimizer.name, "|", batch_i + 1, "batches completed out of:", loops)
 				print("current loss:",roundform.format(epoch_loss),"| Accuracy :",roundform.format(train_acc), "",end=" \033[A\r",flush=True)
@@ -287,7 +283,7 @@ def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run):
 			saver_path = saver.save(sess, os.path.join(".","models",run_id,"final.ckpt"))
 			print("Model saved at %s" % saver_path )
 		elif training_flags['passing']:
-			print("")
+			print("Latest Checkpoint is the best")
 		run_test_print_cm(ps,prediction,log_run)
 		sess.close()
 
@@ -321,27 +317,33 @@ def test_accuracy(prediction,labels):
     accuracy = tf.reduce_mean(tf.cast(correct,'float'))
     return accuracy
 
-def test_network(ps,W,network_name,path=None):
-    if path == None :
+def test_network(ps,W,network_name,model=None):
+    if model == None :
         print("No model selected")
         print("Your network %s have following matching models:" % network_name)
         print_matching_models(network_name)
-    elif network_name not in path:
+    elif network_name not in model:
         print("Your selected model %s is not for your selected network: %s" % (path, network_name))
     else:
-        path = os.path.join(".","models", path)
+        path = os.path.join(".","models", model)
         run_test(ps,W,path,network_name)
 
-def run_test(ps,W,path,network_name):
-    network = tfnetworks.fetch_network(network_name,n_classes,params={'rnn_size': rnn_size})
+def run_test(ps,W,model,network_name):
+    network = tfnetworks.fetch_network(network_name,n_classes)
     test_data = ps.test.xs
     test_labels = np.array(ps.test.ys)
     embeddings = word_embedding_layer(data_placeholder,W)
     output = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
+    path = determine_model(model)
     with tf.Session().as_default() as sess:
         saver = tf.train.Saver()
         saver.restore(sess, path)
         run_test_print_cm(ps,output,log_run)
+
+def determine_model(model_path):
+    files = os.listdir(model_path)
+    append = "final.ckpt" if "final.ckpt" in files else "Checkpoint.ckpt"
+    return os.path.join(model_path,append)
 
 def batch_slice(arr,start,size,diff = False):
     arr_slice = arr[start:start + size]
