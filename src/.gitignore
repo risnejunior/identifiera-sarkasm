@@ -16,3 +16,4 @@ logs/
 ../.DS_Store
 *.log
 *.csv
+*.exe
