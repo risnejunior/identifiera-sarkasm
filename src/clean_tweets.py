@@ -31,7 +31,7 @@ def _arg_callback_tags(include = True):
 
 def clean_tweets(ds_name, s_class, s_format):
     ordered_data = OrderedDict()
-    skipped = dict(empty = 0, url = 0, reply = 0, short = 0, duplicate=0)
+    skipped = dict(empty = 0, url = 0, reply = 0, short = 0, duplicate=0, bot=0)
 
     for row in Open_Dataset(ds_name, 'raw', 'r', sample_class=s_class):
         temp = row['sample_text']
@@ -44,6 +44,10 @@ def clean_tweets(ds_name, s_class, s_format):
             temp = temp.replace('\\\\u', '\\u')
             temp = temp.replace(r'"', r'\"')
             temp = decoder.raw_decode('"'+ temp +'"')[0]
+
+        if 'skip_bot' in restrictions and is_bot.search(temp):
+            skipped['bot'] += 1
+            continue
 
         if 'skip_url' in restrictions and url.search(temp):
             skipped['url'] += 1
@@ -66,7 +70,7 @@ def clean_tweets(ds_name, s_class, s_format):
             temp=hashtags.sub(cfg.tags[2],temp)
 
 
-        if 'skip_short' in restrictions and len(temp.split()) < 3:
+        if 'skip_short' in restrictions and (len(temp.split()) - len(is_tag.findall(temp)) ) < 3:
             skipped['short'] += 1
             continue
 
@@ -93,7 +97,8 @@ def write_clean(data, ds_name, s_class):
             ds.write(i, row)
             pb.tick()
 
-
+is_bot = re.compile(r"(\bpoin:|Jawaban|^I've watched|^current <|^I just voted for Castle|^\d{1,2}:\d{1,2}|^\d+\.|Ulixēs|^Current|^Good morning|Staré poledne)",re.IGNORECASE)
+is_tag = re.compile(r'<user|url|hashtag>')
 hashtags = re.compile(r'#[^\s.,;]*')
 friendtag = re.compile(r'\S*@[^\s.,;]*')
 retweet = re.compile(r'\A@|RT')
@@ -117,7 +122,7 @@ datasets_config = [
 (cfg.dataset_name, cfg.neg_source_path, cfg.source_format, 0 )]
 Open_Dataset.check_init_db(datasets_config, cfg.sqlite_file)
 
-restrictions = []
+restrictions = ['skip_bot']
 if not cfg.includetags:
     restrictions.append('remove_tags')
 if cfg.strict:
