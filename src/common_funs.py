@@ -19,26 +19,148 @@ import numpy as np
 from config import Config
 
 class Bad_boys:
-	def __init__(self, sqlite_file):
-		self._db = DB_Handler(sqlite_file)
+	def __init__(self, sqlite_file, gang):
 		self._table_name = "troublemakers"
-		self.check_init_db(self._table_name)
+		self._samples = {}
+		self._gang = gang
+
+		if gang is None:
+			self.update = self.load = self.save = self.close = self.do_nothing
+		else:
+			self._db = DB_Handler(sqlite_file)
+			self.check_init_db(self._table_name)
+
+	def do_nothing(self, *args, **kwargs):
+		pass
 
 	def check_init_db(self, table_name):
 		if not self._db.exists(table_name):
 			print("creating table: {}".format(table_name))
 			self._db._c.executescript("""
-				CREATE TABLE IF NOT EXISTS {} (
+				CREATE TABLE IF NOT EXISTS {tn} (
 					`id`	INTEGER PRIMARY KEY AUTOINCREMENT,
-					`dataset`	TEXT,
-					`samples_file`	TEXT,
-					`samples_id`	INTEGER,
-					`predictions`	INTEGER,
-					`correct_predictions`	INTEGER,
-					`correct_rate`	REAL
+					`gang`	TEXT,
+					`sample_id`	INTEGER,
+					`total`	INTEGER,
+					`correct`	INTEGER,
+					`trouble`	REAL
 				);
-			""".format(table_name))			
+
+				CREATE UNIQUE INDEX `sampleid_gang` ON {tn} (`sample_id` ,`gang` );
+			""".format(tn = table_name))			
 			self._db.commit()
+
+	def load(self):		
+		rows = self._db.getRows(self._table_name, gang=self._gang )
+				
+		for row in rows:
+			self._samples[row['sample_id']] = {
+				'total': row['total'],
+				'correct': row['correct'],
+				'trouble': row['trouble'],
+				'gang': row['gang']
+			}
+
+
+	def update(self, ids, predictions, ys):
+		facit = zip(ids, predictions, ys)
+		samples = self._samples
+		for sid, x, y in facit:
+			if sid not in samples:
+				samples[sid] = {
+					'total': 0,
+					'correct': 0,
+					'trouble': 0.0,
+					'gang': self._gang
+				}
+
+			# true if prediction in x the same as answer key in y
+			# print("{}: {} {}".format(sid, x[1] >= 0.5, y[1] >= 0.5))
+			#print("{}: {} {} {} {} {}".format(sid, x, 0.5 >= x[1], y, 0.5 >= y[1], (0.5 >= x[1]) == (0.5 >= y[1]) ))
+			if (0.5 >= x[1]) == (0.5 >= y[1]):
+				samples[sid]['correct'] += 1
+			samples[sid]['total'] += 1
+			samples[sid]['trouble'] = round(1 - (samples[sid]['correct'] / samples[sid]['total']), 1)
+		
+	def save(self):
+		for sid, sample in self._samples.items():
+			self._db.insertRow(
+				table_name = self._table_name, 
+				mode ='REPLACE', 
+				sample_id = sid, 
+				total = sample['total'], 
+				correct = sample['correct'], 
+				trouble = sample['trouble'], 
+				gang = sample['gang']
+			
+			)
+
+		self._db.commit()
+
+	def close(self):
+		self._db.close()
+		self._samples = {}
+
+	def find(self, trouble):
+		"""
+		Return troublemakers up to the trouble percentage
+
+		"""
+		#trouble_string = " > {}".format(trouble)
+		#rows = self._db.getRows(self._table_name, gang=self._gang, trouble = trouble_string)
+		self._db._c.execute("SELECT sample_id FROM {} WHERE trouble > {}"
+			.format(self._table_name, trouble))
+		rows = self._db._c.fetchall()
+
+		# make troublemaker ids set to filter against
+		ids_filter = set()
+		for row in rows:
+			ids_filter.add(row['sample_id'])
+		
+		return ids_filter
+		"""self._db._c.executescript(
+			SELECT 
+			troublemakers.sample_id,
+			cleaned.sample_text,
+			cleaned.sample_class
+
+			FROM troublemakers
+			LEFT JOIN cleaned
+			ON troublemakers.sample_id = cleaned.sample_id
+
+			WHERE troublemakers.trouble > -1
+			AND troublemakers.gang = 'hells-angels'
+		)"""
+		
+
+	@staticmethod
+	def _unit_test_1(sqlite_file):
+		gang = 'hells-angels'
+		bb = Bad_boys(sqlite_file, gang)
+		trouble_filter = bb.find(0.0)
+		print(len(trouble_filter))
+
+	@staticmethod
+	def _unit_test_2(sqlite_file):
+		gang = 'bandidos'
+		bb = Bad_boys(sqlite_file, gang)
+		bb._db.deleteRows(bb._table_name, gang=gang)
+
+
+		# 1
+		ids = [1, 2, 3, 4, 5]
+		xs = [(0.3, 0.7), (0.3, 0.7), (0.3, 0.7), (0.9, 0.1), (0.5, 0.5)]
+		ys = [(0.3, 0.7), (0.3, 0.7), (0.3, 0.7), (0.9, 0.1), (0.5, 0.5)]
+		bb.update(ids, xs, ys)
+		bb.save()
+
+		# 2
+		xs = [(0.3, 0.7), (0.3, 0.7), (0.7, 0.3), (0.3, 0.7), (0.5, 0.5)]
+		bb.load()
+		bb.update(ids, xs, ys)
+		bb.save()		
+
+
 
 class DB_backed_log:
 	def __init__(self, sqlite_file, table_name, **cols):
@@ -228,6 +350,9 @@ class DB_Handler:
 		self._c = self._conn.cursor()
 		#atexit.register(self.c
 
+	def setRowFactory(self):
+		self._conn.row_factory = lambda cursor, row: row
+
 	def close(self):
 		#commit and close
 		self._conn.commit()
@@ -285,11 +410,19 @@ class DB_Handler:
 		self._c.executemany('INSERT OR REPLACE INTO {tn} ({cols}) VALUES ({v_ph})'
 			.format(tn=table_name, cols=columns, v_ph=vals_ph), values)
 
-	def insertRow(self, table_name, **vals):
+	def insertRow(self, table_name, mode = '', **vals):
+		mode = mode.lower()
+		if 'replace' == mode:
+			mode_text = 'OR REPLACE'
+		elif 'ignore' == mode:
+			mode_text = "OR IGNORE"
+		else:
+			mode_text = ''
+
 		columns = ','.join(vals.keys())
 		vals_ph = ','.join(['?' for _ in range(len(vals))])
-		self._c.execute('INSERT OR REPLACE INTO {tn} ({cols}) VALUES ({v_ph})'
-			.format(tn=table_name, cols=columns, v_ph=vals_ph), list(vals.values()))
+		self._c.execute('INSERT {rp} INTO {tn} ({cols}) VALUES ({v_ph})'
+			.format(rp=mode_text, tn=table_name, cols=columns, v_ph=vals_ph), list(vals.values()))
 
 class TroubleMakers:
 	def __init__(self, ids= None, ys = None, do_nothing = False):

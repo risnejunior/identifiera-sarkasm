@@ -23,6 +23,7 @@ from common_funs import FileBackedCSVBuffer
 from common_funs import boxString
 from common_funs import DB_backed_log
 from common_funs import file_selector
+from common_funs import Bad_boys
 
 from networks import Networks
 from networks import NetworkNotFoundError
@@ -131,8 +132,18 @@ def _arg_callback_device(device_name):
 	else:
 		raise Exception("device not in list")
 
-def _arg_callback_trouble(file_name):
-	cfg.predictions_filename = file_name
+def _arg_callback_st(gang_colors):
+	cfg.trouble_gang = gang_colors
+	cfg.trouble_type = 'save'
+	print("<saving troublemakers after training>")
+
+def _arg_callback_ft(gang_colors, trouble):
+	trouble = float(trouble)
+	cfg.trouble_gang = gang_colors
+	cfg.trouble_level = trouble
+	cfg.trouble_type = 'filter'
+	print("<filtering training set with badness > {0:.0%}, troublemakers from gang: {1:}>"
+		.format(trouble, gang_colors))
 
 def _arg_callback_pt():
 	cfg.print_test = True
@@ -258,6 +269,7 @@ def train_model(model, hyp, this_run_id, log_run, perflog):
 def do_prediction(model, hyp, this_run_id, log_run, perflog, net):
 
 	#debug_embeddingd(model, "after_training", embeddings_log)
+
 	
 	# print confusion matrix for the different sets
 	print("\nRunning prediction...")
@@ -269,8 +281,8 @@ def do_prediction(model, hyp, this_run_id, log_run, perflog, net):
 	fun_chunks = lambda fun, parts: [fun(part) for part in chunks(parts, 1000)]
 	flatten = lambda l: [x for xs in l for x in xs]
 
-	predictions = flatten(fun_chunks(model.predict, ps.train.xs))
-	cm.calc(ps.train.ids , predictions, ps.train.ys, 'training-set')
+	train_predictions = flatten(fun_chunks(model.predict, ps.train.xs))
+	cm.calc(ps.train.ids , train_predictions, ps.train.ys, 'training-set')
 
 	predictions = flatten(fun_chunks(model.predict, ps.valid.xs))
 	cm.calc(ps.valid.ids , predictions, ps.valid.ys, 'validation-set')
@@ -284,6 +296,7 @@ def do_prediction(model, hyp, this_run_id, log_run, perflog, net):
 		)
 
 	cm.print_tables()
+	badboys.update(ps.train.ids , train_predictions, ps.train.ys)
 
 	log_run.log(cm.metrics, logname="metrics", aslist = False)
 	perflog.log(
@@ -296,13 +309,6 @@ def do_prediction(model, hyp, this_run_id, log_run, perflog, net):
 		run_id = this_run_id
 	)
 
-	# for troublemaker analysis
-	cm.save_predictions(
-		cfg.predictions_filename,
-		directory = cfg.logs_path,
-		sets=['training-set','validation-set','test-set'],
-		update = True
-	)
 
 def get_model_magic_path(path):
 	"""
@@ -335,7 +341,9 @@ def save_model(model, name):
 # affected by flags, need to be before consume_flags()
 cfg = Config()
 cfg.print_debug = True
-cfg.predictions_filename = 'predictions.pickle'
+cfg.trouble_gang = None
+cfg.trouble_level = None
+cfg.trouble_type = None
 cfg.model_save_name = None
 cfg.device = '/cpu:0'
 
@@ -350,24 +358,44 @@ arghandler.register_flag('ss', _arg_callback_ss, ['snapshot'], helptext = "Set s
 arghandler.register_flag('eval', _arg_callback_eval, [], "Evaluate the network performance of a pre-trained model specified by run id. args: <run_id>")
 arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], "Which dataset to use. Args: <dataset-name>")
 arghandler.register_flag('pt', _arg_callback_pt, ['print-test'], "Produce results on test-partition of dataset.")
-arghandler.register_flag('trouble', _arg_callback_trouble, [], "save trouble maker prediction to DB under gang name. Args: <gang-name>")
+arghandler.register_flag('st', _arg_callback_st, ['save-trouble'], "save trouble maker prediction to DB under gang name. Args: <gang-name>")
+arghandler.register_flag('ft', _arg_callback_ft, ['filter-trouble'], "Filter training set on troublemakers with trouble level. Args: <gang-name> <float trouble>")
 arghandler.register_flag('sm', _arg_callback_sm, ['save-model'], "Save the trained model. Will be saved in dir with it's run id")
 arghandler.register_flag('boost', _arg_callback_boost, [], "Load a saved model and continue training. Args <model id>")
 arghandler.register_flag('device', _arg_callback_device, [], "Train on gpu or cpu. Args: <'gpu'/'cpu'>")
 arghandler.consume_flags()
 
 debug_log = Logger()
-embeddings_log = Logger()
+embeddings_log = Logger(enable=False)
 perflog = DB_backed_log(cfg.sqlite_file, 'training_performance')
+badboys = Bad_boys(cfg.sqlite_file, cfg.trouble_gang)
 
 # show select menu if no file name given
 if cfg.ps_file_name is None:
 	cfg.ps_file_name = file_selector(cfg.processed_path, "Select sample file")
 
+
 # Load processed data from file
 with open(cfg.samples_path, 'rb') as handle:
     pd = pickle.load( handle )
 ps = pd.dataset #processed samples
+
+if cfg.trouble_level is not None:
+	print('creating new training set based on troublemakers that are wrong {0:.0%} of the time'
+		.format(cfg.trouble_level))
+	trouble_filter = badboys.find(cfg.trouble_level)				
+	ids = []; xs = []; ys = [];
+	for sid, x, y in zip(ps.train.ids, ps.train.xs, ps.train.ys):
+		if sid in trouble_filter:
+			xs.append(x)
+			ys.append(y)
+			ids.append(sid)
+
+	new_train_set = Setpart('training set', len(ids), ids, xs, ys)
+	ps = Dataset(new_train_set, ps.valid, ps.test)
+	cfg.model_save_name = cfg.trouble_gang
+	cfg.save_the_model = True
+
 
 # debug print tweets
 if cfg.print_debug:
@@ -404,7 +432,7 @@ for hyp in hypers:
 	log_run = Logger()
 
 	tf.reset_default_graph()
-	with tf.Graph().as_default(), tf.device(cfg.device), tf.Session() as sess:
+	with tf.Graph().as_default(), tf.Session() as sess: #tf.device(cfg.device)
 		sess.run(tf.global_variables_initializer())
 		tflearn.config.init_training_mode()
 		stop_reason = "Other error"
@@ -461,10 +489,17 @@ for hyp in hypers:
 		finally:
 			temp_dir_best.cleanup()
 			temp_dir_checkpoints.cleanup()
-			log_run.save(this_run_id + '.log')
-			if len(perflog.peek()) > 0:
-				perflog.log(status = stop_reason)
-				perflog.flush()
+	
+
+	log_run.save(this_run_id + '.log')
+	if len(perflog.peek()) > 0:
+		perflog.log(status = stop_reason)
+		perflog.flush()
+
+	embeddings_log.save("debug_embeddingd.log")
+
+	if cfg.trouble_type == 'save':
+		badboys.save()
 
 debug_log.save("training_debug.log")
-embeddings_log.save("debug_embeddingd.log")
+
