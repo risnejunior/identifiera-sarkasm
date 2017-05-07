@@ -190,41 +190,30 @@ beep:
 	python3 tflearn_rnn.py --ds poria-ratio --in notags-scrambled.pickle --net convolve_me --eval convolve_me_detector_notags
 	python3 tflearn_rnn.py --ds detector --in notags-scrambled.pickle --net convolve_me --eval convolve_me_detector_notags
 
-# train balanced with tags
-# test on balanced with no tags
-balanced-tags-balanced-notags:
+# LITTTLE_PONY: 
+# train balanced with tags 
+# test on x with no tags + balanced scramble tags
+lp_balanced-tags:
 	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 10 1 128 --sm little_pony_balanced_tags
 	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle --net little_pony --eval little_pony_balanced_tags --pt
-
-# train balanced with tags
-# test on ratio with no tags
-balanced-tags-ratio-notags:
 	python3 tflearn_rnn.py --ds poria-ratio --in notags.pickle --net little_pony --eval little_pony_balanced_tags --pt
-
-# train balanced with tags
-# test on detector with no tags
-balanced-tags-detector-notags:
 	python3 tflearn_rnn.py --ds detector --in notags.pickle --net little_pony --eval little_pony_balanced_tags --pt
-
-# train balanced with tags
-# test on balanced with tags
-balanced-tags-balanced-tags:
 	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --eval little_pony_balanced_tags --pt
-
-# train balanced with tags
-# test on ratio with tags
-balanced-tags-ratio-tags:
 	python3 tflearn_rnn.py --ds poria-ratio --in tags.pickle --net little_pony --eval little_pony_balanced_tags --pt
-
-# train balanced with tags
-# test on detector with tags
-balanced-tags-detector-tags:
 	python3 tflearn_rnn.py --ds detector --in tags.pickle --net little_pony --eval little_pony_balanced_tags --pt
-
-# SCRAMBLED
-# train balanced with tags
-# test on balanced scrambled tags
-balanced-tags-balanced-scrambled-tags:
 	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled.pickle --net little_pony --eval little_pony_balanced_tags --pt
+
+# CONVOLVE_ME:
+# train balanced with tags
+# test on x with no tags + balanced scramble tags
+cm_balanced-tags:
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net convolve_me --train 10 1 128 --sm convolve_me_balanced_tags
+	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in notags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds detector --in notags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in tags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds detector --in tags.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled.pickle --net convolve_me --eval convolve_me_balanced_tags --pt
 
 
