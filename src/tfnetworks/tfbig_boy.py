@@ -2,9 +2,9 @@ import tensorflow as tf
 from tensorflow.contrib import rnn
 from . import networks as net
 
-class LittlePonyNetwork(net.AbstractNetwork):
+class BigBoyNetwork(net.AbstractNetwork):
     def __init__(self,n_classes,rnn_size = 256):
-        self._name = "little_pony"
+        self._name = "big_boy"
         self._layer_weights_1 = tf.Variable(tf.random_uniform([rnn_size,64]), name="weights")
         self._layer_biases_1 = tf.Variable(tf.random_uniform([64]), name="biases")
         self._layer_weights_2 = tf.Variable(tf.random_uniform([64,n_classes]), name="weights")
@@ -17,7 +17,7 @@ class LittlePonyNetwork(net.AbstractNetwork):
         dimensions = data.get_shape().as_list()
         batch_size = dimensions[0]
         weight_dropout_1 = tf.nn.dropout(self._layer_weights_1, keep_prob)
-        weight_dropout_2 = tf.nn.dropout(self._layer_weifhts_2, keep_prob)
+        weight_dropout_2 = tf.nn.dropout(self._layer_weights_2, keep_prob)
         rnn_dropout = rnn.core_rnn_cell.DropoutWrapper(self._lstm_cell,output_keep_prob=keep_prob)
 
         # Calculation Begin
@@ -39,4 +39,5 @@ class LittlePonyNetwork(net.AbstractNetwork):
 
     def calc_l2_loss(self):
         l2_loss = tf.nn.l2_loss(self._layer_weights_1)
+        l2_loss += tf.nn.l2_loss(self._layer_weights_2)
         return l2_loss
