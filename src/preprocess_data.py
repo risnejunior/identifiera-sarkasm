@@ -467,9 +467,25 @@ if cfg.save_debug:
 	
 	debug_path = cfg.samples_path
 
+	#all
 	all_samples= json.dumps(mixed_samples, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
 	with open(debug_path + '.samples.json', 'w', encoding='utf8') as out_file:
 		out_file.write(all_samples)	
+
+	#training set
+	json_train_samples= json.dumps(train_samples, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
+	with open(debug_path + '.training_samples.json', 'w', encoding='utf8') as out_file:
+		out_file.write(json_train_samples)	
+
+	# validation
+	json_valid_samples= json.dumps(validation_samples, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
+	with open(debug_path + '.validation_samples.json', 'w', encoding='utf8') as out_file:
+		out_file.write(json_valid_samples)
+
+	# test
+	json_test_samples= json.dumps(test_samples, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
+	with open(debug_path + '.test_samples.json', 'w', encoding='utf8') as out_file:
+		out_file.write(json_test_samples)	
 
 	json_vocabulary= json.dumps(vocabulary, ensure_ascii=False, indent=j_indent, separators=( ',',': '))
 	with open(debug_path + '.vocab.json', 'w', encoding='utf8') as out_file:
