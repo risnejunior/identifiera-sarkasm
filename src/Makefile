@@ -156,16 +156,16 @@ clean-process-all:
 	python3 beep.py
 
 result-detector-notags:
+	python3 tflearn_rnn.py --ds detector --in notags.pickle --net little_pony --train 50 1 1200 --sm little_pony_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle --net little_pony --eval little_pony_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in notags.pickle --net little_pony --eval little_pony_detector_notags  --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --eval little_pony_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in tags.pickle --net little_pony --eval little_pony_detector_notags --pt
+	python3 tflearn_rnn.py --ds detector --in tags.pickle --net little_pony --eval little_pony_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in notags-scrambled.pickle --net little_pony --eval little_pony_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in notags-scrambled.pickle --net little_pony --eval little_pony_detector_notags --pt
+	python3 tflearn_rnn.py --ds detector --in notags-scrambled.pickle --net little_pony --eval little_pony_detector_notags --pt
 
-	python3 tflearn_rnn.py --ds detector --in notags.pickle --net convolve_me --train 50 1 1200 --sm convolve_me_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-ratio --in notags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-ratio --in tags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
-	python3 tflearn_rnn.py --ds detector --in tags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in notags-scrambled.pickle --net convolve_me --eval convolve_me_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-ratio --in notags-scrambled.pickle --net convolve_me --eval convolve_me_detector_notags --pt
-	python3 tflearn_rnn.py --ds detector --in notags-scrambled.pickle --net convolve_me --eval convolve_me_detector_notags --pt
 	python3 beep.py
 
 temp:
@@ -179,21 +179,21 @@ temp:
 	python3 tflearn_rnn.py --ds poria-ratio --in notags-scrambled.pickle --net little_gru --eval little_gru_detector_notags
 	python3 tflearn_rnn.py --ds detector --in notags-scrambled.pickle --net little_gru --eval little_gru_detector_notags
 
-	python3 tflearn_rnn.py --ds detector --in notags.pickle --net little_pony --train 50 1 1200 --sm little_pony_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle --net little_pony --eval little_pony_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-ratio --in notags.pickle --net little_pony --eval little_pony_detector_notags  --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --eval little_pony_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-ratio --in tags.pickle --net little_pony --eval little_pony_detector_notags --pt
-	python3 tflearn_rnn.py --ds detector --in tags.pickle --net little_pony --eval little_pony_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in notags-scrambled.pickle --net little_pony --eval little_pony_detector_notags --pt
-	python3 tflearn_rnn.py --ds poria-ratio --in notags-scrambled.pickle --net little_pony --eval little_pony_detector_notags --pt
-	python3 tflearn_rnn.py --ds detector --in notags-scrambled.pickle --net little_pony --eval little_pony_detector_notags --pt
+	python3 tflearn_rnn.py --ds detector --in notags.pickle --net convolve_me --train 50 1 1200 --sm convolve_me_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in notags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in tags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
+	python3 tflearn_rnn.py --ds detector --in tags.pickle --net convolve_me --eval convolve_me_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in notags-scrambled.pickle --net convolve_me --eval convolve_me_detector_notags --pt
+	python3 tflearn_rnn.py --ds poria-ratio --in notags-scrambled.pickle --net convolve_me --eval convolve_me_detector_notags --pt
+	python3 tflearn_rnn.py --ds detector --in notags-scrambled.pickle --net convolve_me --eval convolve_me_detector_notags --pt
 
 
 troublemakers:
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 10 2 1200  --st hells-angels
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 10 1 1200  --tt hells-angels 0.0
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 10 1 1200  --boost hells-angels
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 10 1200  --st hells-angels
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --tt hells-angels 0.0
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --boost hells-angels
 	python3 beep.py
 
 # example of using the beep script to signal when a batch is done. Quit with ctrl + c
