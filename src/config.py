@@ -7,7 +7,7 @@ class Config:
 	"""
 	standard_settings = dict(
 		#mixed use
-		dataset_name = "detector", #"poria-ratio", "poria-balanced", "imdb", "detector"
+		dataset_name = "poria-balanced", #"poria-ratio", "poria-balanced", "imdb", "detector"
 		ps_file_name = 'tags.pickle',
 		use_embeddings = True,
 		ascii_console = False, #set to true if your console doesn't handle unicode
