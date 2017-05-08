@@ -8,7 +8,7 @@ class Config:
 	standard_settings = dict(
 		#mixed use
 		dataset_name = "detector", #"poria-ratio", "poria-balanced", "imdb", "detector"
-		ps_file_name = 'processed.pickle',
+		ps_file_name = 'tags.pickle',
 		use_embeddings = True,
 		ascii_console = False, #set to true if your console doesn't handle unicode
 		use_logger = True,
@@ -58,8 +58,8 @@ class Config:
 	tags = ["<user>", "<url>", "<hashtag>"]
 	allowed_emb_sizes = [25,50,100,200]
 	ensure_paths = {
-		'models_path':'models', 
-		'logs_path':'logs', 
+		'models_path':'models',
+		'logs_path':'logs',
 	}
 
 	datasets = {
@@ -156,4 +156,3 @@ class Config:
 
 	#other dynamic properties
 	source_format = property(get_source_format)
-
