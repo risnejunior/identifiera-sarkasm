@@ -41,6 +41,11 @@ from common_funs import neg_label
 from config import Config
 
 #### functions ###############################################################################
+def _arg_callback_cv(dataset_name, file_name):
+	cfg_cross.dataset_name = dataset_name
+	cfg_cross.ps_file_name = file_name
+	cfg.use_cross_vocab = True
+	print("<Using vocabulary from dataset: {}>".format(dataset_name))
 
 def _arg_callback_sp(train, cross, test):
 	cfg.partition_training = float(train)
@@ -303,6 +308,9 @@ cfg.nltk_dowload = False
 cfg.save_debug = False
 cfg.scramble_samples = False
 cfg.reverse_samples = False
+cfg_cross = Config()
+cfg.use_cross_vocab = False
+
 
 arghandler = Arg_handler()
 arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run, with few samples, small vocab, seq. length and few embeddings used.")
@@ -317,6 +325,7 @@ arghandler.register_flag('ds', _arg_callback_ds, ['select-dataset', 'dataset'], 
 arghandler.register_flag('sp', _arg_callback_sp, ['set-partition'], "Set the partition sizes.")
 arghandler.register_flag('sb', _arg_callback_sb, ['set-balance'], "Choose the set-balance. Args: <set-balance>")
 arghandler.register_flag('le', _arg_callback_le, ['limit-embeddings'], "Limits how many embeddings are fitted. Args: <embedding count>")
+arghandler.register_flag('cv', _arg_callback_cv, ['cross-vocabulary'], "Use the vocabulary from a different dataset. Args: <dataset-name> <pickle-file>")
 arghandler.consume_flags()
 
 logger = common_funs.Logger()
@@ -370,14 +379,26 @@ pos_samples = tokenize_helper(positive_rows, all_words, 1)
 
 
 # build vocabulary
-print("Building vocabulary..")
-vocab = build_vocabulary(all_words, cfg.vocabulary_size)
+if cfg.use_cross_vocab:
+	print("Getting vocabulary from different dataset..")	
+	with open(cfg_cross.samples_path, 'rb') as handle:
+		cross_pd = pickle.load( handle )
+		vocab = len(cross_pd.vocab.keys()), cross_pd.vocab_instances, cross_pd.vocab, cross_pd.rev_vocab
+		cfg.embedding_size = cross_pd.emb_size
+		cfg.vocabulary_size = cross_pd.vocab_size
+else:
+	print("Building vocabulary..")
+	vocab = build_vocabulary(all_words, cfg.vocabulary_size)
+
 unique_words, vocab_instances, vocabulary, rev_vocabulary = vocab
 
 #load and fit embeddings to vocabulary
-if cfg.use_embeddings:
+if cfg.use_embeddings and not cfg.use_cross_vocab:
 	print("Fitting embeddings to vocabulary...")
 	embeddings = fit_embeddings(vocabulary, cfg.raw_embeddings_path)
+else:
+	print("Using embeddings from loaded dataset")
+	embeddings = cross_pd.embeddings
 
 # print word stats
 print()
@@ -443,7 +464,8 @@ pd = ProcessedData(
 	rev_vocabulary, 
 	cfg.embedding_size, 
 	cfg.vocabulary_size, 
-	cfg.max_sequence
+	cfg.max_sequence,
+	vocab_instances
 )
 
 print ("Samples partitioning; training: {}, validation: {}, test: {}"
@@ -457,9 +479,7 @@ with open(cfg.samples_path, 'wb') as handle:
 
 # saves readable versions of the data for debugging
 if cfg.save_debug:
-
-	print ("Saving json debug files..")
-	
+	print ("Saving json debug files..")	
 	#make sure debug files tokens show what's up after scramble etc
 	for sample in mixed_samples:
 		text_tokens = reverse_lookup( sample['int_vector'], rev_vocabulary)

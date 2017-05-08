@@ -1376,7 +1376,8 @@ ProcessedData = namedtuple('ProcessedData',[
 	'rev_vocab',
 	'emb_size',
 	'vocab_size',
-	'max_sequence'
+	'max_sequence',
+	'vocab_instances'
 	]
 )
 Dataset = namedtuple('Dataset', ['train', 'valid', 'test'])

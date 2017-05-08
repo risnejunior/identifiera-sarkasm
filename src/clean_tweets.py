@@ -97,7 +97,7 @@ def write_clean(data, ds_name, s_class):
             ds.write(i, row)
             pb.tick()
 
-is_bot = re.compile(r"(\bpoin:|Jawaban|^I've watched|^current <|^I just voted for Castle|^\d{1,2}:\d{1,2}|^\d+\.|Ulixēs|^Current|^Good morning|Staré poledne|Castle/Beckett)",re.IGNORECASE)
+is_bot = re.compile(r"(\bpoin:|Jawaban|^I've watched|^current <|^I just voted for Castle|^\d{1,2}:\d{1,2}|^\d+\.|Ulixēs|^Current|^Good morning|Staré poledne)",re.IGNORECASE) #|Castle/Beckett|【
 is_tag = re.compile(r'<user|url|hashtag>')
 hashtags = re.compile(r'#[^\s.,;]*')
 friendtag = re.compile(r'\S*@[^\s.,;]*')
@@ -122,11 +122,11 @@ datasets_config = [
 (cfg.dataset_name, cfg.neg_source_path, cfg.source_format, 0 )]
 Open_Dataset.check_init_db(datasets_config, cfg.sqlite_file)
 
-restrictions = ['skip_bot']
+restrictions = []
 if not cfg.includetags:
     restrictions.append('remove_tags')
 if cfg.strict:
-    restrictions.extend(['skip_url', 'skip_replies', 'skip_short'])
+    restrictions.extend(['skip_url', 'skip_replies', 'skip_short', 'skip_bot'])
 
 #normal
 print("Cleaning normal tweets from: {}".format(cfg.dataset_name))

@@ -86,6 +86,12 @@ class Config:
 			"neg_source": "normal_tweets.csv",
 			"pos_source": "sarcastic_tweets.csv",
 			"source_format": {'sample_id':None, 'sample_text':0, 'unescape': True}
+		},
+		"all" : {
+			"rel_path": ["all"],
+			"neg_source": "",
+			"pos_source": "",
+			"source_format": {}
 		}
 	}
 
