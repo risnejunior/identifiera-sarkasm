@@ -12,8 +12,11 @@ class BigBoyNetwork(net.AbstractNetwork):
 
         self._lstm_cell = rnn.BasicLSTMCell(rnn_size)
 
-    def feed_network(self,data,keep_prob,chunk_size,n_chunks):
-        sequence_lengths = net.calc_seqlenth(data)
+    def feed_network(self,data,keep_prob,chunk_size,n_chunks,dynamic = True):
+        # This code is copied from tflearn
+        sequence_lengths = None
+        if dynamic:
+            sequence_lengths = net.calc_seqlenth(data if isinstance(data, tf.Tensor) else tf.stack(data))
         dimensions = data.get_shape().as_list()
         batch_size = dimensions[0]
         weight_dropout_1 = tf.nn.dropout(self._layer_weights_1, keep_prob)
