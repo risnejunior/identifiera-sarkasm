@@ -50,9 +50,11 @@ class Bad_boys:
 			""".format(tn = table_name))			
 			self._db.commit()
 
-	def load(self):		
-		rows = self._db.getRows(self._table_name, gang=self._gang )
-				
+	def load(self):
+		""" 
+			copies all troublemakes to samples with sample id as key
+		"""
+		rows = self._db.getRows(self._table_name, gang=self._gang )		
 		for row in rows:
 			self._samples[row['sample_id']] = {
 				'total': row['total'],
@@ -75,8 +77,6 @@ class Bad_boys:
 				}
 
 			# true if prediction in x the same as answer key in y
-			# print("{}: {} {}".format(sid, x[1] >= 0.5, y[1] >= 0.5))
-			#print("{}: {} {} {} {} {}".format(sid, x, 0.5 >= x[1], y, 0.5 >= y[1], (0.5 >= x[1]) == (0.5 >= y[1]) ))
 			if (0.5 >= x[1]) == (0.5 >= y[1]):
 				samples[sid]['correct'] += 1
 			samples[sid]['total'] += 1
@@ -106,20 +106,22 @@ class Bad_boys:
 		Return troublemakers up to the trouble percentage
 
 		"""
-		#trouble_string = " > {}".format(trouble)
-		#rows = self._db.getRows(self._table_name, gang=self._gang, trouble = trouble_string)
 		self._db._c.execute("SELECT sample_id FROM {} WHERE trouble > {}"
 			.format(self._table_name, trouble))
 		rows = self._db._c.fetchall()
-
-		# make troublemaker ids set to filter against
 		ids_filter = set()
 		for row in rows:
 			ids_filter.add(row['sample_id'])
 		
 		return ids_filter
-		"""self._db._c.executescript(
-			SELECT 
+
+	def print(self, trouble, out_path):
+		"""
+			unlike the other functions this takes for granted that
+			  that the table names are troublemakers and cleaned
+		"""
+		self._db._c.executescript("""	
+			SELECT DISTINCT
 			troublemakers.sample_id,
 			cleaned.sample_text,
 			cleaned.sample_class
@@ -128,21 +130,32 @@ class Bad_boys:
 			LEFT JOIN cleaned
 			ON troublemakers.sample_id = cleaned.sample_id
 
-			WHERE troublemakers.trouble > -1
+			WHERE troublemakers.trouble > 0
 			AND troublemakers.gang = 'hells-angels'
-		)"""
-		
+		""".format(trouble, self._gang))
+		rows = self._db._c.fetchall()
+		print(len(rows))
+		with open(out_path, 'w', encoding="utf8") as f:
+			for i, row in enumerate(rows):
+				f.write(row)
+				if i > 5:
+					break
 
 	@staticmethod
 	def _unit_test_1(sqlite_file):
-		gang = 'hells-angels'
+		""" should print the gang member count """
+		gang = 'og'
 		bb = Bad_boys(sqlite_file, gang)
 		trouble_filter = bb.find(0.0)
 		print(len(trouble_filter))
 
 	@staticmethod
 	def _unit_test_2(sqlite_file):
-		gang = 'bandidos'
+		""" 
+			Saves and updates gang activity, then saves again. Results 
+			  should be all correct except 3,4; with each having troble = 0.5
+		"""
+		gang = 'og'
 		bb = Bad_boys(sqlite_file, gang)
 		bb._db.deleteRows(bb._table_name, gang=gang)
 
@@ -155,7 +168,9 @@ class Bad_boys:
 		bb.save()
 
 		# 2
+		ids = ids
 		xs = [(0.3, 0.7), (0.3, 0.7), (0.7, 0.3), (0.3, 0.7), (0.5, 0.5)]
+		ys = ys
 		bb.load()
 		bb.update(ids, xs, ys)
 		bb.save()		
@@ -349,9 +364,10 @@ class Open_Dataset:
 
 class DB_Handler:
 
-	def __init__(self, sqlite_file):
+	def __init__(self, sqlite_file, row_factory = 'sqlite3-row'):
 		self._conn = sqlite3.connect(sqlite_file)
-		self._conn.row_factory = sqlite3.Row
+		if 'sqlite3-row' == row_factory:
+			self._conn.row_factory = sqlite3.Row
 		self._c = self._conn.cursor()
 		#atexit.register(self.c
 
