@@ -10,7 +10,7 @@ class AbstractNetwork(object):
 
     # Method for feeding data through the network
     # Chunk_size and n_chunks is only necessary for Recurrent networks
-    def feed_network(self,data,keep_prob,chunk_size=0,n_chunks=0):
+    def feed_network(self,data,keep_prob,chunk_size=0,n_chunks=0,dynaimc=True):
         raise NotImplementedError("This method is not implemented")
 
     def calc_l2_loss(self):
