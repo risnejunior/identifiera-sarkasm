@@ -271,7 +271,7 @@ class Open_Dataset:
 				with open(path, 'r', encoding="utf8") as f:
 					for line in csv.reader(f, delimiter='\t', quoting=csv.QUOTE_NONE):						
 						if not line: 
-							continue
+							line = [""]
 
 						logger.log(logname='format', maxlogs=10, text=str(file_format))
 						if file_format['sample_id'] is not None:
