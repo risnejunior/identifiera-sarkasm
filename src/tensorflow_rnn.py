@@ -116,8 +116,7 @@ stop_reason = None
 dynamic = True
 
 def _arg_callback_pt():
-	global print_test
-	print_test = True
+	cfg.print_test = True
 
 def _arg_callback_ds(ds_name):
     """
@@ -131,6 +130,8 @@ def _arg_callback_eval(model_name=None):
     #cfg.pretrained_model = True
     cfg.training_mode = "evaluate"
     cfg.pretrained_file = model_name if model_name != None else None
+    global run_id
+    run_id = model_name
     if model_name != None:
         print("<Using pretrained model " + model_name + " for results only >")
 
@@ -393,7 +394,7 @@ def run_test_print_cm(ps,network_op,perflog,log_run):
     pred2 = batchpredict(90,ps.valid.xs,network_op)
     cm.calc(ps.valid.ids , pred2, ps.valid.ys, 'validation-set')
     if cfg.print_test:
-        pred3 = sess.run(network_op, feed_dict={data_placeholder: ps.test.xs, keep_prob_placeholder: 1.0})
+        pred3 = batchpredict(90,ps.test.xs,network_op)
         cm.calc(ps.test.ids , pred3, ps.test.ys, 'test-set')
         perflog.log(
         test_acc = cm.metrics['test-set']['accuracy'],
