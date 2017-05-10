@@ -89,6 +89,95 @@ class DbAdapter {
 		return $rows;		
 	}
 
+	public function getTotalMetrics() {
+		$sql = "
+		SELECT 
+
+		     answer_count,
+		    `accuracy`,
+		    `precision`,
+		    `recall`,
+		    ((`precision` * `recall` ) / (`precision` + `recall` )) * 2 as f1
+
+		 FROM (
+
+		SELECT
+
+		   answer_count,
+		   CASE WHEN answer_count = 0 THEN 0 ELSE (tp + tn) / answer_count END accuracy,
+		   CASE WHEN answer_count = 0 THEN 0 ELSE tp / (tp + fp) END `precision`,
+		   CASE WHEN answer_count = 0 THEN 0 ELSE tp / (tp + fn) END recall
+
+		FROM (
+		    SELECT 
+
+				COUNT(*) answer_count,
+				SUM(CASE WHEN a.answer = 1 AND s.class = 1 THEN 1 ELSE 0 END) tp,
+				SUM(CASE WHEN a.answer = 0 AND s.class = 0 THEN 1 ELSE 0 END) tn,
+				SUM(CASE WHEN a.answer = 1 AND s.class = 0 THEN 1 ELSE 0 END) fp,
+				SUM(CASE WHEN a.answer = 0 AND s.class = 1 THEN 1 ELSE 0 END) fn
+
+				FROM users u
+		                
+
+				LEFT JOIN answers a
+				ON u.user_id = a.user_id
+
+				LEFT JOIN samples s
+				ON a.question_id = s.id
+		) as cm
+		) as metrics
+		ORDER BY answer_count DESC
+		";
+	}
+
+
+	public function getUsersMetrics() {
+		$sql = "
+		SELECT 
+			`user_id`,
+			`answer_count`,
+			`accuracy`,
+			`precision`,
+			`recall`,
+			((`precision` * `recall` ) / (`precision` + `recall` )) * 2 as f1
+
+		FROM (
+
+			SELECT
+			   cm.user_id,
+			   answer_count,
+			   CASE WHEN answer_count = 0 THEN 0 ELSE (tp + tn) / answer_count END accuracy,
+			   CASE WHEN answer_count = 0 THEN 0 ELSE tp / (tp + fp) END `precision`,
+			   CASE WHEN answer_count = 0 THEN 0 ELSE tp / (tp + fn) END recall
+
+			FROM (
+			    SELECT 
+					u.user_id,
+					COUNT(*) answer_count,
+					SUM(CASE WHEN a.answer = 1 AND s.class = 1 THEN 1 ELSE 0 END) tp,
+					SUM(CASE WHEN a.answer = 0 AND s.class = 0 THEN 1 ELSE 0 END) tn,
+					SUM(CASE WHEN a.answer = 1 AND s.class = 0 THEN 1 ELSE 0 END) fp,
+					SUM(CASE WHEN a.answer = 0 AND s.class = 1 THEN 1 ELSE 0 END) fn
+
+					FROM users u
+
+					LEFT JOIN answers a
+					ON u.user_id = a.user_id
+
+					LEFT JOIN samples s
+					ON a.question_id = s.id
+
+					GROUP BY u.user_id
+
+			) as cm
+		) as metrics
+		";
+
+		$rows = $this->execQuery($sql);
+		return $rows;	
+	}
+
 	public function getQuiz($size, $dataset) {
 		$sql = "
 		SELECT id, sample_text
