@@ -41,6 +41,10 @@ from common_funs import neg_label
 from config import Config
 
 #### functions ###############################################################################
+def _arg_callback_rd():
+	cfg.skip_duplictes = True
+	print("<Removing duplicate ids>")
+
 def _arg_callback_cv(dataset_name, file_name):
 	cfg_cross.dataset_name = dataset_name
 	cfg_cross.ps_file_name = file_name
@@ -299,6 +303,17 @@ def fit_embeddings(vocabulary, source_path):
 
 	return rs_embeddings
 
+def remove_duplicate_ids(samples):
+	ids = set()
+	out_rows = []
+	for sample in samples:
+		if sample['sample_id'] in ids:
+			continue
+		else:
+			ids.add(sample['sample_id'])
+			out_rows.append(sample)
+	return out_rows
+
 ###########################################################################################
 
 # affected by flags, need to be set before consume_flags()
@@ -310,7 +325,7 @@ cfg.scramble_samples = False
 cfg.reverse_samples = False
 cfg_cross = Config()
 cfg.use_cross_vocab = False
-
+cfg.skip_duplictes = False
 
 arghandler = Arg_handler()
 arghandler.register_flag('ms', _arg_callback_ms, ['mini-sample'], "Minimal run, with few samples, small vocab, seq. length and few embeddings used.")
@@ -326,6 +341,7 @@ arghandler.register_flag('sp', _arg_callback_sp, ['set-partition'], "Set the par
 arghandler.register_flag('sb', _arg_callback_sb, ['set-balance'], "Choose the set-balance. Args: <set-balance>")
 arghandler.register_flag('le', _arg_callback_le, ['limit-embeddings'], "Limits how many embeddings are fitted. Args: <embedding count>")
 arghandler.register_flag('cv', _arg_callback_cv, ['cross-vocabulary'], "Use the vocabulary from a different dataset. Args: <dataset-name> <pickle-file>")
+arghandler.register_flag('rd', _arg_callback_rd, ['remove-duplicates'], "Remove samples with duplicates ids (when using DS All). ")
 arghandler.consume_flags()
 
 logger = common_funs.Logger()
@@ -356,6 +372,14 @@ if not cfg.limit_samples is None:
 
 if not cfg.set_balance is None:
 	pos_samples_count, neg_samples_count = balance(pos_samples_count, neg_samples_count, cfg.set_balance)
+
+# remove duplicates
+if cfg.skip_duplictes:
+	print("removing duplicates..")
+	len_before = len(positive_rows) + len(negative_rows)
+	positive_rows = remove_duplicate_ids(positive_rows)
+	negative_rows = remove_duplicate_ids(negative_rows)
+	print("Duplicates removed: {}".format(len_before - (len(positive_rows) + len(negative_rows))))
 
 # limit count
 positive_rows = positive_rows[:pos_samples_count]
