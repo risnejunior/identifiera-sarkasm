@@ -70,7 +70,13 @@
             } else {
                 $errors->add("user not validated");
             }           
-		} else if ($action == 'tally_score') {
+		} else if ($action == 'leaderboard') {
+            $rows = getUsersMetrics();
+            $result_array = array(
+                'type'=>'leaderboard',
+                'leaderboard'=>$rows
+            );            
+        } else if ($action == 'tally_score') {
             $user_id = intval($_POST['user_id']);
             $dataset = $_POST['dataset'];
             $score = $db->getScore($user_id, $dataset);
