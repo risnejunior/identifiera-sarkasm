@@ -113,6 +113,8 @@ slizing = False
 monitor_f1 = False
 stop_reason = None
 
+dynamic = True
+
 def _arg_callback_pt():
 	global print_test
 	print_test = True
@@ -165,6 +167,10 @@ def _arg_callback_slicing(slicing = True):
 def _arg_callback_usef1(f1 = True):
     global monitor_f1
     monitor_f1 = f1
+
+def _arg_callback_dynseq(dyn = False):
+    global dynamic
+    dynamic = dyn
 #def _arg_callback_ss(s_step = None, s_epoch = 'False'):
 #	"""
 #	Set the snapshot step
@@ -472,6 +478,7 @@ arghandler.register_flag('trainemb', _arg_callback_trainemb, ['trainable'], "Set
 arghandler.register_flag('eshuffle', _arg_callback_eshuffle, ['truth'], "Want to shuffle per epoch?")
 arghandler.register_flag('slicing', _arg_callback_slicing, ['slicing'], "Slice out the training accuracy set from the data")
 arghandler.register_flag('usef1', _arg_callback_usef1, ['f1'], "Use F1 as validation matric instead of accuracy")
+arghandler.register_flag('dynseq', _arg_callback_dynseq, ['dyn'], "Use dynamic sequencing. If setting this to false, recommend to run without --trainemb args: <dyn>")
 arghandler.consume_flags()
 predictions_filename = 'predictions.pickle'
 
