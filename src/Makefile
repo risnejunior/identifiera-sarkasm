@@ -1,50 +1,10 @@
 #cleans all 3 datasets with the 4 different types of cleaning, balanced
 compare-strictness:
+	python3 beep.py
 
-	python3 clean_tweets.py --ds detector --strict false false
-	python3 preprocess_data.py --ds detector --out all-notags-balanced.pickle  --le 400000
-	python3 clean_tweets.py --ds detector --strict true false
-	python3 preprocess_data.py --ds detector --out strict-notags-balanced.pickle --le 400000
-	python3 clean_tweets.py --ds detector --strict false true
-	python3 preprocess_data.py --ds detector --out all-tags-balanced.pickle --le 400000
-	python3 clean_tweets.py --ds detector --strict true true
-	python3 preprocess_data.py --ds detector --out strict-tags-balanced.pickle --le 400000
-
-
-	python3 clean_tweets.py --ds poria-balanced --strict false false
-	python3 preprocess_data.py --ds poria-balanced --out all-notags-balanced.pickle --le 400000
-	python3 clean_tweets.py --ds poria-balanced --strict true false
-	python3 preprocess_data.py --ds poria-balanced --out strict-notags-balanced.pickle --le 400000
-	python3 clean_tweets.py --ds poria-balanced --strict false true
-	python3 preprocess_data.py --ds poria-balanced --out all-tags-balanced.pickle --le 400000
-	python3 clean_tweets.py --ds poria-balanced --strict true true
-	python3 preprocess_data.py --ds poria-balanced --out strict-tags-balanced.pickle --le 400000
-
-
-	python3 clean_tweets.py --ds poria-ratio --strict false false
-	python3 preprocess_data.py --ds poria-ratio --out all-notags-balanced.pickle
-	python3 clean_tweets.py --ds poria-ratio --strict true false
-	python3 preprocess_data.py --ds poria-ratio --out strict-notags-balanced.pickle
-	python3 clean_tweets.py --ds poria-ratio --strict false true
-	python3 preprocess_data.py --ds poria-ratio --out all-tags-balanced.pickle
-	python3 clean_tweets.py --ds poria-ratio --strict true true
-	python3 preprocess_data.py --ds poria-ratio --out strict-tags-balanced.pickle
-
-
-	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds detector --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds detector --train 20 1 1200
-	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds detector --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds detector --train 20 1 1200
-
-	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds poria-balanced --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds poria-balanced --train 20 1 1200
-	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds poria-balanced --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds poria-balanced --train 20 1 1200
-
-	python3 tflearn_rnn.py --in all-notags-balanced.pickle --ds poria-ratio --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-tags-balanced.pickle --ds poria-ratio --train 20 1 1200
-	python3 tflearn_rnn.py --in all-tags-balanced.pickle --ds poria-ratio --train 20 1 1200
-	python3 tflearn_rnn.py --in strict-notags-balanced.pickle --ds poria-ratio --train 20 1 1200
+# example of using the beep script to signal when a batch is done. Quit with ctrl + c
+beep:
+	python3 beep.py
 
 # processes cleans
 clean-process-all:
@@ -74,7 +34,16 @@ clean-process-all:
 	python3 preprocess_data.py --ds poria-ratio --out tags-scrambled.pickle --scramble --sb 0.25 --cv all tags.pickle
 	python3 preprocess_data.py --ds poria-ratio --out tags.pickle --sb 0.25 --cv all tags.pickle
 
+	python3 preprocess_data.py --ds poria-balanced --out tags-scrambled-special.pickle --sb 0.5 --cv all tags.pickle --scramble-special
+
 	python3 beep.py
+
+troublemakers:
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --st hells-angels
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --tt hells-angels 0.0
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --boost hells-angels
+	python3 beep.py
+
 
 basename = notags
 network = little_pony
@@ -84,7 +53,7 @@ results:
 
 	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle 			--net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 	python3 tflearn_rnn.py --ds poria-ratio    --in notags.pickle 		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds detector    --in notags.pickle 		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 tflearn_rnn.py --ds detector       --in notags.pickle 		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle             --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 	python3 tflearn_rnn.py --ds poria-ratio    --in tags.pickle             --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 	python3 tflearn_rnn.py --ds detector       --in tags.pickle   		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
@@ -94,18 +63,19 @@ results:
 	python3 tflearn_rnn.py --ds poria-balanced --in notags-scrambled.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 	python3 tflearn_rnn.py --ds poria-ratio    --in notags-scrambled.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 	python3 tflearn_rnn.py --ds detector 	   --in notags-scrambled.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled-special.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 
-	python3 beep.py
+special:
+	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled-special.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 
-troublemakers:
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 10 1200  --st hells-angels
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --tt hells-angels 0.0
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --boost hells-angels
-	python3 beep.py
-
-# example of using the beep script to signal when a batch is done. Quit with ctrl + c
-beep:
-	python3 beep.py
+janus:
+	make special network=little_pony dataset=poria-balanced basename=notags
+	make special network=little_pony dataset=poria-ratio basename=notags
+	make special network=little_pony dataset=detector basename=notags
+	make special network=little_pony dataset=poria-balanced basename=tags
+	make special network=little_pony dataset=poria-ratio basename=tags
+	make special network=little_pony dataset=detector basename=tags
+	make special network=little_pony dataset=poria-balanced basename=tags-scrambled
 
 jan:
 	make results network=little_pony dataset=poria-balanced basename=notags
@@ -114,7 +84,7 @@ jan:
 	make results network=little_pony dataset=poria-balanced basename=tags
 	make results network=little_pony dataset=poria-ratio basename=tags
 	make results network=little_pony dataset=detector basename=tags
-	python3 beep.py
+	make results network=little_pony dataset=poria-balanced basename=tags-scrambled
 
 risne:
 	make results network=little_gru dataset=poria-balanced basename=notags
@@ -123,6 +93,7 @@ risne:
 	make results network=little_gru dataset=poria-balanced basename=tags
 	make results network=little_gru dataset=poria-ratio basename=tags
 	make results network=little_gru dataset=detector basename=tags
+	make results network=little_gru dataset=poria-balanced basename=tags-scrambled
 	say 'i love bark'
 
 adele:
@@ -132,4 +103,5 @@ adele:
 	make results network=convolve_me dataset=poria-balanced basename=tags
 	make results network=convolve_me dataset=poria-ratio basename=tags
 	make results network=convolve_me dataset=detector basename=tags
+	make results network=convolve_me dataset=poria-balanced basename=tags-scrambled
 	say 'i love bark'

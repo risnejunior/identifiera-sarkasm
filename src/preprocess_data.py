@@ -201,7 +201,7 @@ def make_index_vectors( samples, vocabulary ):
 
 			i = len(int_vector) - 1
 			tag_cache = []
-			while hashtag_index == int_vector[i]:
+			while i >= 0 and hashtag_index == int_vector[i]:
 				tag_cache.append(int_vector.pop(i))
 				i -= 1
 			random.shuffle(int_vector)
