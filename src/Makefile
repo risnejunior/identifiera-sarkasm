@@ -48,34 +48,46 @@ troublemakers:
 basename = notags
 network = little_pony
 dataset = detector
+classifier = tflearn_rnn.py
 results:
-	python3 tflearn_rnn.py --ds $(dataset) 	   --in $(basename).pickle 		--net $(network)  --train 50 1 1200 --sm $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds $(dataset) 	   --in $(basename).pickle 		--net $(network)  --train 50 1 1200 --sm $(network)_$(dataset)_$(basename) --pt
 
-	python3 tflearn_rnn.py --ds poria-balanced --in notags.pickle 			--net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds poria-ratio    --in notags.pickle 		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds detector       --in notags.pickle 		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle             --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds poria-ratio    --in tags.pickle             --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds detector       --in tags.pickle   		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled.pickle   --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds poria-ratio    --in tags-scrambled.pickle	--net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds detector 	   --in tags-scrambled.pickle   --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in notags-scrambled.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds poria-ratio    --in notags-scrambled.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds detector 	   --in notags-scrambled.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled-special.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds poria-balanced --in notags.pickle 			--net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds poria-ratio    --in notags.pickle 		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds detector       --in notags.pickle 		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds poria-balanced --in tags.pickle             --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds poria-ratio    --in tags.pickle             --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds detector       --in tags.pickle   		    --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds poria-balanced --in tags-scrambled.pickle   --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds poria-ratio    --in tags-scrambled.pickle	--net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds detector 	   --in tags-scrambled.pickle   --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds poria-balanced --in notags-scrambled.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds poria-ratio    --in notags-scrambled.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds detector 	   --in notags-scrambled.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
+	python3 $(classifier) --ds poria-balanced --in tags-scrambled-special.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 
-special:
+
+special_only:
 	python3 tflearn_rnn.py --ds poria-balanced --in tags-scrambled-special.pickle --net $(network) --eval $(network)_$(dataset)_$(basename) --pt
 
 janus:
-	make special network=little_pony dataset=poria-balanced basename=notags
-	make special network=little_pony dataset=poria-ratio basename=notags
-	make special network=little_pony dataset=detector basename=notags
-	make special network=little_pony dataset=poria-balanced basename=tags
-	make special network=little_pony dataset=poria-ratio basename=tags
-	make special network=little_pony dataset=detector basename=tags
-	make special network=little_pony dataset=poria-balanced basename=tags-scrambled
+	make special_only network=little_pony dataset=poria-balanced basename=notags
+	make special_only network=little_pony dataset=poria-ratio basename=notags
+	make special_only network=little_pony dataset=detector basename=notags
+	make special_only network=little_pony dataset=poria-balanced basename=tags
+	make special_only network=little_pony dataset=poria-ratio basename=tags
+	make special_only network=little_pony dataset=detector basename=tags
+	make special_only network=little_pony dataset=poria-balanced basename=tags-scrambled
+
+jas:
+	make results classifier=relative_frequency.py network=RF dataset=poria-balanced basename=notags
+	make results classifier=relative_frequency.py network=RF dataset=poria-ratio basename=notags
+	make results classifier=relative_frequency.py network=RF dataset=detector basename=notags
+	make results classifier=relative_frequency.py network=RF dataset=poria-balanced basename=tags
+	make results classifier=relative_frequency.py network=RF dataset=poria-ratio basename=tags
+	make results classifier=relative_frequency.py network=RF dataset=detector basename=tags
+	make results classifier=relative_frequency.py network=RF dataset=poria-balanced basename=tags-scrambled
+	python3 beep.py
 
 jan:
 	make results network=little_pony dataset=poria-balanced basename=notags
@@ -105,3 +117,5 @@ adele:
 	make results network=convolve_me dataset=detector basename=tags
 	make results network=convolve_me dataset=poria-balanced basename=tags-scrambled
 	say 'i love bark'
+
+
