@@ -41,6 +41,10 @@ from common_funs import neg_label
 from config import Config
 
 #### functions ###############################################################################
+def _arg_callback_scramble_special():
+	cfg.scramble_special = True
+	print("<Using special scramble>")
+
 def _arg_callback_rd():
 	cfg.skip_duplictes = True
 	print("<Removing duplicate ids>")
@@ -191,7 +195,19 @@ def make_index_vectors( samples, vocabulary ):
 		if cfg.reverse_samples:
 			int_vector.reverse()
 
-		if cfg.scramble_samples:
+		if cfg.scramble_special:
+			# scramble tweets excluding hashtags at the end
+			hashtag_index = vocabulary['<hashtag>']
+
+			i = len(int_vector) - 1
+			tag_cache = []
+			while hashtag_index == int_vector[i]:
+				tag_cache.append(int_vector.pop(i))
+				i -= 1
+			random.shuffle(int_vector)
+			int_vector = int_vector + tag_cache
+
+		elif cfg.scramble_samples:
 			random.shuffle(int_vector)
 
 		sample['int_vector'] = int_vector
@@ -322,6 +338,7 @@ cfg.embeddings_maxloop = None
 cfg.nltk_dowload = False
 cfg.save_debug = False
 cfg.scramble_samples = False
+cfg.scramble_special = False
 cfg.reverse_samples = False
 cfg_cross = Config()
 cfg.use_cross_vocab = False
@@ -342,6 +359,7 @@ arghandler.register_flag('sb', _arg_callback_sb, ['set-balance'], "Choose the se
 arghandler.register_flag('le', _arg_callback_le, ['limit-embeddings'], "Limits how many embeddings are fitted. Args: <embedding count>")
 arghandler.register_flag('cv', _arg_callback_cv, ['cross-vocabulary'], "Use the vocabulary from a different dataset. Args: <dataset-name> <pickle-file>")
 arghandler.register_flag('rd', _arg_callback_rd, ['remove-duplicates'], "Remove samples with duplicates ids (when using DS All). ")
+arghandler.register_flag('scramble-special', _arg_callback_scramble_special, [], "Scramble preserving hashtags at the end of samples")
 arghandler.consume_flags()
 
 logger = common_funs.Logger()
