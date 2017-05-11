@@ -9,13 +9,12 @@ class LittleGruNetwork(net.AbstractNetwork):
         self._layer_biases = tf.Variable(tf.random_uniform([n_classes]), name="biases")
         self._gru_cell = rnn.GRUCell(rnn_size)
 
-    def feed_network(self,data,keep_prob,chunk_size,n_chunks,dynamic = True):
+    def feed_network(self,data,keep_prob,chunk_size,n_chunks,dynamic):
         # This code is copied from tflearn
         sequence_lengths = None
         if dynamic:
             sequence_lengths = net.calc_seqlenth(data if isinstance(data, tf.Tensor) else tf.stack(data))
-        dimensions = data.get_shape().as_list()
-        batch_size = dimensions[0]
+        batch_size = tf.shape(data)[0]
         weight_dropout = tf.nn.dropout(self._layer_weights, keep_prob)
         rnn_dropout = rnn.core_rnn_cell.DropoutWrapper(self._gru_cell,output_keep_prob=keep_prob)
 
@@ -26,8 +25,11 @@ class LittleGruNetwork(net.AbstractNetwork):
         data = tf.transpose(data,(axis))
         sequence = tf.unstack(data)
         outputs, states = rnn.static_rnn(rnn_dropout, sequence, dtype=tf.float32, sequence_length = sequence_lengths)
-        outputs = tf.transpose(tf.stack(outputs), [1, 0, 2])
-        output = net.advanced_indexing_op(outputs, sequence_lengths)
+        if dynamic:
+            outputs = tf.transpose(tf.stack(outputs), [1, 0, 2])
+            output = net.advanced_indexing_op(outputs, sequence_lengths)
+        else:
+            output = outputs[-1]
         output = tf.add(tf.matmul(output,weight_dropout), self._layer_biases)
         return output
 

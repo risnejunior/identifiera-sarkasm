@@ -104,11 +104,7 @@ f1_score_placeholder = tf.placeholder('float')
 trainable_embeddings = False
 logs_path = os.path.join(tempfile.gettempdir() ,"tfnetwork")
 shuffle_training = False
-batch_size = cfg.batch_size
-
-network_name = cfg.network_name
 date_stamp = time.strftime("%d%b-%H%M")
-run_id = date_stamp + "-" + network_name
 slizing = False
 monitor_f1 = False
 stop_reason = None
@@ -143,8 +139,8 @@ def _arg_callback_train(nr_epochs=1, count=1, batchsize=30):
     print("<Training for, epochs: {}, runs:{}, batchsize: {}>".format(nr_epochs, count, batchsize))
 
 def _arg_callback_net(name):
-	cfg.network_name = name
-	print("<Using network: {}>".format(name))
+    cfg.network_name = name
+    print("<Using network: {}>".format(name))
 
 def _arg_callback_in(file_name):
     """
@@ -155,22 +151,32 @@ def _arg_callback_in(file_name):
 
 def _arg_callback_trainemb(trainable = True):
     global trainable_embeddings
+    if type(trainable) is str:
+        trainable = trainable == "True"
     trainable_embeddings = trainable
 
 def _arg_callback_eshuffle(truth = True):
 	global shuffle_training
+	if type(truth) is str:
+		truth = truth == "True"
 	shuffle_training = truth
 
 def _arg_callback_slicing(slicing = True):
     global slizing
+    if type(slicing) is str:
+        slicing = slicing == "True"
     slizing = slicing
 
 def _arg_callback_usef1(f1 = True):
     global monitor_f1
+    if type(f1) is str:
+        f1 = f1 == "True"
     monitor_f1 = f1
 
 def _arg_callback_dynseq(dyn = False):
     global dynamic
+    if type(dyn) is str:
+        dyn = dyn == "True"
     dynamic = dyn
 #def _arg_callback_ss(s_step = None, s_epoch = 'False'):
 #	"""
@@ -182,7 +188,6 @@ def _arg_callback_dynseq(dyn = False):
 #	snapshot_step = int(s_step) if s_step is not None else None
 #	snapshot_epoch = True if s_epoch.lower() == 'true' else False
 #	print("<Snapshot step: {}, Snaphot epoch end: {}>".format(s_step, s_epoch))
-
 ## Create the embedding variable
 def init_embedding(vocabulary_size,embedding_size,trainable = False):
     with tf.device("/cpu:0"):
@@ -212,10 +217,12 @@ def word_embedding_layer(word,embedding_tensor):
 
 def train_neural_network(ps,emb_init,W,emb_placeholder,network_name,log_run,perflog):
 	# Defining all the operations
+	params = {'n_chunks': n_chunks}
 	es_handler = EarlyStoppingHelper(epoch_threshold = 3, avg_limit_percent = 1.05)
 	embeddings = word_embedding_layer(data_placeholder,W)
-	network = tfnetworks.fetch_network(network_name,n_classes)
-	prediction = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
+	network = tfnetworks.fetch_network(network_name,n_classes,params)
+	print(network.get_name())
+	prediction = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks,dynamic)
 	accuracy = test_accuracy(tf.nn.softmax(prediction),labels_placeholder)
 	val_accuracy_op = test_accuracy(predict_placeholder,labels_placeholder)
 	cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = prediction, labels = labels_placeholder))
@@ -346,11 +353,12 @@ def test_network(ps,W,network_name,perflog,model=None):
         run_test(ps,W,path,perflog,network_name)
 
 def run_test(ps,W,model,perflog,network_name):
-    network = tfnetworks.fetch_network(network_name,n_classes)
+    params = {'n_chunks': n_chunks}
+    network = tfnetworks.fetch_network(network_name,n_classes,params)
     test_data = ps.test.xs
     test_labels = np.array(ps.test.ys)
     embeddings = word_embedding_layer(data_placeholder,W)
-    output = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks)
+    output = network.feed_network(embeddings,keep_prob_placeholder,chunk_size,n_chunks,dynamic)
     path = determine_model(model)
     with tf.Session().as_default() as sess:
         saver = tf.train.Saver()
@@ -483,6 +491,11 @@ arghandler.register_flag('dynseq', _arg_callback_dynseq, ['dyn'], "Use dynamic s
 arghandler.consume_flags()
 predictions_filename = 'predictions.pickle'
 
+batch_size = cfg.batch_size
+
+network_name = cfg.network_name
+
+run_id = date_stamp + "-" + network_name
 perflog = DB_backed_log(cfg.sqlite_file, 'training_performance')
 
 with open(cfg.samples_path, 'rb') as handle:
