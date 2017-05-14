@@ -123,3 +123,9 @@ adele:
 	make results network=convolve_me dataset=poria-balanced basename=tags-scrambled
 	say 'i love bark'
 
+
+genuine_risk:
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net man_o_war --train 50 1 32 --sm --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net spectacular_bid --train 50 1 32 --sm --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net thunder_horse --train 50 1 1200 --sm --pt
+	python3 beep.py

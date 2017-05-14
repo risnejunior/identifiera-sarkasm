@@ -655,7 +655,7 @@ class Arg_handler():
 				params.insert(0, arg)
 
 		if len(params) > 0:
-			print("Arguments passed but not consumed: {}".foramt(params))
+			print("Arguments passed but not consumed: {}".format(params))
 			print("Make sure you use '--' instead of '-' to denote flags")
 			quit()
 

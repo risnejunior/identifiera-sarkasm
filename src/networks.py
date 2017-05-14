@@ -108,29 +108,191 @@ class Networks:
 		                         loss='categorical_crossentropy')
 		return net
 
-	def pony_express(self, hyp, pd):
-		"like little pony + dropout + more lstm nodes + restore on all layers"
+	def spectacular_bid(self, hyp, pd):
+		net = tflearn.input_data(
+			[None, pd.max_sequence]
+			,dtype=tf.float32
+		)
+		net = tflearn.embedding(
+			net, 
+			input_dim=pd.vocab_size,
+			output_dim=pd.emb_size,
+			name="embedding"
+		)
+		net = tflearn.lstm(
+			net,
+			750,
+			dynamic=True,
+			name="lstm_1",				   
+			return_seq=True,
+			dropout=hyp.lstm.dropout
+		)
+		net = tflearn.dropout(net, hyp.dropout.dropout, name="dropout")
+		net = tflearn.lstm(
+			net,
+			750,
+			name="lstm_2",
+			return_seq=False
+		)	
+		net = tflearn.fully_connected(
+			net,
+			2,
+			activation='softmax',
+			name="output",
+			regularizer='L2',
+			weight_decay=hyp.output.weight_decay
+		)
+		net = tflearn.regression(
+			net,
+			optimizer='adam',
+			learning_rate=hyp.regression.learning_rate,
+		    loss='categorical_crossentropy'
+		)
 
-		net = tflearn.input_data([None, pd.max_sequence], dtype=tf.float32)
-		net = tflearn.embedding(net, input_dim=pd.vocab_size,
-								     output_dim=pd.emb_size,
-								     name="embedding",
-								     restore=True)
-		net = tflearn.lstm(net,
-						   512,
-						   dynamic=True,
-						   name="lstm",				   
-						   dropout=hyp.lstm.dropout,
-						   restore=True)
-		net = tflearn.fully_connected(net,
-									  2,
-									  activation='softmax',
-									  name="output",
-									  restore=True)
-		net = tflearn.regression(net,
-			                     optimizer='adam',
-			                     learning_rate=hyp.regression.learning_rate,
-		                         loss='categorical_crossentropy')
+		return net
+		
+	def man_o_war(self, hyp, pd):
+		net = tflearn.input_data(
+			[None, pd.max_sequence]
+			,dtype=tf.float32
+		)
+		net = tflearn.embedding(
+			net, 
+			input_dim=pd.vocab_size,
+			output_dim=pd.emb_size,
+			name="embedding"
+		)
+		net = tflearn.lstm(
+			net,
+			512,
+			dynamic=True,
+			name="lstm_1",				   
+			return_seq=True,
+			dropout=hyp.lstm.dropout
+		)
+		net = tflearn.lstm(
+			net,
+			512,
+			name="lstm_2",
+			return_seq=True,
+			dropout=hyp.lstm.dropout
+		)	
+		net = tflearn.lstm(
+			net,
+			512,
+			name="lstm_3",
+			return_seq=True,
+			dropout=hyp.lstm.dropout
+		)		
+		net = tflearn.lstm(
+			net,
+			512,
+			dynamic=True,
+			name="lstm_4",				   
+			return_seq=True,
+			dropout=hyp.lstm.dropout
+		)
+		net = tflearn.lstm(
+			net,
+			512,
+			name="lstm_5",
+			return_seq=False,
+			dropout=hyp.lstm.dropout
+		)	
+		net = tflearn.fully_connected(
+			net,
+			2,
+			activation='softmax',
+			name="output",
+			regularizer='L2',
+			weight_decay=hyp.output.weight_decay
+		)
+		net = tflearn.regression(
+			net,
+			optimizer='adam',
+			learning_rate=hyp.regression.learning_rate,
+		    loss='categorical_crossentropy'
+		)
+		
+		return net
+
+	def thunder_horse(self, hyp, pd):
+		net = tflearn.input_data(
+			[None, pd.max_sequence]
+			,dtype=tf.float32
+		)
+		net = tflearn.embedding(
+			net, 
+			input_dim=pd.vocab_size,
+			output_dim=pd.emb_size,
+			name="embedding"
+		)
+		net = tflearn.lstm(
+			net,
+			32,
+			dynamic=True,
+			name="lstm_1",				   
+			return_seq=True,
+			dropout=hyp.lstm.dropout,
+		)
+		net = tflearn.lstm(
+			net,
+			32,
+			name="lstm_2",
+			return_seq=True,
+			dropout=hyp.lstm.dropout,
+		)	
+		net = tflearn.lstm(
+			net,
+			32,
+			name="lstm_3",
+			return_seq=True,
+			dropout=hyp.lstm.dropout,
+		)		
+		net = tflearn.lstm(
+			net,
+			32,
+			dynamic=True,
+			name="lstm_4",				   
+			return_seq=True,
+			dropout=hyp.lstm.dropout,
+		)
+		net = tflearn.lstm(
+			net,
+			32,
+			name="lstm_5",
+			return_seq=True,
+			dropout=hyp.lstm.dropout,
+		)	
+		net = tflearn.lstm(
+			net,
+			32,
+			name="lstm_6",
+			return_seq=True,
+			dropout=hyp.lstm.dropout,
+		)
+		net = tflearn.lstm(
+			net,
+			32,
+			name="lstm_7",
+			return_seq=False,
+			dropout=hyp.lstm.dropout,
+		)
+		net = tflearn.fully_connected(
+			net,
+			2,
+			activation='softmax',
+			name="output",
+			regularizer='L2',
+			weight_decay=hyp.output.weight_decay
+		)
+		net = tflearn.regression(
+			net,
+			optimizer='adam',
+			learning_rate=hyp.regression.learning_rate,
+		    loss='categorical_crossentropy'
+		)
+		
 		return net
 
 	def little_gru(self, hyp, pd):
