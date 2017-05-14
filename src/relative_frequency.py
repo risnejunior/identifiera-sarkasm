@@ -116,6 +116,7 @@ with open(cfg.samples_path, 'rb') as handle:
     ps = pd.dataset
 
 
+# if training build frequency dict from samples
 if 'train' == cfg.training_mode:
 
 	# build list of words contained in samples from each class 
@@ -145,6 +146,7 @@ if 'train' == cfg.training_mode:
 	for i, word in enumerate(all_words):
 		frequencies[word] = relative_frequency(pos_counts[word], neg_counts[word], ratio)
 
+# if evalutaing use frequency dict from model to be evaluated 
 elif 'evaluate' == cfg.training_mode:
 	this_run_id = cfg.pretrained_id
 	frequencies_path = os.path.join(cfg.models_path, cfg.pretrained_id, 'frequencies.json')

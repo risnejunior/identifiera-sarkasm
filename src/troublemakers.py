@@ -7,6 +7,33 @@ import matplotlib.pyplot as plt
 Requires matplot lib
 """
 
+def test():
+	print('test')
+
+options = {
+	1: ("Show histogram", test),
+	2: ("show similarity", test)
+	
+}
+
+for k, (text, fun) in options.items():
+	print("{}: {}".format(k, text))
+
+while True:
+	sel = input("Select sctipt to run:")
+	try:
+		sel = int(sel)
+		if sel > len(options) or sel < 1:
+			raise Exception()
+	except:
+		pass
+	else:
+		break 
+
+# run method selected
+options[sel][1]()
+quit()
+
 
 filename = 'predictions.pickle'
 directory = 'logs'

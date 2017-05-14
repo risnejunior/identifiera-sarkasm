@@ -121,6 +121,13 @@ adele:
 
 genuine_risk:
 	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net man_o_war --train 50 1 32 --sm --pt
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net spectacular_bid --train 50 1 32 --sm --pt
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net spectacular_bid --train 50 1 300 --sm --pt
 	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net thunder_horse --train 50 1 1200 --sm --pt
 	python3 beep.py
+
+embeddings:
+	python preprocess_data.py --ds poria-balanced --out noembeddings.pickle --sb 0.5 --re
+	python preprocess_data.py --ds poria-balanced --out embeddings.pickle --sb 0.5
+	python tflearn_rnn.py --ds poria-balanced --net little_pony --in noembeddings.pickle --sm NO_EMB --train 20 1 1200
+	python tflearn_rnn.py --ds poria-balanced --net little_pony --in embeddings.pickle --sm EMB --train 20 1 1200
+	python beep.py
