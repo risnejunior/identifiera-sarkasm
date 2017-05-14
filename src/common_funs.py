@@ -18,6 +18,10 @@ import numpy as np
 
 from config import Config
 
+class Save_results:
+	def __init__(self):
+		pass
+	
 class Bad_boys:
 	def __init__(self, sqlite_file, gang):
 		self._table_name = "troublemakers"
@@ -485,7 +489,6 @@ class TroubleMakers:
 				self.datapoints[key] = val
 
 	def tallyPredictions(self):
-		Group = namedtuple("group", ['correct','total','length', 'ids']) #!not used
 		tally = {}
 		correct = 0
 		total = 0
@@ -652,7 +655,7 @@ class Arg_handler():
 				params.insert(0, arg)
 
 		if len(params) > 0:
-			print("Arguments passed but not consumed: {}".foramt(params))
+			print("Arguments passed but not consumed: {}".format(params))
 			print("Make sure you use '--' instead of '-' to denote flags")
 			quit()
 
@@ -927,26 +930,21 @@ class Binary_confusion_matrix:
 	fn: false negative, fp: false positive,tp: true positive,tn: true negative	
 	"""
 
-	def __init__(self, save_predictions = True):
+	def __init__(self, save_predictions = False):
 		
 		self.metrics = {}
 		self.rows = []
 		self._datapoints = {}
 
-	def calc(self, ids, predictions, Ys, name = None):		
-		
-		tm = TroubleMakers(ids, Ys)
-
+	def calc(self, ids, predictions, Ys, name = None):			
 		fn = fp = tp = tn = 0
 		facit = list( zip( ids, predictions, Ys ) )
 		for sample in facit:
-			predicted_true = False
 			sample_id, predicted, actual = sample
 			if predicted[0] < predicted[1]: # e.g (0.33, 0.77) 
 				#predicted positive
 				if actual[0] < actual[1]: #actual positive
 					tp += 1
-					predicted_true = True					
 				else:
 					fp += 1
 			else: 
@@ -955,9 +953,7 @@ class Binary_confusion_matrix:
 					fn += 1
 				else:
 					tn += 1
-					predicted_true = True
 
-			tm.increment(sample_id, isTrue = predicted_true)
 
 		#avoid division by zero
 		count = len(predictions)
@@ -982,11 +978,6 @@ class Binary_confusion_matrix:
 
 		self.metrics[name] = metrics
 		self._compile_table(name)
-		
-		if name in self._datapoints:
-			self._datapoints[name].merge(tm)
-		else:
-			self._datapoints[name] = tm
 
 	def _compile_table(self, name):
 		# for readability

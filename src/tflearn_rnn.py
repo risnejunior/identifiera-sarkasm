@@ -13,6 +13,8 @@ import tempfile
 from os import listdir
 from operator import itemgetter
 
+from nltk.tokenize import TweetTokenizer
+
 import common_funs
 from common_funs import Binary_confusion_matrix
 from common_funs import Logger
@@ -24,6 +26,8 @@ from common_funs import boxString
 from common_funs import DB_backed_log
 from common_funs import file_selector
 from common_funs import Bad_boys
+from common_funs import clear_console
+from common_funs import pad_sequences
 
 from networks import Networks
 from networks import NetworkNotFoundError
@@ -124,6 +128,12 @@ class EarlyStoppingMonitor():
 
 		self._buff.flush()
 
+def _arg_callback_online(pretrained_id = None):
+	cfg.training_mode = 'online'
+	if pretrained_id is None:
+		pretrained_id = file_selector(cfg.models_path, "Select model for boosting")
+
+	cfg.pretrained_id = pretrained_id
 def _arg_callback_device(device_name):
 	if device_name == 'cpu':
 		cfg.device = '/cpu:0'
@@ -366,6 +376,7 @@ arghandler.register_flag('tt', _arg_callback_tt, ['train-trouble'], "Filter trai
 arghandler.register_flag('sm', _arg_callback_sm, ['save-model'], "Save the trained model. Will be saved in dir with it's run id")
 arghandler.register_flag('boost', _arg_callback_boost, [], "Load a saved model and continue training. Args <model id>")
 arghandler.register_flag('device', _arg_callback_device, [], "Train on gpu or cpu. Args: <'gpu'/'cpu'>")
+arghandler.register_flag('online', _arg_callback_online, [], "online predictor")
 arghandler.consume_flags()
 
 debug_log = Logger()
@@ -415,7 +426,6 @@ if cfg.print_debug:
 
 # 'sönderhaxad' class that generates random hyperparamters in the range provided
 
-
 hypers = Hyper(cfg.run_count,
 	lstm = {'dropout': (0.4, 0.8)},
 	middle= {'weight_decay': (0.01, 0.06)},
@@ -423,6 +433,13 @@ hypers = Hyper(cfg.run_count,
 	regression = {'learning_rate': (0.0005, 0.0015)},
 	output = {'weight_decay': (0.01, 0.06)}
 )
+# hypers = Hyper(cfg.run_count,
+# 	lstm = {'dropout': (0.51, 0.51)},
+# 	middle= {'weight_decay': (0.038, 0.038)},
+# 	dropout = {'dropout': (0.63, 0.63)},
+# 	regression = {'learning_rate': (0.001, 0.001)},
+# 	output = {'weight_decay': (0.038, 0.038)}
+# )
 
 # hypers = Hyper(cfg.run_count,
 # 	lstm = {'dropout': (0.51, 0.51)},
@@ -479,6 +496,33 @@ for hyp in hypers:
 
 			elif cfg.training_mode == 'init_only':
 				pass
+
+			elif "online" == cfg.training_mode:
+				model = tflearn.DNN(net)
+				this_run_id = cfg.pretrained_id
+				path = os.path.join(cfg.models_path, cfg.pretrained_id)
+				magic_path = get_model_magic_path(path)
+				model.load(magic_path)
+
+				trash = tempfile.TemporaryFile(mode='w')
+				mask = lambda w, v: 1 if w not in v else v[w] 
+				tknzr = TweetTokenizer(reduce_len=True, preserve_case=False)
+
+				while(True):
+					clear_console()
+					s = input("type!")
+
+					words = tknzr.tokenize(s)
+					vec = [[mask(w, pd.vocab) for w in words]]
+					vec = np.array( vec, dtype="int32")
+					vec = pad_sequences(vec, maxlen=pd.max_sequence)
+					predictions = model.predict(vec)
+					sarcasm = predictions[0][1]
+					print("Probaility sarcastic: {:.2%}".format(sarcasm))
+					print("\nPress enter to continue..")
+					sys.stdout = trash
+					input("")
+					sys.stdout = sys.__stdout__
 
 			else:
 				raise Exception("training mode not recognized")
