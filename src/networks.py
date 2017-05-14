@@ -104,7 +104,7 @@ class Networks:
 									  restore=True)
 		net = tflearn.regression(net,
 			                     optimizer='adam',
-			                     learning_rate=hyp.regression.learning_rate,
+			                     learning_rate=0.01,
 		                         loss='categorical_crossentropy')
 		return net
 
