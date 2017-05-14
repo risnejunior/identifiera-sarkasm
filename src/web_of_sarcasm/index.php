@@ -124,7 +124,7 @@
         <link rel="shortcut icon" href="/favicon_s.png" type="image/x-icon">
         
         <link rel="stylesheet" href="css/normalize.min.css">
-        <link rel="stylesheet" href="css/main-1.0.css">
+        <link rel="stylesheet" href="css/main-1.1.css">
 
         <script src="js/vendor/modernizr-2.8.3-respond-1.4.2.min.js"></script>
     </head>
@@ -135,11 +135,12 @@
 
         <div class="header-container">
             <header class="wrapper clearfix">
-                <h1 class="title">Sarcasm quiz!</h1>
+                <h1 class="title">Web of Sarcasm</h1>
                 <nav id='navbar' hidden=true>
                     <ul>
                         <li id='leaderboard-link' hidden=true><a href="#">Leaderboard</a></li>
                         <li id='easy-link' class='selected'><a href="#">Quiz</a></li>
+                        <li id='classifier-link' class=''><a href="#">Predictor</a></li>
                     </ul>
                 </nav>
             </header>
@@ -166,6 +167,25 @@
             	</article>
 
                 <article id='quiz' class='quiz-container' type=''> <!-- style="opacity: 0;">   -->
+                </article>  
+
+                <article id='classifier' class='classifier-container' hidden=true type=''>
+                    <header>
+                        <h2>The predictor uses a neural network trained on english tweets to classify them as sarcastic or neutral</h2>
+                    </header>
+                    <section id='classifier-form'>
+                        <h3>Submit text to be classified</h3>
+                        <div>
+                            <textarea name='question'></textarea>
+                            <button name='classifier-submit'>Submit text</button>
+                        </div>
+                        <div class="worker"></div>
+                    </section>
+                    <section id='classifier-answer' hidden=true>
+                        <h3>Click to return</h3>
+                        <div name='classifier-tokens'>Text tokenized as follows:<p class='answer'></p></div>
+                        <div name='classifier-score'>Sarcasm score<p class='answer'></p></div>
+                    </section>
                 </article>        
 
                 <aside id='aside' hidden='true'>
@@ -198,7 +218,7 @@
         </div>
 
         <script src="js/vendor/jquery-1.11.2.js"></script>
-        <script src="js/main-1.1.js"></script>
+        <script src="js/main-1.2.js"></script>
 
         <!--
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.js"></script>
