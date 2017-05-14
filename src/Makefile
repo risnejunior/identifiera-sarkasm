@@ -39,10 +39,15 @@ clean-process-all:
 	python3 beep.py
 
 troublemakers:
-	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --st hells-angels
+	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 3 1200  --st hells-angels
 	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --tt hells-angels 0.0
 	python3 tflearn_rnn.py --ds poria-balanced --in tags.pickle --net little_pony --train 20 1 1200  --boost hells-angels
+
+	python3 relative_frequency.py --ds poria-balanced --in tags.pickle --sm --st bandidos
+	python3 relative_frequency.py --ds poria-balanced --in tags.pickle --sm --st bandidos
+	python3 relative_frequency.py --ds poria-balanced --in tags.pickle --sm --st bandidos
 	python3 beep.py
+
 
 
 basename = notags
@@ -117,5 +122,4 @@ adele:
 	make results network=convolve_me dataset=detector basename=tags
 	make results network=convolve_me dataset=poria-balanced basename=tags-scrambled
 	say 'i love bark'
-
 
