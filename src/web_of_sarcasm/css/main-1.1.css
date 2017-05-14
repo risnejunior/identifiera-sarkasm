@@ -102,11 +102,9 @@ nav a {
     display: block;
     margin-bottom: 10px;
     padding: 15px 0;
-
     text-align: center;
     text-decoration: none;
     font-weight: bold;
-
     color: white;
     background: #e44d26;
 }
@@ -229,6 +227,20 @@ ul#score {
     text-shadow: 2px 2px #558ABB;
 }
 
+.worker {
+    position: absolute;
+}
+
+.worker.working-animation {
+    background:#FFFFFF url(../img/working_animation.gif) 50% 50% no-repeat;
+    opacity: 0.6;
+    filter:alpha(opacity=60);
+    width: 100%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+}
+
 section.working-animation.question {
     /*position:absolute; */
     /* width:100%; */
@@ -236,11 +248,12 @@ section.working-animation.question {
     background:#FFFFFF url(../img/working_animation.gif) 50% 50% no-repeat;
     /* left:0px; */
     /* top:0px; */
-    opacity:0.8;
+    opacity: 0.6;
     filter:alpha(opacity=60);
 }
 
-section.question {
+
+section {
     background: rgb(248, 237, 232);
     margin: 5px;
     padding: 5px;
@@ -300,6 +313,39 @@ div#error {
 #intro ul li {
     margin-bottom: 10px;
 }
+
+#classifier-answer {
+    /* background: rgba(252, 208, 179, 0.42); */
+    /* border-radius: 5px; */
+    /* padding: 5px; */
+    cursor: pointer;
+}
+#classifier-answer div {
+    font-family: monospace;
+    border-style: outset;
+    background-color: white;
+}
+p.answer {
+    text-decoration: none;
+    color: #555dbb;
+    display: inline;
+    padding-left: 5px;
+}
+
+#classifier-form {
+    position: relative;
+}
+
+#classifier-form textarea {
+    width: 70%;
+}
+
+#classifier-form textarea, 
+#classifier-form button {
+    display: block;
+    border-radius: 5px;
+    margin: 5px;
+}
 /* ==========================================================================
    Media Queries
    ========================================================================== */
@@ -312,9 +358,9 @@ div#error {
 
     nav a {
         float: left;
-        width: 27%;
+        width: 20%;
         margin: 0 1.7%;
-        padding: 25px 2%;
+        padding: 22px 2%;
         margin-bottom: 0;
     }
 

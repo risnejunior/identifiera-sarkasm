@@ -1,5 +1,6 @@
 var ajaxurl = "index.php";
-var debug = true;
+var jsonpurl = "http://proxy.janpettersson.com:1024";
+var debug = false;
 var model = null;
 var quiz_size = 3;
 var datasetNames = {
@@ -48,8 +49,9 @@ function Model () {
 	this.quizes = {};
 }
 
-function send_ajax(message, cb_success, cb_error, cb_complete) {
+function send_ajax(message, cb_success, cb_error, cb_complete, own_settings = null) {
 	debug ? console.log("send ajax") : null
+	
 	var settings = {
 	     "url": ajaxurl,
 	     "timeout": 3000,
@@ -61,6 +63,9 @@ function send_ajax(message, cb_success, cb_error, cb_complete) {
 	     "success": success,
 	     "context": this
 	};
+	if (own_settings !== null) {
+		$.extend(true, settings, own_settings)
+	}
 	 
 	 //ajax call bound to deferred
 	jQuery.ajax( settings );
@@ -94,11 +99,35 @@ function send_ajax(message, cb_success, cb_error, cb_complete) {
 		cb_error(err_message);
 	}
 }
+
+function send_jsonp(question) {
+	own_settings = {
+		url: jsonpurl,	 
+		jsonp: "callback",
+		dataType: "jsonp",
+		data: {
+			question: question,
+			 format: "json"
+		},
+	    // Work with the response
+	    success: function( response ) {
+	        console.log( response ); // server response
+	    }
+	}
+
+	function error(message) {
+		console.log( message );
+	}
+	
+	send_ajax(null, null, error, error, own_settings)
+	
+}
 /* controller #######################################################
 ####################################################################*/
 var quiz_container = $("#quiz");
 var metrics_container = $("#metrics");
 var intro_container = $("#intro");
+var classifier_container = $("#classifier");
 var navbar = $('#navbar');
 var aside = $('#aside');
 
@@ -106,9 +135,9 @@ $( document ).ready(function() {
 	is_new_user = model_init();
 	
 	if (is_new_user) {
-		quiz_container.hide()
-		intro_container.show()
+		switch_view("intro")
 	} else {
+		switch_view("quiz");
 		ctrl_refresh_quiz(def_quiz, false);
 	}
 });
@@ -127,6 +156,7 @@ $("#name-form").submit(function(event) {
 	model_register_user(name, cb_view_success, cb_view_error);
 
 	function cb_view_success() {		
+		switch_view("quiz");
 		ctrl_refresh_quiz(def_quiz, false);
 	} 
 
@@ -135,12 +165,11 @@ $("#name-form").submit(function(event) {
 	}
 });
 
-$("#hard-link").click(function(e){
-	var dataset = datasetNames['hard'];
+$("#classifier-link").click(function(e){
 	$("li", "#navbar").removeClass("selected");
 	$(this).addClass("selected");
-		
-	ctrl_refresh_quiz(dataset, false);
+	
+	switch_view("classifier")	
 });
 
 $("#easy-link").click(function(e){
@@ -148,9 +177,53 @@ $("#easy-link").click(function(e){
 	$("li", "#navbar").removeClass("selected");
 	$(this).addClass("selected");
 	
+	switch_view("quiz");
 	ctrl_refresh_quiz(dataset, false);
 });
 
+
+$("#classifier-form").on("click", "button", function(event) {
+	event.preventDefault();
+	var section = $("#classifier-form");
+	var answer_section = $("#classifier-answer")
+	var question = $("#classifier-form textarea[name*='question']").val()
+
+	own_settings = {
+		url: jsonpurl,	 
+		jsonp: "callback",
+		dataType: "jsonp",
+		data: {
+			question: question,
+			 format: "json"
+		}
+	}
+
+	section.children(".worker").addClass("working-animation");
+	send_ajax(null, success, error, complete, own_settings)
+
+	function success(answer) {		
+		console.log(answer)
+		section.hide()
+		answer_section.show()
+		var tokens_element = $("div[name*='classifier-tokens'] > p")
+		var score_element = $("div[name*='classifier-score'] > p")
+		tokens_element.text(unescape(answer.tokens.join(", ")))
+		score_element.text(answer.sarcasm + " %")
+	}
+
+	function error(err_message) {		
+		view_display_error(err_message);
+	} 
+
+	function complete() {
+		section.children(".worker").removeClass("working-animation");				
+	}
+});
+
+$("#classifier-answer").click(function(e){
+	$("#classifier-answer").hide()
+	$("#classifier-form").show()
+});
 
 $("#quiz").on("click", "button", function(event) {
 	var section = $(this).parents("section").first();
@@ -194,12 +267,8 @@ $("#logout a").click(function(e) {
 });
 
 function ctrl_refresh_quiz(dataset, replace) {
-	intro_container.hide();
-	navbar.show();
-	aside.show();
-	quiz_container.fadeTo(10, 0);
-	metrics_container.fadeTo(10, 0);
-
+	quiz_container.fadeTo(50, 0);
+	metrics_container.fadeTo(50, 0);
 	model_get_quiz(dataset, quiz_size, replace, cb_success, cb_error, cb_complete)
 
 	function cb_success(quiz) {
@@ -222,6 +291,33 @@ function ctrl_refresh_quiz(dataset, replace) {
 
 /* view funs #############################################################
 ####################################################################*/
+
+function switch_view(view_name) {
+	switch(view_name) {
+		case "quiz":
+			intro_container.hide();
+			classifier_container.hide()
+			navbar.show();
+			aside.show();
+			break;
+		case "intro":
+			quiz_container.hide();
+			metrics_container.hide();
+			classifier_container.hide()
+			navbar.hide();
+			aside.hide();
+			intro_container.show()
+			break;
+		case "classifier":
+			intro_container.hide();
+			quiz_container.hide();
+			aside.hide();
+			classifier_container.show()
+			break;
+		default:
+			throw "switch view fall through";
+	}
+}
 
 function view_update_quiz(dataset, questions, answers) {
 	quiz_container.empty();
@@ -254,7 +350,7 @@ function view_update_quiz(dataset, questions, answers) {
 }
 
 function view_update_metrics(metrics, dataset) {
-	$("#score-header").text(dataset + " quiz score:");	
+	$("#score-header").text(" Quiz score:");	
 	$("#count").html(metrics.count);		
 	$("#accuracy").html(metrics.accuracy);
 	$("#precision").html(metrics.precision);
